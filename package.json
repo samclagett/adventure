@@ -1,0 +1,28 @@
+{
+  "name": "adventure",
+  "version": "1.0.0",
+  "description": "Personal adventure planner: conditions + 3D map + hit list",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samclagett/adventure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/samclagett/adventure/issues"
+  },
+  "homepage": "https://github.com/samclagett/adventure#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0"
+  },
+  "private": true,
+  "type": "module"
+}
