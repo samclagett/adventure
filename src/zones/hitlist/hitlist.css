@@ -1,0 +1,264 @@
+/* Hit list UI. Uses the colour variables from src/style.css. `--pin` is each category's colour. */
+
+/* Category filter: one scrollable row of chips under the title. */
+.hl-filter {
+  position: absolute;
+  z-index: 2;
+  top: calc(env(safe-area-inset-top) + 62px);
+  left: 0;
+  right: 50px;
+  display: flex;
+  gap: 6px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.hl-filter::-webkit-scrollbar { display: none; }
+
+.hl-chip {
+  flex: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--pin, var(--accent));
+  border-radius: 999px;
+  padding: 7px 11px;
+  min-height: 36px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.hl-chip small { color: var(--muted); margin-left: 2px; }
+.hl-chip.empty { opacity: 0.6; }
+.hl-chip.on { background: var(--pin, var(--accent)); color: #08161e; font-weight: 600; opacity: 1; }
+.hl-chip.on small { color: #08161e; }
+
+/* Pins. Anchored at the bottom point of the teardrop. */
+.hl-pin {
+  padding: 0 0 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.hl-pin-shape {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--pin);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+}
+.hl-pin-icon { transform: rotate(45deg); font-size: 17px; line-height: 1; }
+.hl-pin-draft .hl-pin-shape { width: 42px; height: 42px; border-width: 3px; animation: hl-bob 1.2s ease-in-out infinite alternate; }
+@keyframes hl-bob { to { translate: 0 -6px; } }
+
+/* Floating buttons. */
+.hl-list-btn,
+.hl-add-btn {
+  position: absolute;
+  z-index: 2;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.hl-list-btn {
+  left: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  border-radius: 14px;
+  padding: 9px 12px;
+  min-height: 40px;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.hl-badge { background: var(--warn); color: #241400; border-radius: 999px; padding: 1px 7px; font-size: 0.8rem; font-weight: 600; }
+.hl-add-btn {
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 140px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #062026;
+  font-size: 2rem;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* Bottom sheet: list, card and add/edit form. Covers the map controls while open. */
+.hl-sheet {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 62%;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-solid);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.95rem;
+}
+@media (min-width: 700px) {
+  .hl-sheet { left: auto; right: 12px; bottom: 12px; width: 400px; max-height: calc(100% - 24px); border-radius: 18px; border: 1px solid var(--border); }
+}
+.hl-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px);
+}
+.hl-sheet h2 { margin: 0 40px 8px 0; font-size: 1.2rem; }
+.hl-sheet h3 { margin: 18px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+.hl-sheet p { margin: 6px 0; line-height: 1.4; }
+.hl-sheet a { color: var(--accent); word-break: break-word; }
+.hl-muted { color: var(--muted); font-size: 0.88rem; }
+.hl-error { color: var(--warn); font-size: 0.9rem; }
+.hl-notes { white-space: pre-wrap; }
+.hl-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  font: inherit;
+  background: #234257;
+  color: var(--text);
+  cursor: pointer;
+  z-index: 1;
+}
+
+.hl-sheet button { font: inherit; }
+.hl-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  background: #0e2130;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--pin, var(--muted));
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  min-height: 48px;
+}
+.hl-row > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.hl-row small { color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-row-icon { font-size: 1.3rem; }
+
+.hl-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+.hl-cat-grid button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: var(--text);
+  background: #0e2130;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--pin);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 52px;
+  cursor: pointer;
+}
+.hl-cat-grid button span { font-size: 1.4rem; }
+
+.hl-cat-tag { display: inline-block; background: var(--pin); color: #08161e; font-weight: 600; font-size: 0.85rem; border-radius: 999px; padding: 4px 10px; margin-bottom: 8px; }
+
+.hl-cat-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px 8px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+.hl-cat-row::-webkit-scrollbar { display: none; }
+.hl-cat-row .hl-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: #0e2130; }
+.hl-cat-row .hl-chip.on { background: var(--pin); }
+
+.hl-field { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 0.88rem; }
+.hl-sheet input,
+.hl-sheet textarea {
+  font: inherit;
+  font-size: 16px; /* 16px stops iPhone Safari zooming in on focus. */
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #2b4b60;
+  background: #0e2130;
+  color: var(--text);
+}
+.hl-sheet textarea { resize: vertical; }
+
+.hl-where { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: rgba(246, 173, 85, 0.12); color: var(--text); font-size: 0.9rem; line-height: 1.4; }
+.hl-where.ok { background: rgba(79, 209, 197, 0.12); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.hl-where small { color: var(--muted); }
+.hl-where button { margin-left: auto; background: none; border: none; color: var(--warn); cursor: pointer; padding: 4px; }
+
+.hl-tabs { display: flex; gap: 4px; margin-top: 8px; background: #0e2130; border-radius: 12px; padding: 4px; }
+.hl-tabs button { flex: 1; border: none; background: none; color: var(--muted); border-radius: 9px; padding: 8px 4px; min-height: 38px; cursor: pointer; font-size: 0.85rem; }
+.hl-tabs button.on { background: var(--accent); color: #062026; font-weight: 600; }
+.hl-tabpanel { margin-top: 8px; }
+.hl-search,
+.hl-link { display: flex; gap: 6px; }
+.hl-search button,
+.hl-link button,
+.hl-wide,
+.hl-actions button {
+  border: 1px solid var(--border);
+  background: #1a3a4f;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.hl-results { margin-top: 8px; }
+.hl-wide { width: 100%; }
+
+.hl-actions { display: flex; gap: 8px; margin-top: 16px; }
+.hl-actions button { flex: 1; }
+.hl-actions .hl-primary { background: var(--accent); color: #062026; border: none; font-weight: 600; }
+.hl-actions .hl-danger { background: none; color: var(--warn); border-color: rgba(246, 173, 85, 0.5); }
+.hl-actions button:disabled { opacity: 0.6; }
+
+/* "Tap the map" banner while dropping a pin. */
+.hl-banner {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--panel-solid);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  font-size: 0.92rem;
+}
+.hl-banner span { flex: 1; }
+.hl-banner button { font: inherit; border: none; background: #1a3a4f; color: var(--text); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+
+/* While the sheet is open, hide the floating buttons it would overlap. */
+.hl-sheet-open .hl-add-btn,
+.hl-sheet-open .hl-list-btn { display: none; }
+
+/* `display` rules above would otherwise override the hidden attribute. */
+.hl-sheet[hidden],
+.hl-banner[hidden] { display: none; }

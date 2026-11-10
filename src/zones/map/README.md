@@ -2,7 +2,8 @@
 
 The 3D map (MapLibre GL), terrain, state selection, pins, visual style and the quality toggle.
 
-- `index.ts`: `mountMap(container)`, the only thing other zones should import.
+- `index.ts`: `mountMap(container)`, the only thing other zones should import. It returns the map plus helpers;
+  `setTapToZoom(false)` stops taps on a state from zooming (the hit list uses it while dropping a pin).
 - `map.ts`: creates the map, camera views for Australia/NSW/VIC, tap-a-state-to-zoom.
 - `style.ts`: the look. Elevation-tinted land and ocean, hillshade, ghosted states.
 - `quality.ts`: light (phones: no 3D terrain, pixel ratio 1) vs full (3D terrain + sky). Remembered per device.

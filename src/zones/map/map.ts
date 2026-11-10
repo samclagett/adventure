@@ -32,6 +32,8 @@ export interface AdventureMap {
   /** How much to exaggerate height: 1 = real, 10 = extreme. */
   setRelief(r: number): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
+  /** Turn tap-a-state-to-zoom off while another zone wants map taps (e.g. dropping a pin). */
+  setTapToZoom(on: boolean): void;
 }
 
 export function createMap(container: HTMLElement, quality: Quality): AdventureMap {
@@ -51,6 +53,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   let current: Region | 'AUS' = 'AUS';
   let currentQuality = quality;
   let relief = getRelief();
+  let tapToZoom = true;
   const listeners: ((r: Region | 'AUS') => void)[] = [];
 
   function applyQuality(q: Quality) {
@@ -112,7 +115,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   // Tap an active state to fly into it.
   map.on('click', 'states-active-hit', (e: MapLayerMouseEvent) => {
     const region = e.features?.[0]?.properties?.region as Region | undefined;
-    if (region && region !== current) flyToRegion(region);
+    if (tapToZoom && region && region !== current) flyToRegion(region);
   });
   map.on('mouseenter', 'states-active-hit', () => (map.getCanvas().style.cursor = 'pointer'));
   map.on('mouseleave', 'states-active-hit', () => (map.getCanvas().style.cursor = ''));
@@ -132,6 +135,9 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     },
     onRegionChange(cb) {
       listeners.push(cb);
+    },
+    setTapToZoom(on) {
+      tapToZoom = on;
     },
   };
 }
