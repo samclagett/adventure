@@ -12,3 +12,7 @@ The 3D map (MapLibre GL), terrain, state selection, pins, visual style and the q
 - Mountain height: `setRelief(1–4)` exaggerates 3D terrain (Full mode) and hillshade strength (both modes). Default 2.5×, remembered per device.
 
 Terrain comes from the free, keyless AWS Terrain Tiles (Terrarium encoding). No API keys anywhere.
+- `data/places.json`, `data/rivers.json`, `data/lakes.json`: 93 cities and towns, major rivers and lakes in NSW/ACT/VIC/TAS,
+  from Natural Earth 10m (public domain). Towns appear by size as you zoom (`rank`: lower = bigger).
+- `public/fonts/`: Noto Sans glyphs (SIL Open Font Licence) for labels, self-hosted so labels need no font server.
+  Only Latin ranges are included; add more `.pbf` ranges if names with other scripts are ever needed.
