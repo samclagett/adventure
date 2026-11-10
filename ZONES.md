@@ -18,9 +18,9 @@ A claim older than 7 days with no activity can be taken over after a message to 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
 | map | `src/zones/map/` | free | | |
-| hitlist | `src/zones/hitlist/` | Sam (Claude) | New categories and sketch icons | 2026-11-11 |
+| hitlist | `src/zones/hitlist/` | free | | |
 | conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
 | campsites | `src/zones/campsites/` | free | | |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
 | infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
-| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Sam (Claude) | New categories and sketch icons | 2026-11-11 |
+| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |

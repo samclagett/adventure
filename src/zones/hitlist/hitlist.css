@@ -1,4 +1,6 @@
-/* Hit list UI. Uses the colour variables from src/style.css. `--pin` is each category's colour. */
+/* Hit list UI. Uses the colour variables from src/style.css. `--pin` is each category's muted accent. */
+:root { --paper: #f1ebdf; --ink: #1b2830; }
+.hl-icon { width: 20px; height: 20px; flex: none; display: block; }
 
 /* Category filter: one scrollable row of chips under the title. */
 .hl-filter {
@@ -25,38 +27,57 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--pin, var(--accent));
   border-radius: 999px;
-  padding: 7px 11px;
+  padding: 6px 12px 6px 9px;
   min-height: 36px;
   white-space: nowrap;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
+.hl-chip .hl-icon { width: 18px; height: 18px; flex: none; }
+.hl-chip .hl-icon-sketch { width: 22px; height: 22px; margin: -3px 0; }
 .hl-chip small { color: var(--muted); margin-left: 2px; }
 .hl-chip.empty { opacity: 0.6; }
-.hl-chip.on { background: var(--pin, var(--accent)); color: #08161e; font-weight: 600; opacity: 1; }
-.hl-chip.on small { color: #08161e; }
+.hl-chip.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; opacity: 1; }
+.hl-chip.on small { color: var(--ink); opacity: 0.6; }
 
-/* Pins. Anchored at the bottom point of the teardrop. */
+/* Pins: a paper-coloured disc with an ink sketch icon, a thin accent ring and a small tail. */
 .hl-pin {
-  padding: 0 0 6px;
+  padding: 0 0 7px;
   border: none;
   background: none;
   cursor: pointer;
 }
 .hl-pin-shape {
-  width: 34px;
-  height: 34px;
-  border: 2px solid #fff;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  background: var(--pin);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--pin), 0 3px 8px rgba(0, 0, 0, 0.45);
   display: grid;
   place-items: center;
 }
-.hl-pin-icon { transform: rotate(45deg); font-size: 17px; line-height: 1; }
-.hl-pin-draft .hl-pin-shape { width: 42px; height: 42px; border-width: 3px; animation: hl-bob 1.2s ease-in-out infinite alternate; }
+.hl-pin-shape::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--paper);
+  transform: rotate(45deg);
+  border-radius: 0 0 3px 0;
+  box-shadow: 2px 2px 0 0 var(--pin);
+}
+.hl-pin-shape .hl-icon { width: 32px; height: 32px; position: relative; z-index: 1; }
+.hl-pin-draft .hl-pin-shape { width: 50px; height: 50px; box-shadow: 0 0 0 3px var(--accent), 0 3px 10px rgba(0, 0, 0, 0.5); animation: hl-bob 1.2s ease-in-out infinite alternate; }
+.hl-pin-draft .hl-pin-shape::after { box-shadow: 2px 2px 0 1px var(--accent); }
+.hl-pin-draft .hl-icon { width: 38px; height: 38px; }
 @keyframes hl-bob { to { translate: 0 -6px; } }
 
 /* Floating buttons. */
@@ -80,10 +101,10 @@
   min-height: 40px;
   font-size: 0.9rem;
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
 }
-.hl-badge { background: var(--warn); color: #241400; border-radius: 999px; padding: 1px 7px; font-size: 0.8rem; font-weight: 600; }
+.hl-badge { background: rgba(246, 173, 85, 0.18); color: var(--warn); border-radius: 999px; padding: 1px 8px; font-size: 0.78rem; font-weight: 600; }
 .hl-add-btn {
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom) + 140px);
@@ -164,7 +185,7 @@
 }
 .hl-row > span:last-child { display: flex; flex-direction: column; min-width: 0; }
 .hl-row small { color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hl-row-icon { font-size: 1.3rem; }
+.hl-row-icon { width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
 
 .hl-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
 .hl-cat-grid button {
@@ -175,20 +196,19 @@
   color: var(--text);
   background: #0e2130;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--pin);
   border-radius: 12px;
   padding: 12px;
   min-height: 52px;
   cursor: pointer;
 }
-.hl-cat-grid button span { font-size: 1.4rem; }
+.hl-cat-grid .hl-icon { width: 36px; height: 36px; color: var(--paper); }
 
-.hl-cat-tag { display: inline-block; background: var(--pin); color: #08161e; font-weight: 600; font-size: 0.85rem; border-radius: 999px; padding: 4px 10px; margin-bottom: 8px; }
+.hl-cat-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--pin); font-weight: 600; font-size: 0.85rem; border-radius: 999px; padding: 4px 10px; margin-bottom: 8px; }
 
 .hl-cat-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px 8px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
 .hl-cat-row::-webkit-scrollbar { display: none; }
 .hl-cat-row .hl-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: #0e2130; }
-.hl-cat-row .hl-chip.on { background: var(--pin); }
+.hl-cat-row .hl-chip.on { background: var(--paper); }
 
 .hl-field { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 0.88rem; }
 .hl-sheet input,
@@ -207,6 +227,10 @@
 .hl-where { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: rgba(246, 173, 85, 0.12); color: var(--text); font-size: 0.9rem; line-height: 1.4; }
 .hl-where.ok { background: rgba(79, 209, 197, 0.12); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .hl-where small { color: var(--muted); }
+.hl-where .hl-icon { width: 18px; height: 18px; }
+.hl-wide { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.hl-sheet h3 { display: flex; align-items: center; gap: 6px; }
+.hl-sheet h3 .hl-icon { width: 18px; height: 18px; }
 .hl-where button { margin-left: auto; background: none; border: none; color: var(--warn); cursor: pointer; padding: 4px; }
 
 .hl-tabs { display: flex; gap: 4px; margin-top: 8px; background: #0e2130; border-radius: 12px; padding: 4px; }
@@ -262,3 +286,7 @@
 /* `display` rules above would otherwise override the hidden attribute. */
 .hl-sheet[hidden],
 .hl-banner[hidden] { display: none; }
+
+.hl-row-icon .hl-icon-sketch { width: 30px; height: 30px; }
+.hl-sheet h3 .hl-icon-sketch { width: 22px; height: 22px; }
+.hl-cat-tag .hl-icon-sketch { width: 22px; height: 22px; margin: -3px 0; }
