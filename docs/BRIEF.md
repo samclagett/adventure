@@ -39,7 +39,7 @@ A visually rich, slightly game-like web app that combines conditions (weather, w
 Hiking and camping are central. Also surfing, climbing, skiing, snorkelling and diving (one category), and kayaking/canoeing.
 Beaches and mountain biking were dropped as categories for now (2026-11-11).
 
-Look: no emoji or loud colours. Categories use a professional icon set (Google Material Symbols, free, Apache 2.0) on paper-coloured pins with muted accent colours.
+Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (traced to SVG) on paper-coloured pins with muted accent colours.
 
 ## Conditions data
 
