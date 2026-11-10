@@ -7,7 +7,7 @@ place search (Nominatim), Google Maps link parsing, and saving to Supabase.
   the "Hit list" and "+" buttons, and the bottom sheet (list, add/edit form, pin card). Loads items once signed in.
 - `categories.ts`: the category list (id, label, icon, muted accent colour). The id is saved in `hit_list.activity`,
   so don't rename ids that are in use. Merged ids go in `ALIASES` (snorkelling → diving); unknown values show as "Other".
-- `icons.ts`: our own hand-sketched line icons as inline SVG (24×24, `currentColor`). No emoji anywhere.
+- `icons.ts`: Google Material Symbols (Rounded) as inline SVG paths, Apache 2.0. No emoji anywhere.
 - `store.ts`: Supabase reads and writes for the `hit_list` table.
 - `geocode.ts`: Nominatim search, limited to NSW/ACT/VIC/TAS. Only runs when Search is pressed (Nominatim's usage policy).
 - `gmaps.ts`: pulls coordinates out of full Google Maps links or plain `lat, lng` text. Short `maps.app.goo.gl` links
