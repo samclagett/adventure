@@ -37,7 +37,7 @@ export const COLORS = {
   label: '#fffaf0',
   park: '#2f8f4e',
   parkLabel: '#c9f7c9',
-  beach: '#ffe08a',
+  beach: '#f2dfa4',
   halo: '#0b1a24',
   ghost: '#08141c',
   outline: '#ffffff',
@@ -67,6 +67,7 @@ export function buildStyle(): StyleSpecification {
       lakes: { type: 'geojson', data: lakes as Data },
       parks: { type: 'geojson', data: `${DATA}/national-parks.geojson`, attribution: '© OpenStreetMap contributors, Overture Maps' },
       beaches: { type: 'geojson', data: `${DATA}/beaches.geojson` },
+      sand: { type: 'geojson', data: `${DATA}/beach-sand.geojson` },
     },
     layers: [
       { id: 'ocean', type: 'background', paint: { 'background-color': COLORS.ocean } },
@@ -87,7 +88,8 @@ export function buildStyle(): StyleSpecification {
             -1, '#3fb3b8',
             // Zoomed in, the elevation data often reads the sea as exactly 0 m: keep that water-coloured.
             0, '#2a96ad',
-            1, '#e9d8a6',
+            // Low coastal land is pale green, so real beach sand (its own layer) stands out.
+            1, '#cfdc9e',
             30, '#a8cf7e',
             150, '#6fb25e',
             350, '#4f9447',
@@ -148,6 +150,13 @@ export function buildStyle(): StyleSpecification {
         paint: { 'line-color': '#7fe0a0', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 2] },
       },
       {
+        // Beach sand, outlined like on a satellite map.
+        id: 'beach-sand',
+        type: 'fill',
+        source: 'sand',
+        paint: { 'fill-color': COLORS.beach, 'fill-opacity': 0.95, 'fill-antialias': true },
+      },
+      {
         id: 'lakes',
         type: 'fill',
         source: 'lakes',
@@ -194,7 +203,8 @@ export function buildStyle(): StyleSpecification {
           'line-color': COLORS.activeGlow,
           'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 10, 6],
           'line-blur': 6,
-          'line-opacity': 0.7,
+          // State outlines are simplified, so fade them out once you're zoomed in close.
+          'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.7, 9, 0],
         },
       },
       {
@@ -204,7 +214,11 @@ export function buildStyle(): StyleSpecification {
         paint: {
           'line-color': COLORS.outline,
           'line-width': ['case', ['get', 'active'], 1.5, 0.6],
-          'line-opacity': ['case', ['get', 'active'], 0.9, 0.25],
+          'line-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            7, ['case', ['get', 'active'], 0.9, 0.25],
+            9, 0,
+          ],
         },
       },
       {
@@ -240,22 +254,11 @@ export function buildStyle(): StyleSpecification {
         paint: { 'text-color': COLORS.parkLabel, 'text-halo-color': '#0f3a22', 'text-halo-width': 1.4 },
       },
       {
-        id: 'beach-dots',
-        type: 'circle',
-        source: 'beaches',
-        minzoom: 8,
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 12, 5],
-          'circle-color': COLORS.beach,
-          'circle-stroke-color': '#7a5a12',
-          'circle-stroke-width': 1,
-        },
-      },
-      {
         id: 'beach-labels',
         type: 'symbol',
         source: 'beaches',
-        minzoom: 9,
+        // Names only once you're zoomed right in on the coast.
+        minzoom: 12,
         layout: {
           'text-field': ['get', 'name'],
           'text-font': FONT,
