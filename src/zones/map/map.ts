@@ -14,9 +14,9 @@ export type Region = 'NSW' | 'VIC' | 'TAS';
 /** Camera framing for each active region, plus the whole-country overview. */
 const VIEWS: Record<Region | 'AUS', { bounds: LngLatBoundsLike; pitch: number; bearing: number }> = {
   AUS: { bounds: [[112, -44], [154, -10]], pitch: 0, bearing: 0 },
-  NSW: { bounds: [[141, -37.6], [153.7, -28.1]], pitch: 55, bearing: -12 },
-  VIC: { bounds: [[140.9, -39.2], [150, -34]], pitch: 55, bearing: 10 },
-  TAS: { bounds: [[143.8, -43.7], [148.5, -39.5]], pitch: 55, bearing: 0 },
+  NSW: { bounds: [[141, -37.6], [153.7, -28.1]], pitch: 62, bearing: -12 },
+  VIC: { bounds: [[140.9, -39.2], [150, -34]], pitch: 62, bearing: 10 },
+  TAS: { bounds: [[143.8, -43.7], [148.5, -39.5]], pitch: 62, bearing: 0 },
 };
 
 const STATE_CODES: Record<Region, string[]> = {
@@ -29,7 +29,7 @@ export interface AdventureMap {
   map: maplibregl.Map;
   flyToRegion(region: Region | 'AUS'): void;
   setQuality(q: Quality): void;
-  /** How much to exaggerate height: 1 = real, 4 = dramatic. */
+  /** How much to exaggerate height: 1 = real, 10 = extreme. */
   setRelief(r: number): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
 }
@@ -79,8 +79,8 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
    * Light mode shades a bit harder to make up for the missing 3D.
    */
   function applyShading() {
-    const base = currentQuality === 'light' ? 0.45 : 0.3;
-    map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(1, base + 0.15 * relief));
+    const base = currentQuality === 'light' ? 0.5 : 0.35;
+    map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(1, base + 0.07 * relief));
   }
 
   function setSelected(region: Region | 'AUS') {

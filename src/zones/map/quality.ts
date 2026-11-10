@@ -33,9 +33,9 @@ export function saveQuality(q: Quality) {
 
 const RELIEF_KEY = 'adventure.relief';
 export const RELIEF_MIN = 1;
-export const RELIEF_MAX = 4;
-/** Default height exaggeration: Australia's mountains are old and low, so 2.5x makes them read clearly. */
-export const RELIEF_DEFAULT = 2.5;
+export const RELIEF_MAX = 10;
+/** Default height exaggeration: Australia's mountains are old and low, so 5x makes them stand out. */
+export const RELIEF_DEFAULT = 5;
 
 export function getRelief(): number {
   try {

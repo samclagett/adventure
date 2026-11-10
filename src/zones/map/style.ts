@@ -9,6 +9,7 @@ import lakes from './data/lakes.json';
  * - Ocean depth and land height are tinted from the same free elevation tiles that give 3D terrain.
  * - States outside NSW and Victoria are "ghosted" with a dark wash.
  * - Major rivers, lakes, cities and towns come from Natural Earth (public domain), bundled with the app.
+ * - National parks and named beaches come from Overture Maps (OpenStreetMap data, ODbL), in public/data.
  * - Label fonts (Noto Sans, open licence) are served from public/fonts, so nothing depends on a font server.
  * No API keys are needed for anything here.
  */
@@ -21,6 +22,9 @@ const FONT = ['Noto Sans Regular'];
 const FONT_BOLD = ['Noto Sans Medium'];
 const FONT_ITALIC = ['Noto Sans Italic'];
 
+// Bigger datasets live in public/data and load on demand, so they don't slow the first paint.
+const DATA = `${location.origin}${import.meta.env.BASE_URL}data`;
+
 // Mapzen/AWS terrain tiles: free, keyless, global, includes ocean depth.
 const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const TERRAIN_ATTRIBUTION =
@@ -31,6 +35,9 @@ export const COLORS = {
   river: '#2b9be0',
   riverLabel: '#e6f8ff',
   label: '#fffaf0',
+  park: '#2f8f4e',
+  parkLabel: '#c9f7c9',
+  beach: '#ffe08a',
   halo: '#0b1a24',
   ghost: '#08141c',
   outline: '#ffffff',
@@ -58,11 +65,14 @@ export function buildStyle(): StyleSpecification {
       places: { type: 'geojson', data: places as Data },
       rivers: { type: 'geojson', data: rivers as Data },
       lakes: { type: 'geojson', data: lakes as Data },
+      parks: { type: 'geojson', data: `${DATA}/national-parks.geojson`, attribution: '© OpenStreetMap contributors, Overture Maps' },
+      beaches: { type: 'geojson', data: `${DATA}/beaches.geojson` },
     },
     layers: [
       { id: 'ocean', type: 'background', paint: { 'background-color': COLORS.ocean } },
       {
-        // Height tint: deep ocean → shallows → beach → green → dry → rock → snow.
+        // Height tint: deep ocean → shallows → beach → greens → ochre → dark rock → snow.
+        // Stops are packed into 0–2000 m because Australian ranges are low; each band reads distinctly.
         id: 'relief',
         type: 'color-relief',
         source: 'shade',
@@ -75,13 +85,19 @@ export function buildStyle(): StyleSpecification {
             -200, '#0c3b55',
             -20, '#1a6f86',
             -1, '#3fb3b8',
-            0, '#e9d8a6',
-            40, '#9cc47a',
-            300, '#5f9e58',
-            700, '#8a9a5b',
-            1200, '#a88b62',
-            1700, '#c9c3b8',
-            2100, '#ffffff',
+            // Zoomed in, the elevation data often reads the sea as exactly 0 m: keep that water-coloured.
+            0, '#2a96ad',
+            1, '#e9d8a6',
+            30, '#a8cf7e',
+            150, '#6fb25e',
+            350, '#4f9447',
+            550, '#7f9a4c',
+            750, '#a08a55',
+            950, '#9b6d45',
+            1200, '#7d5a45',
+            1500, '#9c948c',
+            1800, '#d9d6d2',
+            2000, '#ffffff',
           ],
           'color-relief-opacity': 1,
         },
@@ -92,8 +108,12 @@ export function buildStyle(): StyleSpecification {
         source: 'shade',
         paint: {
           'hillshade-exaggeration': 0.45,
-          'hillshade-shadow-color': '#0b1a24',
-          'hillshade-highlight-color': '#fff7e0',
+          // Light from several directions makes ridges and gullies pop more than a single sun.
+          'hillshade-method': 'multidirectional',
+          'hillshade-illumination-direction': [270, 315, 0, 45],
+          'hillshade-illumination-altitude': [30, 30, 30, 30],
+          'hillshade-highlight-color': ['#fff7e0', '#fff7e0', '#fff7e0', '#fff7e0'],
+          'hillshade-shadow-color': ['#0b1a24', '#0b1a24', '#0b1a24', '#0b1a24'],
           'hillshade-accent-color': '#2c3e2f',
         },
       },
@@ -109,9 +129,23 @@ export function buildStyle(): StyleSpecification {
             -200, 'rgba(12, 59, 85, 0.7)',
             -20, 'rgba(26, 111, 134, 0.45)',
             -0.5, 'rgba(63, 179, 184, 0.2)',
-            0, 'rgba(0, 0, 0, 0)',
+            0, 'rgba(42, 150, 173, 0.35)',
+            1, 'rgba(0, 0, 0, 0)',
           ],
         },
+      },
+      {
+        id: 'parks-fill',
+        type: 'fill',
+        source: 'parks',
+        paint: { 'fill-color': COLORS.park, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.35, 10, 0.22] },
+      },
+      {
+        id: 'parks-outline',
+        type: 'line',
+        source: 'parks',
+        minzoom: 6,
+        paint: { 'line-color': '#7fe0a0', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 2] },
       },
       {
         id: 'lakes',
@@ -189,6 +223,49 @@ export function buildStyle(): StyleSpecification {
           'text-max-angle': 70,
         },
         paint: { 'text-color': COLORS.riverLabel, 'text-halo-color': '#0b3550', 'text-halo-width': 1.6 },
+      },
+      {
+        id: 'park-labels',
+        type: 'symbol',
+        source: 'parks',
+        minzoom: 7,
+        filter: ['has', 'name'],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': FONT_ITALIC,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 7, 11, 11, 14],
+          'text-max-width': 8,
+          'symbol-sort-key': 10,
+        },
+        paint: { 'text-color': COLORS.parkLabel, 'text-halo-color': '#0f3a22', 'text-halo-width': 1.4 },
+      },
+      {
+        id: 'beach-dots',
+        type: 'circle',
+        source: 'beaches',
+        minzoom: 8,
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 12, 5],
+          'circle-color': COLORS.beach,
+          'circle-stroke-color': '#7a5a12',
+          'circle-stroke-width': 1,
+        },
+      },
+      {
+        id: 'beach-labels',
+        type: 'symbol',
+        source: 'beaches',
+        minzoom: 9,
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': FONT,
+          'text-size': 11.5,
+          'text-variable-anchor': ['left', 'right'],
+          'text-radial-offset': 0.7,
+          // Bigger beaches win when labels would overlap.
+          'symbol-sort-key': ['-', 0, ['get', 'area']],
+        },
+        paint: { 'text-color': COLORS.beach, 'text-halo-color': COLORS.halo, 'text-halo-width': 1.4 },
       },
       {
         id: 'place-dots',

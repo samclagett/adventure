@@ -16,3 +16,8 @@ Terrain comes from the free, keyless AWS Terrain Tiles (Terrarium encoding). No 
   from Natural Earth 10m (public domain). Towns appear by size as you zoom (`rank`: lower = bigger).
 - `public/fonts/`: Noto Sans glyphs (SIL Open Font Licence) for labels, self-hosted so labels need no font server.
   Only Latin ranges are included; add more `.pbf` ranges if names with other scripts are ever needed.
+- `public/data/national-parks.geojson`, `public/data/beaches.geojson`: 588 national parks/reserves and 1,269 named
+  beaches in NSW/ACT/VIC/TAS, from Overture Maps (release 2026-10-21.0; OpenStreetMap data, ODbL). Loaded on demand.
+  Built by reading Overture's `base/land_use` (class `national_park`) and `base/land` (class `beach`) for the region,
+  then simplifying with mapshaper. Overture also has `campground/camp_site` and named `physical/peak` features
+  if the campsites zone or peak labels need them later.
