@@ -21,7 +21,7 @@ FIELDS = ("name", "activity", "lat", "lng", "notes", "link")
 
 def request(method, path, body=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
-    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
     headers = {"apikey": key, "Content-Type": "application/json", "Prefer": "return=representation"}
     # Older keys are JWTs ("eyJ...") and also go in Authorization; new "sb_secret_..." keys must not.
     if key.startswith("eyJ"):
@@ -35,7 +35,9 @@ def request(method, path, body=None):
 
 
 def main(paths):
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    if not key.isascii() or "*" in key or "." * 3 in key:
+        sys.exit("The secret looks like the hidden (dotted) version of the key. Copy it again with Supabase's copy button.")
     if not os.environ.get("SUPABASE_URL") or not key:
         sys.exit("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (see SETUP.md step 5).")
     kind = "new secret key" if key.startswith("sb_secret_") else "legacy service_role JWT" if key.startswith("eyJ") else "unrecognised key type"
