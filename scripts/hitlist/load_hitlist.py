@@ -13,7 +13,7 @@ Uses only the Python standard library.
 import json
 import os
 import sys
-import urllib.parse
+import urllib.error
 import urllib.request
 
 FIELDS = ("name", "activity", "lat", "lng", "notes", "link")
@@ -22,13 +22,24 @@ FIELDS = ("name", "activity", "lat", "lng", "notes", "link")
 def request(method, path, body=None):
     url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/" + path
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=representation"}
+    headers = {"apikey": key, "Content-Type": "application/json", "Prefer": "return=representation"}
+    # Older keys are JWTs ("eyJ...") and also go in Authorization; new "sb_secret_..." keys must not.
+    if key.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {key}"
     data = json.dumps(body).encode() if body is not None else None
-    with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers, method=method)) as res:
-        return json.loads(res.read() or "null")
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers, method=method)) as res:
+            return json.loads(res.read() or "null")
+    except urllib.error.HTTPError as err:
+        sys.exit(f"Supabase said {err.code}: {err.read().decode(errors='replace')[:500]}")
 
 
 def main(paths):
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not os.environ.get("SUPABASE_URL") or not key:
+        sys.exit("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (see SETUP.md step 5).")
+    kind = "new secret key" if key.startswith("sb_secret_") else "legacy service_role JWT" if key.startswith("eyJ") else "unrecognised key type"
+    print(f"Using {kind} ({len(key)} characters)")
     existing = request("GET", "hit_list?select=name,activity")
     seen = {(r["name"].strip().lower(), (r["activity"] or "").lower()) for r in existing}
     print(f"{len(existing)} items already in the hit list")
