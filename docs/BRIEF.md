@@ -27,7 +27,7 @@ A visually rich, slightly game-like web app that combines conditions (weather, w
 ## Map and visuals
 
 - A blend of realistic terrain and a stylised, gamey look.
-- V1: Australia shown ghosted, with NSW and Victoria active. Pick a state and zoom in.
+- V1: Australia shown ghosted, with NSW, Victoria and Tasmania active. Pick a state and zoom in.
 - World mode later: big-ticket global adventures, without detailed conditions.
 - Animations react to conditions (big surf means roaring waves; strong wind is visible on the map).
 - Each location gets a callout bubble showing only the conditions that matter for it (no swell data on a mountain).
@@ -77,7 +77,7 @@ Hiking, camping and beaches are central. Also surfing, climbing, skiing, snorkel
 
 ## Build stages
 
-1. 3D map of NSW and Victoria with the pinned hit list, looking good from the start.
+1. 3D map of NSW, Victoria and Tasmania with the pinned hit list, looking good from the start.
 2. Conditions: data sources, callout bubbles and reactive animations.
 3. Campsite availability hunting.
 4. Then: recommendations, trip cards, travel times, reviews and world mode.

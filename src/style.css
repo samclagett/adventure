@@ -1,23 +1,111 @@
 :root {
   --bg: #0b1a24;
-  --panel: #12293a;
+  --panel: rgba(13, 32, 45, 0.88);
+  --panel-solid: #12293a;
   --text: #e8f1f5;
   --muted: #8fa9b8;
   --accent: #4fd1c5;
   --warn: #f6ad55;
+  --border: rgba(143, 169, 184, 0.25);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
   background: var(--bg);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); }
-#app { min-height: 100%; display: grid; place-items: center; padding: 16px; }
-.card { background: var(--panel); border-radius: 16px; padding: 24px; max-width: 420px; width: 100%; }
-.card h1 { margin: 0 0 8px; font-size: 1.6rem; }
-.card p { color: var(--muted); margin: 0 0 16px; line-height: 1.4; }
-.status { font-size: 0.9rem; }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+#app { position: fixed; inset: 0; }
+#map { position: absolute; inset: 0; }
+
+/* Floating UI sits above the map and respects the iPhone notch / home bar. */
+.title-chip,
+.map-controls,
+.account {
+  position: absolute;
+  z-index: 2;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.title-chip {
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 12px;
+  padding: 8px 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.map-controls {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  align-items: center;
+}
+.segmented { display: flex; gap: 2px; }
+.map-controls button {
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 11px;
+  cursor: pointer;
+  min-height: 40px;
+}
+.map-controls button.active { background: var(--accent); color: #062026; font-weight: 600; }
+.map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 10px 10px 0; color: var(--muted); white-space: nowrap; }
+
+.account {
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 12px;
+  margin-top: 48px;
+  max-width: min(320px, calc(100vw - 24px));
+  font-size: 0.9rem;
+}
+.account summary { list-style: none; cursor: pointer; padding: 6px 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.account summary::-webkit-details-marker { display: none; }
+.account-body { padding: 0 12px 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.ok { background: var(--accent); }
+.dot.warn { background: var(--warn); }
+.status { margin-bottom: 8px; line-height: 1.35; }
 .ok { color: var(--accent); }
 .warn { color: var(--warn); }
 form { display: grid; gap: 8px; }
-input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b4b60; background: #0e2130; color: var(--text); }
-button { background: var(--accent); color: #062026; border: none; font-weight: 600; cursor: pointer; }
+input, form button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b4b60; background: #0e2130; color: var(--text); }
+form button { background: var(--accent); color: #062026; border: none; font-weight: 600; cursor: pointer; }
+
+/* MapLibre's own controls, tinted to match. */
+.maplibregl-ctrl-top-right { top: env(safe-area-inset-top); }
+.maplibregl-ctrl-group { background: var(--panel-solid); border: 1px solid var(--border); }
+.maplibregl-ctrl-group button + button { border-top-color: var(--border); }
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) brightness(0.9); }
+.maplibregl-ctrl-attrib { background: rgba(11, 26, 36, 0.7) !important; color: var(--muted); }
+.maplibregl-ctrl-attrib a { color: var(--muted); }
+.maplibregl-ctrl-attrib-button { filter: invert(1); }
+
+/* Mountain height (exaggeration) slider, right edge above the controls. */
+.relief-control {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.relief-control input { width: 110px; accent-color: var(--accent); }
+.relief-control output { min-width: 2.5em; text-align: right; color: var(--text); }
