@@ -5,27 +5,32 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { buildStyle } from './style';
 import type { Quality } from './quality';
+import { getRelief } from './quality';
 
 maplibregl.setWorkerUrl(workerUrl);
 
-export type Region = 'NSW' | 'VIC';
+export type Region = 'NSW' | 'VIC' | 'TAS';
 
 /** Camera framing for each active region, plus the whole-country overview. */
 const VIEWS: Record<Region | 'AUS', { bounds: LngLatBoundsLike; pitch: number; bearing: number }> = {
   AUS: { bounds: [[112, -44], [154, -10]], pitch: 0, bearing: 0 },
   NSW: { bounds: [[141, -37.6], [153.7, -28.1]], pitch: 55, bearing: -12 },
   VIC: { bounds: [[140.9, -39.2], [150, -34]], pitch: 55, bearing: 10 },
+  TAS: { bounds: [[143.8, -43.7], [148.5, -39.5]], pitch: 55, bearing: 0 },
 };
 
 const STATE_CODES: Record<Region, string[]> = {
   NSW: ['NS', 'CT', 'JB'],
   VIC: ['VI'],
+  TAS: ['TS'],
 };
 
 export interface AdventureMap {
   map: maplibregl.Map;
   flyToRegion(region: Region | 'AUS'): void;
   setQuality(q: Quality): void;
+  /** How much to exaggerate height: 1 = real, 4 = dramatic. */
+  setRelief(r: number): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
 }
 
@@ -45,12 +50,13 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
 
   let current: Region | 'AUS' = 'AUS';
   let currentQuality = quality;
+  let relief = getRelief();
   const listeners: ((r: Region | 'AUS') => void)[] = [];
 
   function applyQuality(q: Quality) {
     currentQuality = q;
     if (q === 'full') {
-      map.setTerrain({ source: 'terrain', exaggeration: 1.6 });
+      map.setTerrain({ source: 'terrain', exaggeration: relief });
       map.setSky({
         'sky-color': '#5fa8d3',
         'horizon-color': '#cfe8f0',
@@ -60,14 +66,21 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
         'fog-ground-blend': 0.3,
         'atmosphere-blend': 0.8,
       });
-      map.setPaintProperty('hillshade', 'hillshade-exaggeration', 0.45);
     } else {
       map.setTerrain(null);
       map.setSky({ 'sky-color': '#0b1a24', 'horizon-color': '#0b1a24', 'fog-color': '#0b1a24' });
-      // A little stronger shading makes up for the missing 3D.
-      map.setPaintProperty('hillshade', 'hillshade-exaggeration', 0.75);
     }
     map.setPixelRatio(q === 'light' ? 1 : window.devicePixelRatio);
+    applyShading();
+  }
+
+  /**
+   * Shading strength follows the relief setting, so mountains stand out even in flat light mode.
+   * Light mode shades a bit harder to make up for the missing 3D.
+   */
+  function applyShading() {
+    const base = currentQuality === 'light' ? 0.45 : 0.3;
+    map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(1, base + 0.15 * relief));
   }
 
   function setSelected(region: Region | 'AUS') {
@@ -84,7 +97,9 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     // Light mode uses a gentler tilt, since there is no 3D terrain to show off.
     const pitch = currentQuality === 'light' ? Math.min(view.pitch, 35) : view.pitch;
     const camera = map.cameraForBounds(view.bounds, { padding: 32, bearing: view.bearing });
-    if (camera) map.flyTo({ ...camera, pitch, bearing: view.bearing, duration: 2200, essential: true });
+    // When tilted, the region drifts towards the bottom of the screen; lift it back to the middle.
+    const lift = region === 'AUS' ? 0 : Math.round(map.getContainer().clientHeight * 0.22);
+    if (camera) map.flyTo({ ...camera, pitch, bearing: view.bearing, padding: { top: 0, bottom: lift, left: 0, right: 0 }, duration: 2200, essential: true });
     if (map.isStyleLoaded()) setSelected(region);
     listeners.forEach((cb) => cb(region));
   }
@@ -105,6 +120,12 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   return {
     map,
     flyToRegion,
+    setRelief(r) {
+      relief = r;
+      if (!map.isStyleLoaded()) return;
+      if (currentQuality === 'full') map.setTerrain({ source: 'terrain', exaggeration: relief });
+      applyShading();
+    },
     setQuality(q) {
       if (map.isStyleLoaded()) applyQuality(q);
       else currentQuality = q;

@@ -30,3 +30,27 @@ export function saveQuality(q: Quality) {
     // Ignore: the choice just won't be remembered.
   }
 }
+
+const RELIEF_KEY = 'adventure.relief';
+export const RELIEF_MIN = 1;
+export const RELIEF_MAX = 4;
+/** Default height exaggeration: Australia's mountains are old and low, so 2.5x makes them read clearly. */
+export const RELIEF_DEFAULT = 2.5;
+
+export function getRelief(): number {
+  try {
+    const n = Number(localStorage.getItem(RELIEF_KEY));
+    if (n >= RELIEF_MIN && n <= RELIEF_MAX) return n;
+  } catch {
+    // Storage blocked; use the default.
+  }
+  return RELIEF_DEFAULT;
+}
+
+export function saveRelief(r: number) {
+  try {
+    localStorage.setItem(RELIEF_KEY, String(r));
+  } catch {
+    // Ignore.
+  }
+}

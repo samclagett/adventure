@@ -1,7 +1,7 @@
 import type { AdventureMap, Region } from './map';
-import { getQuality, saveQuality, type Quality } from './quality';
+import { getQuality, getRelief, saveQuality, saveRelief, RELIEF_MAX, RELIEF_MIN, type Quality } from './quality';
 
-/** The region picker (Australia / NSW / VIC) and the light/full quality toggle. */
+/** The region picker, the light/full quality toggle and the height-exaggeration slider. */
 export function mountControls(parent: HTMLElement, adv: AdventureMap) {
   const bar = document.createElement('div');
   bar.className = 'map-controls';
@@ -10,10 +10,30 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap) {
       <button data-region="AUS" class="active">Australia</button>
       <button data-region="NSW">NSW</button>
       <button data-region="VIC">VIC</button>
+      <button data-region="TAS">TAS</button>
     </div>
     <button class="quality" aria-label="Graphics quality"></button>
   `;
   parent.appendChild(bar);
+
+  const relief = document.createElement('label');
+  relief.className = 'relief-control';
+  relief.innerHTML = `
+    <span>⛰</span>
+    <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.5" aria-label="Mountain height" />
+    <output></output>
+  `;
+  parent.appendChild(relief);
+  const slider = relief.querySelector<HTMLInputElement>('input')!;
+  const out = relief.querySelector('output')!;
+  slider.value = String(getRelief());
+  out.textContent = `${slider.value}×`;
+  slider.addEventListener('input', () => {
+    const r = Number(slider.value);
+    out.textContent = `${r}×`;
+    adv.setRelief(r);
+    saveRelief(r);
+  });
 
   const regionButtons = bar.querySelectorAll<HTMLButtonElement>('[data-region]');
   regionButtons.forEach((btn) =>

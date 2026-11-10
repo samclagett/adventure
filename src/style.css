@@ -53,7 +53,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
   background: transparent;
   border: none;
   border-radius: 10px;
-  padding: 9px 14px;
+  padding: 9px 11px;
   cursor: pointer;
   min-height: 40px;
 }
@@ -88,3 +88,24 @@ form button { background: var(--accent); color: #062026; border: none; font-weig
 .maplibregl-ctrl-attrib { background: rgba(11, 26, 36, 0.7) !important; color: var(--muted); }
 .maplibregl-ctrl-attrib a { color: var(--muted); }
 .maplibregl-ctrl-attrib-button { filter: invert(1); }
+
+/* Mountain height (exaggeration) slider, right edge above the controls. */
+.relief-control {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.relief-control input { width: 110px; accent-color: var(--accent); }
+.relief-control output { min-width: 2.5em; text-align: right; color: var(--text); }
