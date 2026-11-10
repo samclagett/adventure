@@ -17,6 +17,15 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 #map { position: absolute; inset: 0; }
 
 /* Floating UI sits above the map and respects the iPhone notch / home bar. */
+.top-left {
+  position: absolute;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
 .title-chip,
 .map-controls,
 .account {
@@ -28,9 +37,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
   border: 1px solid var(--border);
   border-radius: 14px;
 }
+.top-left .title-chip,
+.top-left .account { position: static; }
 .title-chip {
-  top: calc(env(safe-area-inset-top) + 12px);
-  left: 12px;
   padding: 8px 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -61,13 +70,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 .map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 10px 10px 0; color: var(--muted); white-space: nowrap; }
 
 .account {
-  top: calc(env(safe-area-inset-top) + 12px);
-  left: 12px;
-  margin-top: 48px;
   max-width: min(320px, calc(100vw - 24px));
   font-size: 0.9rem;
 }
-.account summary { list-style: none; cursor: pointer; padding: 6px 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.account summary { list-style: none; cursor: pointer; padding: 10px 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .account summary::-webkit-details-marker { display: none; }
 .account-body { padding: 0 12px 12px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }

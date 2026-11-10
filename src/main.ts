@@ -1,22 +1,26 @@
 import './style.css';
 import { mountMap } from './zones/map';
+import { mountHitList } from './zones/hitlist';
 import { supabase } from './zones/shared/supabase';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
 app.innerHTML = `
   <div id="map"></div>
-  <header class="title-chip">Adventure</header>
-  <details class="account" id="account">
-    <summary><span id="status-dot" class="dot"></span><span id="status-short">Account</span></summary>
-    <div class="account-body">
-      <div id="status" class="status">Checking connection…</div>
-      <div id="auth"></div>
-    </div>
-  </details>
+  <div class="top-left">
+    <header class="title-chip">Adventure</header>
+    <details class="account" id="account">
+      <summary><span id="status-dot" class="dot"></span><span id="status-short">Account</span></summary>
+      <div class="account-body">
+        <div id="status" class="status">Checking connection…</div>
+        <div id="auth"></div>
+      </div>
+    </details>
+  </div>
 `;
 
-mountMap(app.querySelector<HTMLDivElement>('#map')!);
+const adv = mountMap(app.querySelector<HTMLDivElement>('#map')!);
+mountHitList(app, adv);
 
 // ---- Account panel (Supabase shared login) ----
 
@@ -59,7 +63,10 @@ function showSignIn() {
       password: String(form.get('password')),
     });
     if (error) setStatus(`Sign-in failed: ${error.message}`, 'warn', 'Sign in');
-    else await showSignedIn();
+    else {
+      await showSignedIn();
+      (app.querySelector('#account') as HTMLDetailsElement).open = false;
+    }
   });
 }
 
