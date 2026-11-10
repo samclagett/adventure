@@ -4,6 +4,7 @@ import type { AdventureMap } from '../map';
 import { supabase } from '../shared/supabase';
 import type { HitListItem } from '../shared/types';
 import { CATEGORIES, categoryOf } from './categories';
+import { ICONS } from './icons';
 import { Pins } from './pins';
 import * as store from './store';
 import { searchPlaces, type PlaceMatch } from './geocode';
@@ -87,7 +88,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     pins.show(visibleItems());
     renderChips();
     const toLocate = items.filter((i) => i.lat == null).length;
-    listBtn.innerHTML = `☰ Hit list <b>${items.length}</b>${toLocate ? `<span class="hl-badge" title="To locate">📍${toLocate}</span>` : ''}`;
+    listBtn.innerHTML = `${ICONS.list} Hit list <b>${items.length}</b>${toLocate ? `<span class="hl-badge" title="To locate">${toLocate} to locate</span>` : ''}`;
     if (view === 'list') openList();
   }
 
@@ -98,7 +99,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       `<button type="button" class="hl-chip ${filter.size === 0 ? 'on' : ''}" data-cat="">All</button>` +
       CATEGORIES.map((c) => {
         const n = counts.get(c.id) ?? 0;
-        return `<button type="button" class="hl-chip ${filter.has(c.id) ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}" style="--pin:${c.color}">${c.emoji} ${esc(c.label)}${n ? ` <small>${n}</small>` : ''}</button>`;
+        return `<button type="button" class="hl-chip ${filter.has(c.id) ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}" style="--pin:${c.color}">${c.icon} ${esc(c.label)}${n ? ` <small>${n}</small>` : ''}</button>`;
       }).join('');
   }
 
@@ -151,7 +152,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
   function itemRow(i: HitListItem) {
     const c = categoryOf(i.activity);
     const sub = i.notes ? `<small>${esc(i.notes.split('\n')[0].slice(0, 80))}</small>` : '';
-    return `<button type="button" class="hl-row" data-id="${i.id}" style="--pin:${c.color}"><span class="hl-row-icon">${c.emoji}</span><span>${esc(i.name)}${sub}</span></button>`;
+    return `<button type="button" class="hl-row" data-id="${i.id}" style="--pin:${c.color}"><span class="hl-row-icon">${c.icon}</span><span>${esc(i.name)}${sub}</span></button>`;
   }
 
   function openList() {
@@ -163,11 +164,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     let html = `<h2>Hit list</h2><p class="hl-muted">${items.length} adventure${items.length === 1 ? '' : 's'}${esc(filterNote)}</p>`;
     if (loadError) html += `<p class="hl-error">Couldn’t load the hit list: ${esc(loadError)}</p>`;
     if (toLocate.length) {
-      html += `<h3>📍 To locate (${toLocate.length})</h3><p class="hl-muted">No pin yet. Tap one to find it.</p>${toLocate.map(itemRow).join('')}`;
+      html += `<h3>${ICONS.pin} To locate (${toLocate.length})</h3><p class="hl-muted">No pin yet. Tap one to find it.</p>${toLocate.map(itemRow).join('')}`;
     }
     for (const c of CATEGORIES) {
       const inCat = shown.filter((i) => i.lat != null && categoryOf(i.activity).id === c.id);
-      if (inCat.length) html += `<h3>${c.emoji} ${esc(c.label)} (${inCat.length})</h3>${inCat.map(itemRow).join('')}`;
+      if (inCat.length) html += `<h3>${c.icon} ${esc(c.label)} (${inCat.length})</h3>${inCat.map(itemRow).join('')}`;
     }
     if (!shown.length && !loadError) {
       html += `<p class="hl-muted">${items.length ? 'Nothing in the selected categories.' : 'Nothing yet. Tap <b>+</b> to add your first adventure.'}</p>`;
@@ -190,11 +191,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     const c = categoryOf(item.activity);
     const gmaps = item.lat != null ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : '';
     openSheet(`
-      <div class="hl-cat-tag" style="--pin:${c.color}">${c.emoji} ${esc(c.label)}</div>
+      <div class="hl-cat-tag" style="--pin:${c.color}">${c.icon} ${esc(c.label)}</div>
       <h2>${esc(item.name)}</h2>
       ${item.notes ? `<p class="hl-notes">${esc(item.notes)}</p>` : ''}
       ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60))}</a></p>` : ''}
-      ${item.lat != null ? `<p class="hl-muted">${fmt(item.lat)}, ${fmt(item.lng!)} · <a href="${gmaps}" target="_blank" rel="noopener">Open in Google Maps</a></p>` : '<p class="hl-muted">📍 Not on the map yet.</p>'}
+      ${item.lat != null ? `<p class="hl-muted">${fmt(item.lat)}, ${fmt(item.lng!)} · <a href="${gmaps}" target="_blank" rel="noopener">Open in Google Maps</a></p>` : '<p class="hl-muted">Not on the map yet.</p>'}
       <div class="hl-actions">
         <button type="button" class="hl-primary" data-act="edit">Edit</button>
         <button type="button" class="hl-danger" data-act="delete">Delete</button>
@@ -237,7 +238,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     openSheet(`
       <h2>What kind of adventure?</h2>
       <div class="hl-cat-grid">
-        ${CATEGORIES.map((c) => `<button type="button" data-cat="${c.id}" style="--pin:${c.color}"><span>${c.emoji}</span>${esc(c.label)}</button>`).join('')}
+        ${CATEGORIES.map((c) => `<button type="button" data-cat="${c.id}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
       </div>
     `);
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) =>
@@ -265,12 +266,12 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
           <button type="submit">Search</button>
         </form>
         <div class="hl-results">${results
-          .map((r, n) => `<button type="button" class="hl-row" data-n="${n}"><span class="hl-row-icon">📍</span><span>${esc(r.name)}<small>${esc(r.detail)}</small></span></button>`)
+          .map((r, n) => `<button type="button" class="hl-row" data-n="${n}"><span class="hl-row-icon">${ICONS.pin}</span><span>${esc(r.name)}<small>${esc(r.detail)}</small></span></button>`)
           .join('')}</div>
         <p class="hl-muted hl-search-msg">Searches OpenStreetMap in NSW, ACT, VIC and TAS.</p>`;
     }
     if (locTab === 'map') {
-      return `<button type="button" class="hl-wide" data-act="pick">🗺️ Choose on the map</button>`;
+      return `<button type="button" class="hl-wide" data-act="pick">${ICONS.map} Choose on the map</button>`;
     }
     return `
       <form class="hl-link">
@@ -286,12 +287,12 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     const c = categoryOf(d.activity);
     const where =
       d.lat != null
-        ? `<div class="hl-where ok">📍 ${esc(d.where || 'Pin set')} <small>${fmt(d.lat)}, ${fmt(d.lng!)}</small><button type="button" data-act="clear-loc">Remove</button></div>`
+        ? `<div class="hl-where ok">${ICONS.pin} ${esc(d.where || 'Pin set')} <small>${fmt(d.lat)}, ${fmt(d.lng!)}</small><button type="button" data-act="clear-loc">Remove</button></div>`
         : `<div class="hl-where">No location yet. You can save it now and it goes in the <b>To locate</b> list.</div>`;
     openSheet(`
       <h2>${d.id ? 'Edit adventure' : 'New adventure'}</h2>
       <div class="hl-cat-row">
-        ${CATEGORIES.map((k) => `<button type="button" class="hl-chip ${k.id === c.id ? 'on' : ''}" data-cat="${k.id}" style="--pin:${k.color}">${k.emoji} ${esc(k.label)}</button>`).join('')}
+        ${CATEGORIES.map((k) => `<button type="button" class="hl-chip ${k.id === c.id ? 'on' : ''}" data-cat="${k.id}" style="--pin:${k.color}">${k.icon} ${esc(k.label)}</button>`).join('')}
       </div>
       <label class="hl-field">Name<input name="name" value="${esc(d.name)}" placeholder="e.g. Grand Canyon Track" autocomplete="off" /></label>
       <div class="hl-field">Location</div>
@@ -385,7 +386,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     // Show the draft pin (draggable) instead of the saved one while editing.
     pins.setHidden(d.id, true);
     if (d.lat != null && d.lng != null) {
-      pins.showDraft(d.lat, d.lng, c.emoji, c.color, (lat, lng) => {
+      pins.showDraft(d.lat, d.lng, c.icon, c.color, (lat, lng) => {
         d.lat = lat;
         d.lng = lng;
         d.where = 'Dropped pin';

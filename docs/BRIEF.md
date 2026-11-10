@@ -36,7 +36,10 @@ A visually rich, slightly game-like web app that combines conditions (weather, w
 
 ## Activities
 
-Hiking, camping and beaches are central. Also surfing, climbing, skiing, snorkelling, diving, kayaking/canoeing and mountain biking.
+Hiking and camping are central. Also surfing, climbing, skiing, snorkelling and diving (one category), and kayaking/canoeing.
+Beaches and mountain biking were dropped as categories for now (2026-11-11).
+
+Look: no emoji or loud colours. Categories use our own simple hand-sketched line icons with muted accent colours.
 
 ## Conditions data
 
