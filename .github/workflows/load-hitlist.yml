@@ -1,0 +1,29 @@
+name: Load hit list data
+
+# Adds the places in data/hitlist/*.json to the Supabase hit list.
+# Runs when those files change on any branch, or by hand (Actions tab > Load hit list data > Run workflow).
+# Skips places that are already there, so running it again never makes duplicates.
+on:
+  push:
+    paths:
+      - 'data/hitlist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-hitlist
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/hitlist/load_hitlist.py
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

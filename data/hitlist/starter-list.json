@@ -1,0 +1,324 @@
+[
+ {
+  "name": "Blue Mountains",
+  "activity": "hiking",
+  "lat": -33.732,
+  "lng": 150.312,
+  "notes": "Echo Point, Katoomba as a starting point"
+ },
+ {
+  "name": "Mt Buffalo",
+  "activity": "hiking",
+  "lat": -36.73,
+  "lng": 146.79,
+  "notes": null
+ },
+ {
+  "name": "Grampians",
+  "activity": "hiking",
+  "lat": -37.139,
+  "lng": 142.519,
+  "notes": "Halls Gap"
+ },
+ {
+  "name": "Southwest National Park, Tasmania",
+  "activity": "hiking",
+  "lat": -43.05,
+  "lng": 146.15,
+  "notes": null
+ },
+ {
+  "name": "Freycinet",
+  "activity": "hiking",
+  "lat": -42.16,
+  "lng": 148.3,
+  "notes": "Wineglass Bay"
+ },
+ {
+  "name": "Killalea Regional Park",
+  "activity": "camping",
+  "lat": -34.602,
+  "lng": 150.864,
+  "notes": "Formerly Killalea State Park"
+ },
+ {
+  "name": "Depot Beach",
+  "activity": "camping",
+  "lat": -35.629,
+  "lng": 150.32,
+  "notes": "Murramarang National Park"
+ },
+ {
+  "name": "Yagon, Seal Rocks",
+  "activity": "camping",
+  "lat": -32.428,
+  "lng": 152.524,
+  "notes": "Yagon campground, Myall Lakes National Park"
+ },
+ {
+  "name": "Cave Beach, Jervis Bay",
+  "activity": "camping",
+  "lat": -35.1695,
+  "lng": 150.729,
+  "notes": "Booderee National Park"
+ },
+ {
+  "name": "Crescent Head",
+  "activity": "surfing",
+  "lat": -31.189,
+  "lng": 152.985,
+  "notes": null
+ },
+ {
+  "name": "Number One Beach, Seal Rocks",
+  "activity": "surfing",
+  "lat": -32.4345,
+  "lng": 152.5255,
+  "notes": null
+ },
+ {
+  "name": "MacMasters Beach",
+  "activity": "surfing",
+  "lat": -33.496,
+  "lng": 151.424,
+  "notes": null
+ },
+ {
+  "name": "Bronte",
+  "activity": "surfing",
+  "lat": -33.903,
+  "lng": 151.269,
+  "notes": null
+ },
+ {
+  "name": "Maroubra",
+  "activity": "surfing",
+  "lat": -33.95,
+  "lng": 151.258,
+  "notes": null
+ },
+ {
+  "name": "Stanwell Park",
+  "activity": "surfing",
+  "lat": -34.227,
+  "lng": 150.987,
+  "notes": null
+ },
+ {
+  "name": "The Farm, Killalea",
+  "activity": "surfing",
+  "lat": -34.5995,
+  "lng": 150.8685,
+  "notes": null
+ },
+ {
+  "name": "Cave Beach, Jervis Bay",
+  "activity": "surfing",
+  "lat": -35.1695,
+  "lng": 150.729,
+  "notes": "Booderee National Park"
+ },
+ {
+  "name": "Green Island, Cunjurong Point",
+  "activity": "surfing",
+  "lat": -35.262,
+  "lng": 150.478,
+  "notes": "Near Lake Conjola"
+ },
+ {
+  "name": "Bawley Point",
+  "activity": "surfing",
+  "lat": -35.518,
+  "lng": 150.396,
+  "notes": null
+ },
+ {
+  "name": "Bells Beach",
+  "activity": "surfing",
+  "lat": -38.37,
+  "lng": 144.281,
+  "notes": null
+ },
+ {
+  "name": "Blue Mountains",
+  "activity": "climbing",
+  "lat": -33.636,
+  "lng": 150.286,
+  "notes": "Blackheath area crags"
+ },
+ {
+  "name": "Mt Arapiles",
+  "activity": "climbing",
+  "lat": -36.757,
+  "lng": 141.831,
+  "notes": null
+ },
+ {
+  "name": "Grampians",
+  "activity": "climbing",
+  "lat": -37.07,
+  "lng": 142.48,
+  "notes": "Hollow Mountain / Summerday Valley"
+ },
+ {
+  "name": "Point Perpendicular",
+  "activity": "climbing",
+  "lat": -35.094,
+  "lng": 150.804,
+  "notes": "Beecroft Peninsula, Jervis Bay"
+ },
+ {
+  "name": "Warrumbungles",
+  "activity": "climbing",
+  "lat": -31.278,
+  "lng": 149.006,
+  "notes": "Belougery Spire area"
+ },
+ {
+  "name": "Cathedral Range",
+  "activity": "climbing",
+  "lat": -37.406,
+  "lng": 145.748,
+  "notes": null
+ },
+ {
+  "name": "Mt Buffalo",
+  "activity": "climbing",
+  "lat": -36.729,
+  "lng": 146.782,
+  "notes": "The Gorge"
+ },
+ {
+  "name": "Nowra",
+  "activity": "climbing",
+  "lat": -34.866,
+  "lng": 150.572,
+  "notes": "Thompsons Point and the Shoalhaven River crags"
+ },
+ {
+  "name": "Stanwell Tops",
+  "activity": "climbing",
+  "lat": -34.219,
+  "lng": 150.979,
+  "notes": "Approximate: check the exact crag"
+ },
+ {
+  "name": "Perisher",
+  "activity": "skiing",
+  "lat": -36.406,
+  "lng": 148.411,
+  "notes": null
+ },
+ {
+  "name": "Thredbo",
+  "activity": "skiing",
+  "lat": -36.505,
+  "lng": 148.306,
+  "notes": null
+ },
+ {
+  "name": "Kosciuszko backcountry",
+  "activity": "skiing",
+  "lat": -36.456,
+  "lng": 148.263,
+  "notes": "Main Range"
+ },
+ {
+  "name": "Falls Creek",
+  "activity": "skiing",
+  "lat": -36.865,
+  "lng": 147.281,
+  "notes": null
+ },
+ {
+  "name": "Mt Hotham",
+  "activity": "skiing",
+  "lat": -36.979,
+  "lng": 147.138,
+  "notes": null
+ },
+ {
+  "name": "Mt Hutt",
+  "activity": "skiing",
+  "lat": -43.473,
+  "lng": 171.53,
+  "notes": "New Zealand"
+ },
+ {
+  "name": "Treble Cone",
+  "activity": "skiing",
+  "lat": -44.634,
+  "lng": 168.897,
+  "notes": "New Zealand"
+ },
+ {
+  "name": "The Remarkables",
+  "activity": "skiing",
+  "lat": -45.054,
+  "lng": 168.813,
+  "notes": "New Zealand"
+ },
+ {
+  "name": "Cardrona",
+  "activity": "skiing",
+  "lat": -44.874,
+  "lng": 168.949,
+  "notes": "New Zealand"
+ },
+ {
+  "name": "Fish Rock Cave",
+  "activity": "diving",
+  "lat": -30.939,
+  "lng": 153.1,
+  "notes": "South West Rocks"
+ },
+ {
+  "name": "Shelly Beach, Manly",
+  "activity": "diving",
+  "lat": -33.8,
+  "lng": 151.297,
+  "notes": null
+ },
+ {
+  "name": "Bare Island",
+  "activity": "diving",
+  "lat": -33.992,
+  "lng": 151.231,
+  "notes": "La Perouse"
+ },
+ {
+  "name": "Flinders Pier",
+  "activity": "diving",
+  "lat": -38.48,
+  "lng": 145.023,
+  "notes": "Mornington Peninsula, VIC"
+ },
+ {
+  "name": "Jervis Bay",
+  "activity": "diving",
+  "lat": -35.123,
+  "lng": 150.765,
+  "notes": "Murrays Beach, Booderee National Park"
+ },
+ {
+  "name": "Bushrangers Bay",
+  "activity": "diving",
+  "lat": -34.597,
+  "lng": 150.892,
+  "notes": "Bass Point, Shellharbour"
+ },
+ {
+  "name": "Upper Colo River",
+  "activity": "kayaking",
+  "lat": -33.425,
+  "lng": 150.726,
+  "notes": "Upper Colo Reserve"
+ },
+ {
+  "name": "Shoalhaven River",
+  "activity": "kayaking",
+  "lat": null,
+  "lng": null,
+  "notes": "Which stretch? Drop a pin when you know"
+ }
+]

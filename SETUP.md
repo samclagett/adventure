@@ -35,3 +35,14 @@ Then re-run the deploy: **Actions → Deploy to GitHub Pages → Run workflow**.
 
 Open the live site on your phone. It should say "Connected to Supabase", let you sign in with the shared login,
 and then show "Hit list has 0 item(s)."
+
+## 5. Let Claude load data (one-time)
+
+So Claude can add places to the hit list without you pasting anything into Supabase:
+
+1. In Supabase, open **Project Settings → API Keys** and copy the **service_role** (secret) key.
+2. In GitHub: **Settings → Secrets and variables → Actions → Secrets tab → New repository secret**,
+   name `SUPABASE_SERVICE_ROLE_KEY`, paste the key.
+
+The **Load hit list data** workflow then adds every place in `data/hitlist/*.json` whenever those files change.
+It skips places that are already there. The key stays in GitHub secrets; never put it in the repo.
