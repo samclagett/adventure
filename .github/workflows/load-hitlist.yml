@@ -1,12 +1,14 @@
 name: Load hit list data
 
 # Adds the places in data/hitlist/*.json to the Supabase hit list.
-# Runs when those files change on any branch, or by hand (Actions tab > Load hit list data > Run workflow).
+# Runs when those files (or the loader) change on any branch, or by hand (Actions tab > Load hit list data > Run workflow).
 # Skips places that are already there, so running it again never makes duplicates.
 on:
   push:
     paths:
       - 'data/hitlist/**'
+      - 'scripts/hitlist/**'
+      - '.github/workflows/load-hitlist.yml'
   workflow_dispatch:
 
 permissions:
