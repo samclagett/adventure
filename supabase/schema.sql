@@ -32,3 +32,16 @@ alter table public.hit_list enable row level security;
 drop policy if exists "signed in can do everything" on public.hit_list;
 create policy "signed in can do everything" on public.hit_list
   for all to authenticated using (true) with check (true);
+
+-- Campsite checker (scripts/campsites/check.py) reads only the NSW National Parks campground links
+-- of camping items, using the public anon key. Nothing else in hit_list is exposed.
+create or replace function public.campsite_links()
+returns table (link text)
+language sql stable security definer set search_path = public
+as $$
+  select distinct h.link from public.hit_list h
+  where h.activity = 'camping'
+    and h.link like 'https://www.nationalparks.nsw.gov.au/camping-and-accommodation/campgrounds/%';
+$$;
+revoke all on function public.campsite_links() from public;
+grant execute on function public.campsite_links() to anon, authenticated;
