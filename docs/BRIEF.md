@@ -62,6 +62,7 @@ Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (t
 - Focus: national park and free bush campsites. No private or caravan parks unless added manually.
 - Key feature: an "Any free campsites?" button that finds booking gaps and cancellations without checking every site by hand.
 - Approach: read the booking sites' background availability feeds where possible; only check campsites near top recommendations, and only on demand.
+- Built (2026-11-11): NSW National Parks campgrounds on the hit list are checked every 6 hours, or on demand from the Actions tab, by loading each campground page and reading the free nights its calendar loads. Booderee's booking site asks bots to stay out (robots.txt), so it gets a Book link only. Parks Victoria not yet looked at.
 
 ## Recommendations and learning
 

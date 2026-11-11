@@ -1,0 +1,213 @@
+import './campsites.css';
+import type { AdventureMap } from '../map';
+import type { HitListItem } from '../shared/types';
+import { supabase } from '../shared/supabase';
+import { ICONS } from '../hitlist/icons';
+
+/**
+ * "Any free campsites?" button and panel.
+ *
+ * Free nights come from campsites.json on the `campsite-data` branch, written every 6 hours by
+ * .github/workflows/campsites.yml (scripts/campsites/check.py). The panel matches those results to
+ * the camping items on the hit list by their park link.
+ */
+
+const DATA_URL = 'https://raw.githubusercontent.com/samclagett/adventure/campsite-data/campsites.json';
+/** Where to run the check by hand: the workflow's page in the Actions tab. */
+const RUN_URL = 'https://github.com/samclagett/adventure/actions/workflows/campsites.yml';
+
+interface CampgroundResult {
+  link: string;
+  /** ISO dates (YYYY-MM-DD) with at least one site free that night. */
+  free_nights: string[];
+  error: string | null;
+}
+interface CampsiteData {
+  checked_at: string;
+  campgrounds: CampgroundResult[];
+}
+
+type Window = 'weekend' | '5days' | 'week' | '2weeks';
+const WINDOWS: { id: Window; label: string }[] = [
+  { id: 'weekend', label: 'This weekend' },
+  { id: '5days', label: 'Next 5 days' },
+  { id: 'week', label: 'Next week' },
+  { id: '2weeks', label: 'Next 2 weeks' },
+];
+
+function esc(s: string | null | undefined): string {
+  return (s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
+/** Local date as YYYY-MM-DD. */
+function iso(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+/** The nights (as ISO dates) a window covers, starting tonight. "This weekend" is Friday and Saturday night. */
+export function nightsFor(w: Window, today = new Date()): string[] {
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (w === 'weekend') {
+    const day = start.getDay(); // 0 Sun … 6 Sat
+    if (day === 6) return [iso(start)];
+    const fri = addDays(start, (5 - day + 7) % 7);
+    return [iso(fri), iso(addDays(fri, 1))];
+  }
+  const n = w === '5days' ? 5 : w === 'week' ? 7 : 14;
+  return Array.from({ length: n }, (_, i) => iso(addDays(start, i)));
+}
+
+function nightLabel(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function ago(when: string): string {
+  const mins = Math.round((Date.now() - new Date(when).getTime()) / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const h = Math.round(mins / 60);
+  return h < 36 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
+}
+
+const isNsw = (link: string | null) => !!link && link.startsWith('https://www.nationalparks.nsw.gov.au/camping-and-accommodation/campgrounds/');
+
+export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
+  let windowId: Window = 'weekend';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'cs-btn';
+  btn.innerHTML = `${ICONS.camping} Any free campsites?`;
+
+  const sheet = document.createElement('section');
+  sheet.className = 'cs-sheet';
+  sheet.hidden = true;
+  parent.append(btn, sheet);
+
+  function close() {
+    sheet.hidden = true;
+    parent.classList.remove('cs-open');
+  }
+
+  function show(html: string) {
+    sheet.innerHTML = `<button type="button" class="cs-close" aria-label="Close">✕</button><div class="cs-body">${html}</div>`;
+    sheet.hidden = false;
+    parent.classList.add('cs-open');
+    sheet.querySelector('.cs-close')!.addEventListener('click', close);
+  }
+
+  // If a hit list card opens (e.g. a pin is tapped), step out of its way.
+  new MutationObserver(() => {
+    if (parent.classList.contains('hl-sheet-open') && !sheet.hidden) close();
+  }).observe(parent, { attributes: true, attributeFilter: ['class'] });
+
+  async function loadCamping(): Promise<HitListItem[] | string> {
+    if (!supabase) return 'Supabase isn’t set up yet (see SETUP.md).';
+    const { data: s } = await supabase.auth.getSession();
+    if (!s.session) return 'Sign in first: open <b>Sign in</b> at the top left and use the shared login.';
+    const { data, error } = await supabase.from('hit_list').select('*').eq('activity', 'camping').order('name');
+    if (error) return `Couldn’t load the hit list: ${esc(error.message)}`;
+    return data as HitListItem[];
+  }
+
+  async function loadResults(): Promise<CampsiteData | null> {
+    try {
+      const r = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: 'no-store' });
+      return r.ok ? ((await r.json()) as CampsiteData) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function render(items: HitListItem[], data: CampsiteData | null) {
+    const nights = nightsFor(windowId);
+    const byLink = new Map((data?.campgrounds ?? []).map((c) => [c.link, c]));
+
+    const rows = items.map((item) => {
+      const res = item.link ? byLink.get(item.link) : undefined;
+      const free = res ? nights.filter((n) => res.free_nights.includes(n)) : [];
+      let status: string;
+      let rank: number;
+      if (!isNsw(item.link)) {
+        status = '<span class="cs-muted">Not checked automatically. Check on the park’s booking page.</span>';
+        rank = 3;
+      } else if (!res) {
+        status = '<span class="cs-muted">Not checked yet. It’s included in the next check.</span>';
+        rank = 2;
+      } else if (res.error) {
+        status = `<span class="cs-warn">Couldn’t check this one last time.</span>`;
+        rank = 2;
+      } else if (free.length) {
+        const shown = free.slice(0, 6).map((n) => `<span class="cs-night">${nightLabel(n)}</span>`).join('');
+        const more = free.length > 6 ? `<span class="cs-muted">+${free.length - 6} more</span>` : '';
+        const all = free.length === nights.length && nights.length > 2 ? '<span class="cs-muted">Every night free</span>' : '';
+        status = all || `<span class="cs-nights">${shown}${more}</span>`;
+        rank = 0;
+      } else {
+        status = '<span class="cs-full">Booked out</span>';
+        rank = 1;
+      }
+      const book = item.link ? `<a class="cs-book" href="${esc(item.link)}" target="_blank" rel="noopener">Book</a>` : '';
+      return {
+        rank,
+        free: free.length,
+        html: `<div class="cs-row ${rank === 0 ? 'cs-has-free' : ''}">
+          <button type="button" class="cs-name" data-id="${item.id}">${esc(item.name)}</button>${book}
+          <div class="cs-status">${status}</div>
+        </div>`,
+      };
+    });
+    rows.sort((a, b) => a.rank - b.rank || b.free - a.free);
+    const freeCount = rows.filter((r) => r.rank === 0).length;
+
+    const picker = `<div class="cs-windows" role="tablist">${WINDOWS.map(
+      (w) => `<button type="button" role="tab" data-w="${w.id}" class="${w.id === windowId ? 'on' : ''}">${w.label}</button>`,
+    ).join('')}</div>`;
+    const summary = !items.length
+      ? 'No camping spots on the hit list yet. Add one with the <b>+</b> button and pick Camping.'
+      : freeCount
+        ? `${freeCount} of ${items.length} camping spot${items.length === 1 ? '' : 's'} ${freeCount === 1 ? 'has' : 'have'} a free night.`
+        : 'Nothing free in these dates.';
+    const checked = data
+      ? `Checked ${ago(data.checked_at)}. <a href="${RUN_URL}" target="_blank" rel="noopener">Check again now</a>`
+      : `No check has run yet. <a href="${RUN_URL}" target="_blank" rel="noopener">Run the first check</a>`;
+
+    show(`
+      <h2>Any free campsites?</h2>
+      ${picker}
+      <p>${summary}</p>
+      ${rows.map((r) => r.html).join('')}
+      <p class="cs-muted cs-foot">${checked}<br />A night counts as free when at least one site is open. Cancellations go fast, so book soon. NSW National Parks only for now.</p>
+    `);
+
+    sheet.querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) =>
+      b.addEventListener('click', () => {
+        windowId = b.dataset.w as Window;
+        render(items, data);
+      }),
+    );
+    sheet.querySelectorAll<HTMLButtonElement>('.cs-name').forEach((b) =>
+      b.addEventListener('click', () => {
+        const item = items.find((i) => i.id === b.dataset.id);
+        if (item?.lat == null) return;
+        const covered = sheet.offsetHeight;
+        adv.map.flyTo({ center: [item.lng!, item.lat], zoom: Math.max(adv.map.getZoom(), 11), offset: [0, -covered / 2], duration: 1500, essential: true });
+      }),
+    );
+  }
+
+  btn.addEventListener('click', async () => {
+    show('<h2>Any free campsites?</h2><p class="cs-muted">Looking…</p>');
+    const [items, data] = await Promise.all([loadCamping(), loadResults()]);
+    if (typeof items === 'string') show(`<h2>Any free campsites?</h2><p class="cs-muted">${items}</p>`);
+    else render(items, data);
+  });
+}
