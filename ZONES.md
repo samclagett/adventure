@@ -23,4 +23,4 @@ A claim older than 7 days with no activity can be taken over after a message to 
 | campsites | `src/zones/campsites/` | Sam (Claude) | Campsite availability checker | 2026-11-11 |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | Sam (Claude) | Mount campsite button in main.ts | 2026-11-11 |
 | infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | Supabase function for campsite check | 2026-11-11 |
-| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |
+| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Sam (Claude) | Note campsite checker in brief | 2026-11-11 |
