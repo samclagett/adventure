@@ -18,9 +18,9 @@ A claim older than 7 days with no activity can be taken over after a message to 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
 | map | `src/zones/map/` | free | | |
-| hitlist | `src/zones/hitlist/` | free | | |
+| hitlist | `src/zones/hitlist/` | Sam (Claude) | Availability section on camping cards | 2026-11-11 |
 | conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
-| campsites | `src/zones/campsites/` | free | | |
+| campsites | `src/zones/campsites/` | Sam (Claude) | Campsite availability checker | 2026-11-11 |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
-| infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
+| infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | Supabase function for campsite check | 2026-11-11 |
 | docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |
