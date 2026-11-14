@@ -17,10 +17,10 @@ A claim older than 7 days with no activity can be taken over after a message to 
 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
-| map | `src/zones/map/` | Sam (Claude) | Map filters, icon scaling, header, campsites fixes | 2026-11-14 |
-| hitlist | `src/zones/hitlist/` | Sam (Claude) | Map filters, icon scaling, header, campsites fixes | 2026-11-14 |
+| map | `src/zones/map/` | free | | |
+| hitlist | `src/zones/hitlist/` | free | | |
 | conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
-| campsites | `src/zones/campsites/`, `scripts/campsites/` | Sam (Claude) | Map filters, icon scaling, header, campsites fixes | 2026-11-14 |
-| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | Sam (Claude) | Map filters, icon scaling, header, campsites fixes | 2026-11-14 |
+| campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
+| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
 | infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
 | docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |

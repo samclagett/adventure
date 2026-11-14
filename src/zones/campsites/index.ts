@@ -1,5 +1,5 @@
 import './campsites.css';
-import type { AdventureMap } from '../map';
+import { inRegion, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
 import { supabase } from '../shared/supabase';
 import { ICONS } from '../hitlist/icons';
@@ -69,6 +69,32 @@ function nightLabel(isoDate: string): string {
   return new Date(y, m - 1, d).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function parseIso(isoDate: string): Date {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * A Monday-to-Sunday calendar of the window's nights for one campground.
+ * Free nights are green, booked nights are dim, and Saturday and Sunday columns are shaded as the weekend.
+ */
+function weekCalendar(nights: string[], freeNights: Set<string>): string {
+  // Blank cells before the first night so it lines up under the right weekday.
+  const lead = (parseIso(nights[0]).getDay() + 6) % 7;
+  const cells: string[] = Array.from({ length: lead }, (_, i) => `<span class="cs-day cs-pad ${i >= 5 ? 'cs-we' : ''}"></span>`);
+  for (const n of nights) {
+    const d = parseIso(n);
+    const col = (d.getDay() + 6) % 7;
+    const free = freeNights.has(n);
+    const label = `${d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}: ${free ? 'free' : 'booked'}`;
+    cells.push(`<span class="cs-day ${col >= 5 ? 'cs-we' : ''} ${free ? 'cs-free' : 'cs-booked'}" title="${label}" aria-label="${label}">${d.getDate()}</span>`);
+  }
+  const head = WEEKDAYS.map((w, i) => `<span class="cs-dow ${i >= 5 ? 'cs-we' : ''}">${w[0]}</span>`).join('');
+  return `<div class="cs-cal" role="img" aria-label="Free nights calendar">${head}${cells.join('')}</div>`;
+}
+
 function ago(when: string): string {
   const mins = Math.round((Date.now() - new Date(when).getTime()) / 60000);
   if (mins < 2) return 'just now';
@@ -92,16 +118,25 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
   sheet.hidden = true;
   parent.append(btn, sheet);
 
+  let open = false;
+  let lastItems: HitListItem[] = [];
+  let lastData: CampsiteData | null = null;
+
   function close() {
+    open = false;
     sheet.hidden = true;
     parent.classList.remove('cs-open');
   }
 
   function show(html: string) {
+    open = true;
     sheet.innerHTML = `<button type="button" class="cs-close" aria-label="Close">✕</button><div class="cs-body">${html}</div>`;
     sheet.hidden = false;
     parent.classList.add('cs-open');
-    sheet.querySelector('.cs-close')!.addEventListener('click', close);
+    sheet.querySelector('.cs-close')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+    });
   }
 
   // If a hit list card opens (e.g. a pin is tapped), step out of its way.
@@ -112,7 +147,7 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
   async function loadCamping(): Promise<HitListItem[] | string> {
     if (!supabase) return 'Supabase isn’t set up yet (see SETUP.md).';
     const { data: s } = await supabase.auth.getSession();
-    if (!s.session) return 'Sign in first: open <b>Sign in</b> at the top left and use the shared login.';
+    if (!s.session) return 'Sign in first: tap the account button at the top right and use the shared login.';
     const { data, error } = await supabase.from('hit_list').select('*').eq('activity', 'camping').order('name');
     if (error) return `Couldn’t load the hit list: ${esc(error.message)}`;
     return data as HitListItem[];
@@ -127,8 +162,15 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
     }
   }
 
-  function render(items: HitListItem[], data: CampsiteData | null) {
+  function render(allItems: HitListItem[], data: CampsiteData | null) {
+    lastItems = allItems;
+    lastData = data;
+    // Only the camping spots in the region picked at the bottom (NSW, VIC, TAS or all of Australia).
+    const region = adv.getRegion();
+    const items = allItems.filter((i) => i.lat == null || i.lng == null || inRegion(i.lat, i.lng, region));
+    const where = region === 'AUS' ? '' : ` in ${region}`;
     const nights = nightsFor(windowId);
+    const calendar = windowId === 'week' || windowId === '2weeks';
     const byLink = new Map((data?.campgrounds ?? []).map((c) => [c.link, c]));
 
     const rows = items.map((item) => {
@@ -145,6 +187,9 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
       } else if (res.error) {
         status = `<span class="cs-warn">Couldn’t check this one last time.</span>`;
         rank = 2;
+      } else if (calendar) {
+        status = weekCalendar(nights, new Set(res.free_nights));
+        rank = free.length ? 0 : 1;
       } else if (free.length) {
         const shown = free.slice(0, 6).map((n) => `<span class="cs-night">${nightLabel(n)}</span>`).join('');
         const more = free.length > 6 ? `<span class="cs-muted">+${free.length - 6} more</span>` : '';
@@ -171,11 +216,14 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
     const picker = `<div class="cs-windows" role="tablist">${WINDOWS.map(
       (w) => `<button type="button" role="tab" data-w="${w.id}" class="${w.id === windowId ? 'on' : ''}">${w.label}</button>`,
     ).join('')}</div>`;
-    const summary = !items.length
+    const summary = !allItems.length
       ? 'No camping spots on the hit list yet. Add one with the <b>+</b> button and pick Camping.'
-      : freeCount
-        ? `${freeCount} of ${items.length} camping spot${items.length === 1 ? '' : 's'} ${freeCount === 1 ? 'has' : 'have'} a free night.`
-        : 'Nothing free in these dates.';
+      : !items.length
+        ? `No camping spots on the hit list${where}. Pick another region at the bottom.`
+        : freeCount
+          ? `${freeCount} of ${items.length} camping spot${items.length === 1 ? '' : 's'}${where} ${freeCount === 1 ? 'has' : 'have'} a free night.`
+          : `Nothing free${where} in these dates.`;
+    const legend = calendar ? '<p class="cs-legend"><span class="cs-key cs-free"></span>Free <span class="cs-key cs-booked"></span>Booked <span class="cs-key cs-we-key"></span>Weekend</p>' : '';
     const checked = data
       ? `Checked ${ago(data.checked_at)}. <a href="${RUN_URL}" target="_blank" rel="noopener">Check again now</a>`
       : `No check has run yet. <a href="${RUN_URL}" target="_blank" rel="noopener">Run the first check</a>`;
@@ -184,6 +232,7 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
       <h2>Any free campsites?</h2>
       ${picker}
       <p>${summary}</p>
+      ${legend}
       ${rows.map((r) => r.html).join('')}
       <p class="cs-muted cs-foot">${checked}<br />A night counts as free when at least one site is open. Cancellations go fast, so book soon. NSW National Parks only for now.</p>
     `);
@@ -191,7 +240,7 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
     sheet.querySelectorAll<HTMLButtonElement>('[data-w]').forEach((b) =>
       b.addEventListener('click', () => {
         windowId = b.dataset.w as Window;
-        render(items, data);
+        render(allItems, data);
       }),
     );
     sheet.querySelectorAll<HTMLButtonElement>('.cs-name').forEach((b) =>
@@ -203,6 +252,11 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
       }),
     );
   }
+
+  // Picking another region while the panel is open updates it.
+  adv.onRegionChange(() => {
+    if (open && lastItems.length) render(lastItems, lastData);
+  });
 
   btn.addEventListener('click', async () => {
     show('<h2>Any free campsites?</h2><p class="cs-muted">Looking…</p>');

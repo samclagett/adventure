@@ -10,7 +10,7 @@ import lakes from './data/lakes.json';
  * - States outside NSW and Victoria are "ghosted" with a dark wash.
  * - Major rivers, lakes, cities and towns come from Natural Earth (public domain), bundled with the app.
  * - National parks and named beaches come from Overture Maps (OpenStreetMap data, ODbL), in public/data.
- * - Label fonts (Noto Sans, open licence) are served from public/fonts, so nothing depends on a font server.
+ * - Label fonts (Noto Sans, open licence, with soft see-through halos) are served from public/fonts, so nothing depends on a font server.
  * No API keys are needed for anything here.
  */
 
@@ -38,7 +38,8 @@ export const COLORS = {
   park: '#2f8f4e',
   parkLabel: '#c9f7c9',
   beach: '#f2dfa4',
-  halo: '#0b1a24',
+  /** A soft, see-through glow behind labels so they read on any terrain, without a heavy outline. */
+  halo: 'rgba(11, 26, 36, 0.55)',
   ghost: '#08141c',
   outline: '#ffffff',
   activeGlow: '#4fd1c5',
@@ -233,10 +234,10 @@ export function buildStyle(): StyleSpecification {
           'text-field': ['get', 'name'],
           'text-font': FONT_ITALIC,
           'text-size': ['interpolate', ['linear'], ['zoom'], 6, 13, 10, 16],
-          'text-letter-spacing': 0.08,
+          'text-letter-spacing': 0.04,
           'text-max-angle': 70,
         },
-        paint: { 'text-color': COLORS.riverLabel, 'text-halo-color': '#0b3550', 'text-halo-width': 1.6 },
+        paint: { 'text-color': COLORS.riverLabel, 'text-halo-color': 'rgba(8, 40, 60, 0.6)', 'text-halo-width': 1.1, 'text-halo-blur': 1 },
       },
       {
         id: 'park-labels',
@@ -246,12 +247,12 @@ export function buildStyle(): StyleSpecification {
         filter: ['has', 'name'],
         layout: {
           'text-field': ['get', 'name'],
-          'text-font': FONT_ITALIC,
+          'text-font': FONT,
           'text-size': ['interpolate', ['linear'], ['zoom'], 7, 11, 11, 14],
           'text-max-width': 8,
           'symbol-sort-key': 10,
         },
-        paint: { 'text-color': COLORS.parkLabel, 'text-halo-color': '#0f3a22', 'text-halo-width': 1.4 },
+        paint: { 'text-color': COLORS.parkLabel, 'text-halo-color': 'rgba(10, 40, 24, 0.6)', 'text-halo-width': 1.1, 'text-halo-blur': 1 },
       },
       {
         id: 'beach-labels',
@@ -268,7 +269,7 @@ export function buildStyle(): StyleSpecification {
           // Bigger beaches win when labels would overlap.
           'symbol-sort-key': ['-', 0, ['get', 'area']],
         },
-        paint: { 'text-color': COLORS.beach, 'text-halo-color': COLORS.halo, 'text-halo-width': 1.4 },
+        paint: { 'text-color': COLORS.beach, 'text-halo-color': COLORS.halo, 'text-halo-width': 1.1, 'text-halo-blur': 1 },
       },
       {
         id: 'place-dots',
@@ -279,7 +280,7 @@ export function buildStyle(): StyleSpecification {
         paint: {
           'circle-radius': ['case', ['get', 'capital'], 4.5, 3],
           'circle-color': COLORS.label,
-          'circle-stroke-color': COLORS.halo,
+          'circle-stroke-color': '#0b1a24',
           'circle-stroke-width': 1.5,
         },
       },
@@ -297,7 +298,7 @@ export function buildStyle(): StyleSpecification {
           'text-justify': 'auto',
           'symbol-sort-key': ['get', 'rank'],
         },
-        paint: { 'text-color': COLORS.label, 'text-halo-color': COLORS.halo, 'text-halo-width': 1.6 },
+        paint: { 'text-color': COLORS.label, 'text-halo-color': COLORS.halo, 'text-halo-width': 1.1, 'text-halo-blur': 1 },
       },
     ],
   };

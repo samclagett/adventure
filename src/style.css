@@ -16,17 +16,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 #app { position: fixed; inset: 0; }
 #map { position: absolute; inset: 0; }
 
-/* Floating UI sits above the map and respects the iPhone notch / home bar. */
-.top-left {
-  position: absolute;
-  z-index: 3;
-  top: calc(env(safe-area-inset-top) + 12px);
-  left: 12px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-.title-chip,
+/* Floating panels sit above the map and respect the iPhone notch / home bar. */
 .map-controls,
 .account {
   position: absolute;
@@ -36,13 +26,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: 14px;
-}
-.top-left .title-chip,
-.top-left .account { position: static; }
-.title-chip {
-  padding: 8px 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .map-controls {
@@ -69,13 +52,26 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 .map-controls button.active { background: var(--accent); color: #062026; font-weight: 600; }
 .map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 10px 10px 0; color: var(--muted); white-space: nowrap; }
 
+/* Account and settings: a round icon button at the top right that opens a small menu. */
 .account {
-  max-width: min(320px, calc(100vw - 24px));
+  z-index: 4;
+  top: calc(env(safe-area-inset-top) + 12px);
+  right: 12px;
+  border-radius: 20px;
   font-size: 0.9rem;
 }
-.account summary { list-style: none; cursor: pointer; padding: 10px 12px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.account summary { list-style: none; cursor: pointer; width: 40px; height: 40px; display: grid; place-items: center; position: relative; color: var(--text); }
 .account summary::-webkit-details-marker { display: none; }
-.account-body { padding: 0 12px 12px; }
+.account summary .hl-icon { width: 24px; height: 24px; }
+.account summary .dot { position: absolute; right: 7px; bottom: 7px; box-shadow: 0 0 0 2px var(--panel-solid); }
+.account[open] { width: min(300px, calc(100vw - 24px)); border-radius: 16px; background: var(--panel-solid); }
+.account[open] summary { margin-left: auto; }
+.account-body { padding: 0 14px 14px; }
+.account-body h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 0 8px; font-weight: 600; }
+.account-body h2 + * { margin-top: 0; }
+.account-body h2:not(:first-child) { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.account-row { font-weight: 600; margin-bottom: 4px; }
+.account-body .muted { color: var(--muted); margin: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.ok { background: var(--accent); }
 .dot.warn { background: var(--warn); }
@@ -85,15 +81,22 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 form { display: grid; gap: 8px; }
 input, form button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #2b4b60; background: #0e2130; color: var(--text); }
 form button { background: var(--accent); color: #062026; border: none; font-weight: 600; cursor: pointer; }
+.account .secondary { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #1a3a4f; color: var(--text); cursor: pointer; }
 
 /* MapLibre's own controls, tinted to match. */
-.maplibregl-ctrl-top-right { top: env(safe-area-inset-top); }
-.maplibregl-ctrl-group { background: var(--panel-solid); border: 1px solid var(--border); }
-.maplibregl-ctrl-group button + button { border-top-color: var(--border); }
-.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) brightness(0.9); }
-.maplibregl-ctrl-attrib { background: rgba(11, 26, 36, 0.7) !important; color: var(--muted); }
-.maplibregl-ctrl-attrib a { color: var(--muted); }
-.maplibregl-ctrl-attrib-button { filter: invert(1); }
+/* Sits under the account button. */
+#map .maplibregl-ctrl-top-right { top: calc(env(safe-area-inset-top) + 52px); }
+/* Phones and tablets pinch to zoom, so hide + and −. The compass stays: tap it to face north again. */
+@media (hover: none) and (pointer: coarse) {
+  #map .maplibregl-ctrl-zoom-in,
+  #map .maplibregl-ctrl-zoom-out { display: none !important; }
+}
+#map .maplibregl-ctrl-group { background: var(--panel-solid); border: 1px solid var(--border); }
+#map .maplibregl-ctrl-group button + button { border-top-color: var(--border); }
+#map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) brightness(0.9); }
+#map .maplibregl-ctrl-attrib { background: rgba(11, 26, 36, 0.7) !important; color: var(--muted); }
+#map .maplibregl-ctrl-attrib a { color: var(--muted); }
+#map .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
 /* Mountain height (exaggeration) slider, right edge above the controls. */
 .relief-control {

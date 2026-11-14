@@ -13,6 +13,12 @@ function pinElement(icon: string, color: string, extraClass = ''): HTMLElement {
   return el;
 }
 
+/** Pin size for a zoom level: about a third size when looking at a whole state, full size from zoom 12. */
+function pinScale(zoom: number): number {
+  const t = Math.min(1, Math.max(0, (zoom - 3) / 9));
+  return 0.35 + 0.65 * t;
+}
+
 /** Keeps one marker per located hit list item on the map. */
 export class Pins {
   private markers = new Map<string, maplibregl.Marker>();
@@ -21,7 +27,12 @@ export class Pins {
   constructor(
     private map: maplibregl.Map,
     private onTap: (item: HitListItem) => void,
-  ) {}
+  ) {
+    // Pins grow as you zoom in. The size is a CSS variable on the map, read by hitlist.css.
+    const resize = () => map.getContainer().style.setProperty('--pin-s', pinScale(map.getZoom()).toFixed(2));
+    map.on('zoom', resize);
+    resize();
+  }
 
   show(items: HitListItem[]) {
     this.markers.forEach((m) => m.remove());

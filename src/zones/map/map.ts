@@ -32,6 +32,8 @@ export interface AdventureMap {
   /** How much to exaggerate height: 1 = real, 10 = extreme. */
   setRelief(r: number): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
+  /** The region picked with the region buttons (or by tapping a state). */
+  getRegion(): Region | 'AUS';
   /** Turn tap-a-state-to-zoom off while another zone wants map taps (e.g. dropping a pin). */
   setTapToZoom(on: boolean): void;
 }
@@ -133,6 +135,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
       if (map.isStyleLoaded()) applyQuality(q);
       else currentQuality = q;
     },
+    getRegion: () => current,
     onRegionChange(cb) {
       listeners.push(cb);
     },
