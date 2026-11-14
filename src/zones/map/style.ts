@@ -67,6 +67,8 @@ export function buildStyle(): StyleSpecification {
       rivers: { type: 'geojson', data: rivers as Data },
       lakes: { type: 'geojson', data: lakes as Data },
       parks: { type: 'geojson', data: `${DATA}/national-parks.geojson`, attribution: '© OpenStreetMap contributors, Overture Maps' },
+      // One point per park (made by scripts/map/park_labels.py) so each name shows once, in the middle.
+      parkLabels: { type: 'geojson', data: `${DATA}/park-labels.geojson` },
       beaches: { type: 'geojson', data: `${DATA}/beaches.geojson` },
       sand: { type: 'geojson', data: `${DATA}/beach-sand.geojson` },
     },
@@ -242,15 +244,15 @@ export function buildStyle(): StyleSpecification {
       {
         id: 'park-labels',
         type: 'symbol',
-        source: 'parks',
+        source: 'parkLabels',
         minzoom: 7,
-        filter: ['has', 'name'],
         layout: {
           'text-field': ['get', 'name'],
           'text-font': FONT,
           'text-size': ['interpolate', ['linear'], ['zoom'], 7, 11, 11, 14],
           'text-max-width': 8,
-          'symbol-sort-key': 10,
+          // Bigger parks win when names would collide.
+          'symbol-sort-key': ['-', 10, ['get', 'area']],
         },
         paint: { 'text-color': COLORS.parkLabel, 'text-halo-color': 'rgba(10, 40, 24, 0.6)', 'text-halo-width': 1.1, 'text-halo-blur': 1 },
       },

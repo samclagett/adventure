@@ -3,8 +3,9 @@
 The adventure hit list: categories, pins on the map, adding/editing/deleting, the "to locate" queue,
 place search (Nominatim), Google Maps link parsing, and saving to Supabase.
 
-- `index.ts`: `mountHitList(parent, adv)`, the only thing other zones should import. Builds the category filter chips,
-  the "Hit list" and "+" buttons, and the bottom sheet (list, add/edit form, pin card). Loads items once signed in.
+- `index.ts`: `mountHitList(parent, adv)`, the only thing other zones should import. Builds the "Hit list"
+  button (top left) and "+" button, and the bottom sheet (list with category filter at the top, add/edit form, pin card).
+  Pins follow the selected region; names show beside pins while a category is picked. Loads items once signed in.
 - `categories.ts`: the category list (id, label, icon, muted accent colour). The id is saved in `hit_list.activity`,
   so don't rename ids that are in use. Merged ids go in `ALIASES` (snorkelling → diving); unknown values show as "Other".
 - `icons.ts`: category icons from Sam's hand-drawn set, traced to SVG by `scripts/icons/trace_icons.py`
