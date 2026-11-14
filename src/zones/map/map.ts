@@ -110,6 +110,8 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   }
 
   map.on('load', () => {
+    // Keep the credits folded into the small (i) button so they don't sit under the bottom bar.
+    container.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     applyQuality(currentQuality);
     setSelected(current);
   });

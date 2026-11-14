@@ -35,7 +35,7 @@ function fmt(n: number) {
 }
 
 /**
- * The hit list: category filter chips, pins on the map, and a bottom sheet for the list,
+ * The hit list: pins on the map, and a bottom sheet for the list (with the category filter at its top),
  * adding, viewing, editing and deleting adventures. Data is saved in Supabase (`hit_list`).
  */
 export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
@@ -49,13 +49,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
   let locTab: LocTab = 'search';
   let results: PlaceMatch[] = [];
   let picking = false;
-  let view: 'list' | 'cats' | 'other' | null = null;
+  let view: 'list' | 'other' | null = null;
 
   // ---- Floating UI ----
-  const catBtn = document.createElement('button');
-  catBtn.className = 'hl-cat-btn';
-  catBtn.type = 'button';
-
+  // One "Hit list" button, top left: opens the list, with category filters at the top of it.
   const listBtn = document.createElement('button');
   listBtn.className = 'hl-list-btn';
   listBtn.type = 'button';
@@ -75,7 +72,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
   banner.hidden = true;
   banner.innerHTML = `<span>Tap the map where it is. Drag the pin to fine-tune.</span><button type="button">Cancel</button>`;
 
-  parent.append(catBtn, listBtn, addBtn, sheet, banner);
+  parent.append(listBtn, addBtn, sheet, banner);
 
   const pins = new Pins(map, (item) => openCard(item));
 
@@ -91,53 +88,15 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
 
   function refresh() {
     pins.show(visibleItems());
-    renderCatBtn();
+    // Names beside the pins only while some categories are picked, so the map stays tidy otherwise.
+    map.getContainer().classList.toggle('hl-show-names', filter.size > 0);
     const toLocate = items.filter((i) => i.lat == null).length;
-    listBtn.innerHTML = `${ICONS.list} Hit list <b>${items.length}</b>${toLocate ? `<span class="hl-badge" title="To locate">${toLocate} to locate</span>` : ''}`;
+    listBtn.innerHTML = `${ICONS.list} Hit list${filter.size ? `<span class="hl-count" title="Categories picked">${filter.size}</span>` : ''}${toLocate ? `<span class="hl-dot" title="${toLocate} to locate"></span>` : ''}`;
+    listBtn.classList.toggle('on', filter.size > 0);
+    listBtn.setAttribute('aria-label', `Hit list${filter.size ? `, ${filter.size} categories picked` : ''}${toLocate ? `, ${toLocate} to locate` : ''}`);
     if (view === 'list') openList();
-    if (view === 'cats') openCategories();
   }
 
-  function renderCatBtn() {
-    catBtn.innerHTML = `${ICONS.filter} Categories${filter.size ? `<span class="hl-count">${filter.size}</span>` : ''}`;
-    catBtn.classList.toggle('on', filter.size > 0);
-    catBtn.setAttribute('aria-label', filter.size ? `Categories, ${filter.size} selected` : 'Categories');
-  }
-
-  /** Bottom sheet of checkable category chips. Changes apply to the map straight away. */
-  function openCategories() {
-    view = 'cats';
-    const counts = new Map<string, number>();
-    regionItems().forEach((i) => counts.set(categoryOf(i.activity).id, (counts.get(categoryOf(i.activity).id) ?? 0) + 1));
-    const region = adv.getRegion();
-    const where = region === 'AUS' ? 'everywhere' : `in ${region}`;
-    openSheet(`<h2>Categories</h2>
-      <p class="hl-muted">${filter.size ? `Showing ${filter.size} categor${filter.size === 1 ? 'y' : 'ies'}` : 'Showing everything'} ${where}. Tap to pick which to show.</p>
-      <div class="hl-filter-grid">${CATEGORIES.map((c) => {
-        const n = counts.get(c.id) ?? 0;
-        const on = filter.has(c.id);
-        return `<button type="button" class="hl-chip ${on ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}" aria-pressed="${on}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span><small>${n}</small><span class="hl-check" aria-hidden="true">${on ? '✓' : ''}</span></button>`;
-      }).join('')}</div>
-      <div class="hl-actions">
-        <button type="button" data-act="clear" ${filter.size ? '' : 'disabled'}>Clear all</button>
-        <button type="button" class="hl-primary" data-act="done">Done</button>
-      </div>`);
-    sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((btn) =>
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.cat!;
-        if (filter.has(id)) filter.delete(id);
-        else filter.add(id);
-        refresh();
-      }),
-    );
-    sheet.querySelector('[data-act="clear"]')!.addEventListener('click', () => {
-      filter.clear();
-      refresh();
-    });
-    sheet.querySelector('[data-act="done"]')!.addEventListener('click', closeSheet);
-  }
-
-  catBtn.addEventListener('click', () => (view === 'cats' ? closeSheet() : openCategories()));
   adv.onRegionChange(() => refresh());
 
   // ---- Bottom sheet ----
@@ -182,6 +141,20 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     return `<button type="button" class="hl-row" data-id="${i.id}" style="--pin:${c.color}"><span class="hl-row-icon">${c.icon}</span><span>${esc(i.name)}${sub}</span></button>`;
   }
 
+  /** Checkable category chips. None picked means everything shows. Counts are for the selected region. */
+  function categoryFilter() {
+    const counts = new Map<string, number>();
+    regionItems().forEach((i) => counts.set(categoryOf(i.activity).id, (counts.get(categoryOf(i.activity).id) ?? 0) + 1));
+    return `<div class="hl-filter-head"><span>${filter.size ? `Showing ${filter.size} categor${filter.size === 1 ? 'y' : 'ies'}` : 'Tap categories to show only those'}</span>${
+      filter.size ? '<button type="button" class="hl-link" data-act="clear">Clear all</button>' : ''
+    }</div>
+      <div class="hl-filter-grid">${CATEGORIES.map((c) => {
+        const n = counts.get(c.id) ?? 0;
+        const on = filter.has(c.id);
+        return `<button type="button" class="hl-chip ${on ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}" aria-pressed="${on}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span><small>${n}</small><span class="hl-check" aria-hidden="true">${on ? '✓' : ''}</span></button>`;
+      }).join('')}</div>`;
+  }
+
   function openList() {
     if (needSignIn()) return;
     view = 'list';
@@ -192,6 +165,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     const filterNote = filter.size ? ` · showing ${[...filter].map((id) => categoryOf(id).label).join(', ')}` : '';
     const regionNote = region === 'AUS' ? '' : ` in ${region}`;
     let html = `<h2>Hit list</h2><p class="hl-muted">${inArea} adventure${inArea === 1 ? '' : 's'}${regionNote}${esc(filterNote)}</p>`;
+    html += categoryFilter();
     if (loadError) html += `<p class="hl-error">Couldn’t load the hit list: ${esc(loadError)}</p>`;
     if (toLocate.length) {
       html += `<h3>${ICONS.pin} To locate (${toLocate.length})</h3><p class="hl-muted">No pin yet. Tap one to find it.</p>${toLocate.map(itemRow).join('')}`;
@@ -204,6 +178,18 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       html += `<p class="hl-muted">${items.length ? `Nothing${regionNote} in the selected categories.` : 'Nothing yet. Tap <b>+</b> to add your first adventure.'}</p>`;
     }
     openSheet(html);
+    sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.cat!;
+        if (filter.has(id)) filter.delete(id);
+        else filter.add(id);
+        refresh();
+      }),
+    );
+    sheet.querySelector('[data-act="clear"]')?.addEventListener('click', () => {
+      filter.clear();
+      refresh();
+    });
     sheet.querySelectorAll<HTMLButtonElement>('.hl-row').forEach((row) =>
       row.addEventListener('click', () => {
         const item = items.find((i) => i.id === row.dataset.id)!;

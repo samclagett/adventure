@@ -27,10 +27,9 @@ interface CampsiteData {
   campgrounds: CampgroundResult[];
 }
 
-type Window = 'weekend' | '5days' | 'week' | '2weeks';
+type Window = 'weekend' | 'week' | '2weeks';
 const WINDOWS: { id: Window; label: string }[] = [
   { id: 'weekend', label: 'This weekend' },
-  { id: '5days', label: 'Next 5 days' },
   { id: 'week', label: 'Next week' },
   { id: '2weeks', label: 'Next 2 weeks' },
 ];
@@ -51,16 +50,18 @@ function addDays(d: Date, n: number): Date {
   return x;
 }
 
-/** The nights (as ISO dates) a window covers, starting tonight. "This weekend" is Friday and Saturday night. */
+/**
+ * The nights (as ISO dates) a window covers, starting tonight.
+ * "This weekend" is Friday, Saturday and Sunday night; from Friday on it's the rest of this weekend.
+ */
 export function nightsFor(w: Window, today = new Date()): string[] {
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   if (w === 'weekend') {
     const day = start.getDay(); // 0 Sun … 6 Sat
-    if (day === 6) return [iso(start)];
-    const fri = addDays(start, (5 - day + 7) % 7);
-    return [iso(fri), iso(addDays(fri, 1))];
+    const fri = day === 6 ? addDays(start, -1) : day === 0 ? addDays(start, -2) : addDays(start, 5 - day);
+    return [0, 1, 2].map((i) => addDays(fri, i)).filter((d) => d >= start).map(iso);
   }
-  const n = w === '5days' ? 5 : w === 'week' ? 7 : 14;
+  const n = w === 'week' ? 7 : 14;
   return Array.from({ length: n }, (_, i) => iso(addDays(start, i)));
 }
 

@@ -28,29 +28,33 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
   border-radius: 14px;
 }
 
+/* Bottom bar: compact region picker and quality toggle. */
 .map-controls {
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  bottom: calc(env(safe-area-inset-bottom) + 12px);
   display: flex;
-  gap: 8px;
-  padding: 6px;
+  gap: 4px;
+  padding: 4px;
   align-items: center;
+  border-radius: 12px;
 }
 .segmented { display: flex; gap: 2px; }
 .map-controls button {
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text);
   background: transparent;
   border: none;
-  border-radius: 10px;
-  padding: 9px 11px;
+  border-radius: 9px;
+  padding: 6px 10px;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 34px;
 }
-.map-controls button.active { background: var(--accent); color: #062026; font-weight: 600; }
-.map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 10px 10px 0; color: var(--muted); white-space: nowrap; }
+.map-controls button.active { background: var(--accent); color: #062026; }
+.map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 9px 9px 0; color: var(--muted); font-weight: 500; white-space: nowrap; }
 
 /* Account and settings: a round icon button at the top right that opens a small menu. */
 .account {
@@ -84,8 +88,8 @@ form button { background: var(--accent); color: #062026; border: none; font-weig
 .account .secondary { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #1a3a4f; color: var(--text); cursor: pointer; }
 
 /* MapLibre's own controls, tinted to match. */
-/* Sits under the account button. */
-#map .maplibregl-ctrl-top-right { top: calc(env(safe-area-inset-top) + 52px); }
+/* Sits under the account and mountain buttons. */
+#map .maplibregl-ctrl-top-right { top: calc(env(safe-area-inset-top) + 100px); }
 /* Phones and tablets pinch to zoom, so hide + and −. The compass stays: tap it to face north again. */
 @media (hover: none) and (pointer: coarse) {
   #map .maplibregl-ctrl-zoom-in,
@@ -98,23 +102,46 @@ form button { background: var(--accent); color: #062026; border: none; font-weig
 #map .maplibregl-ctrl-attrib a { color: var(--muted); }
 #map .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
-/* Mountain height (exaggeration) slider, right edge above the controls. */
+/* Mountain height: a small round button under the account button; tap to show the slider. */
 .relief-control {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top) + 60px);
   right: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 84px);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.relief-control summary {
+  list-style: none;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
   background: var(--panel);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
+}
+.relief-control summary::-webkit-details-marker { display: none; }
+.relief-control summary svg { width: 24px; height: 24px; }
+.relief-control[open] summary { background: var(--accent); color: #062026; border-color: var(--accent); }
+.relief-pop {
+  position: absolute;
+  top: 0;
+  right: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  white-space: nowrap;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  font-size: 0.9rem;
   color: var(--muted);
 }
-.relief-control input { width: 110px; accent-color: var(--accent); }
-.relief-control output { min-width: 2.5em; text-align: right; color: var(--text); }
+.relief-pop input { width: 110px; accent-color: var(--accent); }
+.relief-pop output { min-width: 2.2em; text-align: right; color: var(--text); }
