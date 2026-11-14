@@ -182,12 +182,15 @@ export function buildStyle(): StyleSpecification {
         },
       },
       {
-        // Ghost every state that isn't active yet.
+        // Ghost every state that isn't active yet, and the active states you haven't picked (feature-state `dim`, map.ts).
         id: 'states-ghost',
         type: 'fill',
         source: 'states',
-        filter: ['!', ['get', 'active']],
-        paint: { 'fill-color': COLORS.ghost, 'fill-opacity': 0.72 },
+        paint: {
+          'fill-color': COLORS.ghost,
+          'fill-opacity': ['case', ['!', ['get', 'active']], 0.72, ['boolean', ['feature-state', 'dim'], false], 0.72, 0],
+          'fill-opacity-transition': { duration: 600 },
+        },
       },
       {
         // Invisible fill on active states so they can be tapped.
@@ -207,7 +210,11 @@ export function buildStyle(): StyleSpecification {
           'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 10, 6],
           'line-blur': 6,
           // State outlines are simplified, so fade them out once you're zoomed in close.
-          'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.7, 9, 0],
+          'line-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            7, ['case', ['boolean', ['feature-state', 'dim'], false], 0, 0.7],
+            9, 0,
+          ],
         },
       },
       {

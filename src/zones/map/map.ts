@@ -11,13 +11,20 @@ maplibregl.setWorkerUrl(workerUrl);
 
 export type Region = 'NSW' | 'VIC' | 'TAS';
 
-/** Camera framing for each active region, plus the whole-country overview. */
+/**
+ * Camera framing for each region button, plus the whole-country overview.
+ * Matched to Sam's reference screenshots (Nov 2026): NSW frames the east coast (Goondiwindi to
+ * Merimbula, Dubbo to the sea) rather than the whole state, which is mostly empty inland.
+ */
 const VIEWS: Record<Region | 'AUS', { bounds: LngLatBoundsLike; pitch: number; bearing: number }> = {
   AUS: { bounds: [[112, -44], [154, -10]], pitch: 0, bearing: 0 },
-  NSW: { bounds: [[141, -37.6], [153.7, -28.1]], pitch: 62, bearing: -12 },
-  VIC: { bounds: [[140.9, -39.2], [150, -34]], pitch: 62, bearing: 10 },
-  TAS: { bounds: [[143.8, -43.7], [148.5, -39.5]], pitch: 62, bearing: 0 },
+  NSW: { bounds: [[148.4, -37.2], [153.7, -28.5]], pitch: 25, bearing: 0 },
+  VIC: { bounds: [[140.9, -39.3], [150.2, -34]], pitch: 25, bearing: 0 },
+  TAS: { bounds: [[143.6, -43.7], [148.6, -39.6]], pitch: 25, bearing: 0 },
 };
+
+/** Room for the buttons at the top and bottom of the screen, so the region isn't hidden behind them. */
+const UI_PADDING = { top: 70, bottom: 140, left: 16, right: 16 };
 
 const STATE_CODES: Record<Region, string[]> = {
   NSW: ['NS', 'CT', 'JB'],
@@ -88,10 +95,11 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(1, base + 0.07 * relief));
   }
 
+  /** Highlight the picked state; darken the other active states like the rest of Australia. */
   function setSelected(region: Region | 'AUS') {
     for (const [r, codes] of Object.entries(STATE_CODES)) {
       for (const code of codes) {
-        map.setFeatureState({ source: 'states', id: code }, { selected: r === region });
+        map.setFeatureState({ source: 'states', id: code }, { selected: r === region, dim: region !== 'AUS' && r !== region });
       }
     }
   }
@@ -101,10 +109,8 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     const view = VIEWS[region];
     // Light mode uses a gentler tilt, since there is no 3D terrain to show off.
     const pitch = currentQuality === 'light' ? Math.min(view.pitch, 35) : view.pitch;
-    const camera = map.cameraForBounds(view.bounds, { padding: 32, bearing: view.bearing });
-    // When tilted, the region drifts towards the bottom of the screen; lift it back to the middle.
-    const lift = region === 'AUS' ? 0 : Math.round(map.getContainer().clientHeight * 0.22);
-    if (camera) map.flyTo({ ...camera, pitch, bearing: view.bearing, padding: { top: 0, bottom: lift, left: 0, right: 0 }, duration: 2200, essential: true });
+    const camera = map.cameraForBounds(view.bounds, { padding: region === 'AUS' ? 24 : UI_PADDING, bearing: view.bearing });
+    if (camera) map.flyTo({ ...camera, pitch, bearing: view.bearing, duration: 2200, essential: true });
     if (map.isStyleLoaded()) setSelected(region);
     listeners.forEach((cb) => cb(region));
   }
