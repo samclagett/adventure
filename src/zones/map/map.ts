@@ -6,6 +6,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { buildStyle } from './style';
 import type { Quality } from './quality';
 import { getRelief } from './quality';
+import { flyAround, type FlyPlace } from './flythrough';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -26,6 +27,9 @@ const VIEWS: Record<Region | 'AUS', { bounds: LngLatBoundsLike; pitch: number; b
 /** Room for the buttons at the top and bottom of the screen, so the region isn't hidden behind them. */
 const UI_PADDING = { top: 70, bottom: 140, left: 16, right: 16 };
 
+/** Mountain height during a flythrough: a touch above real, which reads well at close range. */
+const FLY_RELIEF = 1.5;
+
 const STATE_CODES: Record<Region, string[]> = {
   NSW: ['NS', 'CT', 'JB'],
   VIC: ['VI'],
@@ -43,6 +47,8 @@ export interface AdventureMap {
   getRegion(): Region | 'AUS';
   /** Turn tap-a-state-to-zoom off while another zone wants map taps (e.g. dropping a pin). */
   setTapToZoom(on: boolean): void;
+  /** Fly in to a place and circle it once in 3D, with a three.js marker. Resolves when it ends. */
+  flyAround(place: FlyPlace): Promise<void>;
 }
 
 export function createMap(container: HTMLElement, quality: Quality): AdventureMap {
@@ -68,8 +74,19 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   function applyQuality(q: Quality) {
     currentQuality = q;
     if (q === 'full') {
-      map.setTerrain({ source: 'terrain', exaggeration: relief });
-      map.setSky({
+      show3d();
+    } else {
+      map.setTerrain(null);
+      map.setSky({ 'sky-color': '#0b1a24', 'horizon-color': '#0b1a24', 'fog-color': '#0b1a24' });
+    }
+    map.setPixelRatio(q === 'light' ? 1 : window.devicePixelRatio);
+    applyShading();
+  }
+
+  /** 3D terrain and sky. Used by full mode, and for a flythrough in either mode. */
+  function show3d(exaggeration = relief) {
+    map.setTerrain({ source: 'terrain', exaggeration });
+    map.setSky({
         'sky-color': '#5fa8d3',
         'horizon-color': '#cfe8f0',
         'fog-color': '#0b1a24',
@@ -77,13 +94,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
         'horizon-fog-blend': 0.4,
         'fog-ground-blend': 0.3,
         'atmosphere-blend': 0.8,
-      });
-    } else {
-      map.setTerrain(null);
-      map.setSky({ 'sky-color': '#0b1a24', 'horizon-color': '#0b1a24', 'fog-color': '#0b1a24' });
-    }
-    map.setPixelRatio(q === 'light' ? 1 : window.devicePixelRatio);
-    applyShading();
+    });
   }
 
   /**
@@ -149,6 +160,14 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     },
     setTapToZoom(on) {
       tapToZoom = on;
+    },
+    flyAround(place) {
+      // Close up, the usual 5x mountain height looks spiky, so the flight uses near-real heights.
+      // Light mode has no 3D terrain, so it's switched on just for the flight, then put back.
+      return flyAround(map, place, {
+        begin: () => show3d(FLY_RELIEF),
+        end: () => applyQuality(currentQuality),
+      });
     },
   };
 }

@@ -17,12 +17,14 @@
   },
   "homepage": "https://github.com/samclagett/adventure#readme",
   "devDependencies": {
+    "@types/three": "^0.187.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.7"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
-    "maplibre-gl": "^6.16.0"
+    "maplibre-gl": "^6.16.0",
+    "three": "^0.187.0"
   },
   "private": true,
   "type": "module"

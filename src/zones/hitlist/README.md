@@ -17,5 +17,7 @@ place search (Nominatim), Google Maps link parsing, and saving to Supabase.
 - `pins.ts`: MapLibre HTML markers, one per located item, plus a draggable draft pin while adding or editing.
 - `hitlist.css`: styles for all of the above.
 
+The pin card has a "Fly around in 3D" button that calls the map zone's `adv.flyAround`.
+
 Items with `lat`/`lng` null are in the "To locate" list; tapping one opens the form to find it.
 Bulk paste of a messy list is planned but not built yet.

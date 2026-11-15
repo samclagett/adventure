@@ -212,6 +212,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       ${item.notes ? `<p class="hl-notes">${esc(item.notes)}</p>` : ''}
       ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60))}</a></p>` : ''}
       ${item.lat != null ? `<p class="hl-muted">${fmt(item.lat)}, ${fmt(item.lng!)} · <a href="${gmaps}" target="_blank" rel="noopener">Open in Google Maps</a></p>` : '<p class="hl-muted">Not on the map yet.</p>'}
+      ${item.lat != null ? `<button type="button" class="hl-fly" data-act="fly">${ICONS.orbit} Fly around in 3D</button>` : ''}
       <div class="hl-actions">
         <button type="button" class="hl-primary" data-act="edit">Edit</button>
         <button type="button" class="hl-danger" data-act="delete">Delete</button>
@@ -219,6 +220,13 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       <p class="hl-error" hidden></p>
     `);
     sheet.querySelector('[data-act="edit"]')!.addEventListener('click', () => openForm(draftFrom(item)));
+    sheet.querySelector('[data-act="fly"]')?.addEventListener('click', async () => {
+      closeSheet();
+      // The 3D marker stands in for this pin during the flight.
+      pins.setHidden(item.id, true);
+      await adv.flyAround({ lat: item.lat!, lng: item.lng!, name: item.name, label: c.label, color: c.color });
+      pins.setHidden(item.id, false);
+    });
     sheet.querySelector('[data-act="delete"]')!.addEventListener('click', async () => {
       if (!confirm(`Delete “${item.name}” from the hit list?`)) return;
       try {
