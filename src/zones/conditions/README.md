@@ -8,6 +8,7 @@ Python fetchers for this zone live in `scripts/conditions/`.
 - `openmeteo.ts` fetches forecasts from Open-Meteo straight from the browser (free, no key), many places per request.
   Surf, diving and kayaking spots also get hourly wind and the marine forecast (swell, tides, sea temperature).
 - `summary.ts` turns forecasts into the bubble text and day-by-day rows for each category, and the surf verdicts.
-- `index.ts` is the Conditions button and sheet, the bubbles on the map, and the section it adds to each pin card
-  (through `addCardSection` from the hit list zone).
+- `data.ts` keeps and caches forecasts (one hour, in the browser).
+- `planner.ts` is the opening Plan screen, `layer.ts` the live weather layer in Explore mode, `card.ts` the pin card section.
+- `weather-icons.ts` holds the weather symbols (Material Symbols for now).
 - Swell is model open-ocean swell in metres. Never convert it to feet: only Surfline's face height is in feet.

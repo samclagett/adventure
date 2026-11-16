@@ -16,3 +16,14 @@ Agreed 2026-11-09. Tick items off here as they land.
    day-by-day breakdown. Surf spots also get model swell (metres, never converted to feet), wind relative to which way the beach
    faces (new `faces` column), the best window of the day, tides, water temperature and a first go/marginal/skip verdict.
    Lessons came from Sam's "Daily Surf Report" scheduled task; its 16 beaches are now on the hit list.
+
+### After Stage 1: new conditions interface (2026-11-16)
+
+Sam found the first version slow and asked for a different approach:
+- **Plan screen** on opening: pick an activity (or Anything) and when, see every matching place ranked by conditions
+  with a line on how they change across the window; tap one to fly there. "Explore the map" closes it; the Plan button reopens it.
+- **Explore mode** is the map as before, with a **live weather layer** (on by default while testing): weather symbol,
+  temperature, wind arrow and swell arrow beside each pin, for a day picked with the day stepper.
+- Every activity now gets go / marginal / skip ratings from simple rules (summary.ts, `checksFor`).
+- Speed: the marine forecast only goes out 8 days (asking for 14 failed and retried place by place, which was the slowness).
+  Forecasts for the whole hit list now come in 3 requests and are cached on the phone for an hour.
