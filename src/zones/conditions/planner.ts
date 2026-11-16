@@ -86,7 +86,13 @@ export function mountPlanner(
       .map((item) => {
         const f = data.get(item);
         const cat = categoryOf(item.activity).id;
-        return { item, option: f ? rateWindow(cat, daysOf(f, dates, cat, item.faces)) : null };
+        let option: Option | null = null;
+        try {
+          if (f) option = rateWindow(cat, daysOf(f, dates, cat, item.faces));
+        } catch (err) {
+          console.error('Conditions for', item.name, err); // one odd forecast shouldn't break the whole list
+        }
+        return { item, option };
       })
       .sort((a, b) => {
         if (!a.option || !b.option) return a.option ? -1 : b.option ? 1 : 0;
