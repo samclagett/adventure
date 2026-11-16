@@ -419,3 +419,119 @@ export function rowsFor(category: string, days: Day[]): Row[] {
     return { date: d.date, cells };
   });
 }
+
+// ---- Ratings for every category ----
+
+/**
+ * A first, simple idea of "good conditions" per activity (agreed starting point, 2026-11-16; tune later).
+ * Each rule that isn't met adds a reason and lowers the verdict: one strike makes a day marginal,
+ * a hard limit makes it a skip. Surf uses its own hour-by-hour read (surfDay).
+ */
+interface Check {
+  /** True when the condition is bad enough to skip. */
+  skip?: boolean;
+  /** True when it makes the day marginal. */
+  mar?: boolean;
+  why: string;
+}
+
+function checksFor(category: string, d: Day): Check[] {
+  const rain = d.rain ?? 0;
+  const prob = d.rainProb ?? 0;
+  const wind = d.wind ?? 0;
+  const hot = d.tmax ?? 0;
+  const swell = d.surf?.swellMax ?? null;
+  const wet: Check = { skip: rain >= 5 || prob >= 80, mar: rain >= 1 || prob >= 50, why: rain >= 1 ? `${Math.round(rain)} mm rain` : `${prob}% chance of rain` };
+  const windy = (mar: number, skip: number): Check => ({ skip: wind >= skip, mar: wind >= mar, why: `wind ${Math.round(wind)} km/h` });
+  const heat: Check = { skip: hot >= 38, mar: hot >= 32, why: `${Math.round(hot)}°` };
+  const sea = (mar: number, skip: number): Check => ({ skip: swell != null && swell >= skip, mar: swell != null && swell >= mar, why: `swell ${swell?.toFixed(1)} m` });
+  switch (category) {
+    case 'climbing':
+      return [{ skip: rain >= 1 || prob >= 60, mar: prob >= 30, why: rain >= 1 ? 'wet rock' : `${prob}% chance of rain` }, windy(30, 45), { skip: hot >= 36, mar: hot >= 30, why: `${Math.round(hot)}°` }];
+    case 'camping':
+      return [wet, windy(30, 45), { skip: (d.tmin ?? 10) < 0, mar: (d.tmin ?? 10) < 5, why: `night ${Math.round(d.tmin ?? 0)}°` }, heat];
+    case 'kayaking':
+      return [windy(15, 25), { skip: rain >= 15, mar: rain >= 5, why: `${Math.round(rain)} mm rain` }, sea(1, 1.5)];
+    case 'diving':
+      return [windy(15, 25), sea(1, 1.5), { mar: rain >= 10, why: 'heavy rain (runoff)' }];
+    case 'skiing': {
+      const snow = d.snow ?? 0;
+      return [{ skip: snow < 1 && hot > 8, mar: snow < 5, why: snow >= 1 ? `only ${Math.round(snow)} cm new snow` : 'no new snow' }, windy(35, 55)];
+    }
+    default:
+      return [wet, windy(30, 45), heat];
+  }
+}
+
+export interface Rated {
+  verdict: Verdict;
+  /** Why it isn't a go, shortest first. */
+  why: string[];
+}
+
+export function rateDay(category: string, d: Day): Rated {
+  if (category === 'surfing') {
+    if (!d.surf) return { verdict: 'na', why: ['no swell data'] };
+    return { verdict: d.surf.verdict, why: [] };
+  }
+  if (d.tmax == null && d.wind == null) return { verdict: 'na', why: ['no forecast'] };
+  const checks = checksFor(category, d);
+  // Storms are a worry for everything outdoors; any rain makes rock slippery.
+  const code = d.code ?? 0;
+  if (code >= 95) checks.push({ mar: true, why: 'storms' });
+  if (category === 'climbing' && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))) checks.push({ mar: true, why: 'showers' });
+  const skips = checks.filter((c) => c.skip).map((c) => c.why);
+  const mars = checks.filter((c) => !c.skip && c.mar).map((c) => c.why);
+  return { verdict: skips.length ? 'skip' : mars.length ? 'mar' : 'go', why: [...skips, ...mars] };
+}
+
+export interface Option {
+  verdict: Verdict;
+  /** The best day in the window, if any are better than skip. */
+  bestDate: string | null;
+  /** How many days in the window are a go. */
+  goDays: number;
+  /** One line for the list, e.g. "Go Sat 6–9am · 1.1 m 8 s SSE · offshore". */
+  headline: string;
+  /** A second, quieter line on how the window changes. */
+  detail: string;
+  /** One verdict per day, for the strip. */
+  strip: { date: string; verdict: Verdict }[];
+}
+
+/** Rate a place over a window: its best day, how many days are good, and a short summary. */
+export function rateWindow(category: string, days: Day[]): Option | null {
+  if (!days.length) return null;
+  const rated = days.map((d) => ({ d, r: rateDay(category, d) }));
+  const best = [...rated].sort((a, b) => RANK[a.r.verdict] - RANK[b.r.verdict])[0];
+  const goDays = rated.filter((x) => x.r.verdict === 'go').length;
+  const strip = rated.map((x) => ({ date: x.d.date, verdict: x.r.verdict }));
+  const v = best.r.verdict;
+  const when = dayShort(best.d.date);
+  let headline: string;
+  if (category === 'surfing' && best.d.surf) {
+    const s = best.d.surf;
+    headline = v === 'skip' ? 'Poor all window' : `${VERDICT_WORD[v]} ${when}${s.best ? ` ${clock(s.best[0])}–${clock(s.best[1])}` : ''} · ${swellText(s)}${s.windRel ? ` · ${s.windRel}` : ''}`;
+  } else if (v === 'skip' || v === 'na') {
+    headline = `Poor all window${best.r.why[0] ? ` (${best.r.why[0]})` : ''}`;
+  } else {
+    const d = best.d;
+    const bits = [weatherWord(d.code).toLowerCase(), d.tmax != null ? `${Math.round(d.tmax)}°` : '', d.wind != null ? `wind ${Math.round(d.wind)} km/h` : ''];
+    if (category === 'skiing' && (d.snow ?? 0) >= 1) bits.unshift(`${Math.round(d.snow!)} cm new snow`);
+    if (category === 'camping' && d.tmin != null) bits.push(`night ${Math.round(d.tmin)}°`);
+    headline = `${VERDICT_WORD[v]} ${when} · ${bits.filter(Boolean).join(', ')}`;
+  }
+  // How it changes: name the good days, and the main problem on the others.
+  let detail = '';
+  if (days.length > 1) {
+    const good = rated.filter((x) => x.r.verdict === 'go').map((x) => dayShort(x.d.date));
+    const bad = rated.filter((x) => x.r.verdict === 'skip' && x.r.why[0]);
+    const parts: string[] = [];
+    if (good.length) parts.push(good.length === days.length ? 'good every day' : `good ${good.slice(0, 4).join(', ')}${good.length > 4 ? '…' : ''}`);
+    if (bad.length) parts.push(`${bad[0].r.why[0]} ${dayShort(bad[0].d.date)}`);
+    detail = parts.join('; ');
+  }
+  return { verdict: v, bestDate: v === 'skip' || v === 'na' ? null : best.d.date, goDays, headline, detail, strip };
+}
+
+export const verdictRank = (v: Verdict) => RANK[v];

@@ -13,6 +13,8 @@ const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 const TZ = 'Australia/Sydney';
 /** Long enough for the "Next 2 weeks" window. */
 export const FORECAST_DAYS = 14;
+/** The marine forecast's limit. */
+export const MARINE_DAYS = 8;
 /** Places per request, to keep URLs short. */
 const BATCH = 50;
 
@@ -134,11 +136,9 @@ export async function fetchForecasts(places: Place[], coastal: boolean[]): Promi
     getAll(WEATHER_URL, places, { daily: DAILY_VARS.join(',') }),
     coastPlaces.length ? getAll(WEATHER_URL, coastPlaces, { hourly: WIND_VARS.join(',') }) : Promise.resolve([]),
     // Marine data is a bonus: if it fails, weather still shows.
-    // If the marine API won't go out 14 days, take its first week instead.
+    // The marine API only goes out 8 days (asking for more fails the whole request).
     coastPlaces.length
-      ? getAll(MARINE_URL, coastPlaces, { hourly: MARINE_VARS.join(',') })
-          .catch(() => getAll(MARINE_URL, coastPlaces, { hourly: MARINE_VARS.join(','), forecast_days: '7' }))
-          .catch(() => coastPlaces.map(() => null))
+      ? getAll(MARINE_URL, coastPlaces, { hourly: MARINE_VARS.join(','), forecast_days: String(MARINE_DAYS) }).catch(() => coastPlaces.map(() => null))
       : Promise.resolve([]),
   ]);
   const result: (Forecast | null)[] = weather.map((w) => (w ? { daily: w.daily as DailyWeather } : null));

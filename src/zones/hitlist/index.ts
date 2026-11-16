@@ -48,6 +48,8 @@ export interface HitListApi {
   reload(): Promise<void>;
   /** Called with the located items shown on the map, whenever that changes (region, filter, edits). */
   onVisibleChange(cb: (items: HitListItem[]) => void): void;
+  /** Called with every located item on the hit list (any region or category), whenever that changes. */
+  onItemsChange(cb: (items: HitListItem[]) => void): void;
   /** Open an item's card (and fly to it). */
   openItem(id: string): void;
   /** Add a section to every pin card. `fill` is called with the card's empty section element. */
@@ -71,6 +73,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   let picking = false;
   let view: 'list' | 'other' | null = null;
   const visibleListeners: ((items: HitListItem[]) => void)[] = [];
+  const itemsListeners: ((items: HitListItem[]) => void)[] = [];
+  const located = () => items.filter((i) => i.lat != null && i.lng != null);
   const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
 
   // ---- Floating UI ----
@@ -111,8 +115,9 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   function refresh() {
     const shown = visibleItems();
     pins.show(shown);
-    const located = shown.filter((i) => i.lat != null && i.lng != null);
-    visibleListeners.forEach((cb) => cb(located));
+    const shownLocated = shown.filter((i) => i.lat != null && i.lng != null);
+    visibleListeners.forEach((cb) => cb(shownLocated));
+    itemsListeners.forEach((cb) => cb(located()));
     // Names beside the pins only while some categories are picked, so the map stays tidy otherwise.
     map.getContainer().classList.toggle('hl-show-names', filter.size > 0);
     const toLocate = items.filter((i) => i.lat == null).length;
@@ -555,6 +560,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     onVisibleChange(cb) {
       visibleListeners.push(cb);
       cb(visibleItems().filter((i) => i.lat != null && i.lng != null));
+    },
+    onItemsChange(cb) {
+      itemsListeners.push(cb);
+      cb(located());
     },
     openItem(id) {
       const item = items.find((i) => i.id === id);
