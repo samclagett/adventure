@@ -165,7 +165,7 @@ export function mountPlanner(
     if (step === 'results' && blocker) step = 'ask';
     screen.innerHTML =
       step === 'ask'
-        ? `<div class="pl-body">
+        ? `<div class="pl-body pl-ask">
       <div class="pl-top"><h2>Where to?</h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Explore the map</span></button></div>
       <p class="pl-q">What do you feel like?</p>
       <div class="pl-acts">
@@ -175,8 +175,8 @@ export function mountPlanner(
       <p class="pl-q">When?</p>
       <div class="pl-when">${WINDOWS.map((w) => `<button type="button" data-win="${w.id}" class="${w.id === prefs.windowId ? 'on' : ''}">${w.label}</button>`).join('')}</div>
       ${fromHtml()}
-    </div>
-    <div class="pl-foot-bar"><button type="button" class="pl-go" data-act="show" ${blocker ? 'disabled' : ''}>${blocker || 'Show places'}</button></div>`
+      <div class="pl-foot-bar"><button type="button" class="pl-go" data-act="show" ${blocker ? 'disabled' : ''}>${blocker || 'Show places'}</button></div>
+    </div>`
         : `<div class="pl-body">
       <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · from ${esc(from!.name)}</small></h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Map</span></button></div>
       ${resultsHtml()}
