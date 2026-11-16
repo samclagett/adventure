@@ -17,10 +17,10 @@ A claim older than 7 days with no activity can be taken over after a message to 
 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
-| map | `src/zones/map/` | free | | |
-| hitlist | `src/zones/hitlist/` | free | | |
+| map | `src/zones/map/` | Sam (Claude) | remove 3D flythrough | 2026-11-16 |
+| hitlist | `src/zones/hitlist/` | Sam (Claude) | remove 3D flythrough | 2026-11-16 |
 | conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
-| infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
+| infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | remove 3D flythrough | 2026-11-16 |
 | docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |
