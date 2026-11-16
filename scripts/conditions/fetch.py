@@ -3,7 +3,7 @@
 Run every 3 hours by .github/workflows/conditions.yml (and by hand from the Actions tab). It:
   1. Asks Supabase for the forecast areas (the `conditions_areas` function): one point per 0.25 degree
      grid square that has hit list places, and whether any of them are coastal (surf, diving, kayaking).
-  2. Fetches the weather forecast for every area, and hourly wind plus the marine forecast for coastal ones,
+  2. Fetches the daily and hourly weather for every area, and the marine forecast for coastal ones,
      many areas per request, exactly as the app does live (src/zones/conditions/openmeteo.ts).
   3. Writes conditions.json, which the workflow publishes to the `conditions-data` branch.
 
@@ -27,7 +27,8 @@ BATCH = 50
 DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_sum",
          "precipitation_probability_max", "wind_speed_10m_max", "wind_gusts_10m_max",
          "wind_direction_10m_dominant", "snowfall_sum"]
-WIND = ["wind_speed_10m", "wind_direction_10m"]
+HOURLY = ["weather_code", "temperature_2m", "precipitation", "precipitation_probability",
+          "wind_speed_10m", "wind_direction_10m"]
 MARINE = ["wave_height", "swell_wave_height", "swell_wave_period", "swell_wave_direction",
           "sea_level_height_msl", "sea_surface_temperature"]
 
@@ -79,21 +80,18 @@ def main() -> int:
     places = areas()
     coastal = [p for p in places if p["coastal"]]
     print(f"{len(places)} areas, {len(coastal)} coastal")
-    weather = fetch(WEATHER_URL, places, {"daily": ",".join(DAILY)})
-    wind = fetch(WEATHER_URL, coastal, {"hourly": ",".join(WIND)})
+    weather = fetch(WEATHER_URL, places, {"daily": ",".join(DAILY), "hourly": ",".join(HOURLY)})
     marine = fetch(MARINE_URL, coastal, {"hourly": ",".join(MARINE), "forecast_days": str(MARINE_DAYS)})
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     result = {}
     for p, w in zip(places, weather):
         if w:
-            result[p["area"]] = {"lat": p["lat"], "lng": p["lng"], "coastal": p["coastal"], "forecast": {"daily": w["daily"]}}
-    for p, w, m in zip(coastal, wind, marine):
+            result[p["area"]] = {"lat": p["lat"], "lng": p["lng"], "coastal": p["coastal"], "forecast": {"daily": w["daily"], "hourly": w.get("hourly")}}
+    for p, m in zip(coastal, marine):
         f = result.get(p["area"], {}).get("forecast")
         if f is None:
             continue
-        if w:
-            f["hourlyWind"] = w["hourly"]
         if m:
             f["marine"] = m["hourly"]
 

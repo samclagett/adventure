@@ -5,7 +5,7 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import { COASTAL, type ConditionsData } from './data';
 import { daysOf, rateDay, todayIso, dayLabel, compass, VERDICT_WORD } from './summary';
-import { WEATHER_ICONS, weatherKind } from './weather-icons';
+import { WEATHER_ICONS, KIND_WORD, weatherKind, windArrow as arrow } from './weather-icons';
 
 /**
  * Explore mode's live weather layer: beside each pin on the map, the day's weather symbol and top
@@ -15,10 +15,6 @@ import { WEATHER_ICONS, weatherKind } from './weather-icons';
 
 const LAYER_KEY = 'adventure.conditions.layer';
 const DAYS_AHEAD = 13;
-
-/** An arrow pointing down (the way a north wind blows), turned to blow away from `fromDeg`. */
-const arrow = (fromDeg: number, cls: string) =>
-  `<svg class="wx-arrow ${cls}" viewBox="0 0 24 24" style="transform:rotate(${Math.round(fromDeg)}deg)" aria-hidden="true"><path d="M12 3v17M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -86,7 +82,11 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     if (!day) return null;
     const rated = rateDay(cat, day);
     const parts: string[] = [];
-    parts.push(`<span class="wx-part">${WEATHER_ICONS[weatherKind(day.code)]}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>`);
+    // Morning and afternoon (and night for camping) symbols, else one for the day.
+    const icons = day.periods.length
+      ? `<span class="wx-periods">${day.periods.map((p) => WEATHER_ICONS[p.kind]).join('')}</span>`
+      : WEATHER_ICONS[weatherKind(day.code)];
+    parts.push(`<span class="wx-part">${icons}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>`);
     if (day.wind != null) {
       parts.push(`<span class="wx-part wx-wind">${day.windDir != null ? arrow(day.windDir, 'wx-a-wind') : ''}${Math.round(day.wind)}</span>`);
     }
@@ -96,6 +96,7 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     const label = [
       item.name,
       `${VERDICT_WORD[rated.verdict]}`,
+      ...day.periods.map((p) => `${p.label} ${KIND_WORD[p.kind]}`),
       day.tmax != null ? `${Math.round(day.tmax)} degrees` : '',
       day.wind != null ? `wind ${day.windDir != null ? compass(day.windDir) + ' ' : ''}${Math.round(day.wind)} km/h` : '',
       day.surf ? `swell ${day.surf.swellMax.toFixed(1)} m` : '',

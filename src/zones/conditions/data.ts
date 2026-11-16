@@ -94,7 +94,8 @@ export class ConditionsData {
       const at = new Date(remote.fetched_at).getTime();
       for (const [id, a] of Object.entries(remote.areas)) {
         const mine = this.entries.get(id);
-        if (!mine || mine.at < at || (a.coastal && !mine.coastal)) this.entries.set(id, { forecast: a.forecast, coastal: a.coastal, at });
+        const lacksHourly = !a.forecast.hourly && !!mine?.forecast?.hourly;
+        if (!lacksHourly && (!mine || mine.at < at || (a.coastal && !mine.coastal))) this.entries.set(id, { forecast: a.forecast, coastal: a.coastal, at });
       }
       this.save();
     } catch {
@@ -130,7 +131,8 @@ export class ConditionsData {
     }
     const need = [...areas.entries()].filter(([id, a]) => {
       const e = this.entries.get(id);
-      return force || !e?.forecast || (a.coastal && !e.coastal) || Date.now() - e.at > STALE_MS;
+      // Forecasts saved before AM/PM periods have no hourly weather: fetch those again.
+      return force || !e?.forecast || !e.forecast.hourly || (a.coastal && !e.coastal) || Date.now() - e.at > STALE_MS;
     });
 
     if (need.length) {
