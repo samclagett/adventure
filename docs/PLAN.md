@@ -35,3 +35,15 @@ Round 3 (2026-11-16, Sam's answers):
 - Home base is saved on each phone (one shared login), defaults the Plan screen's start point, and can be changed for one search.
   The list shows straight-line distance and ranks nearer places first within each rating. Travel times come later.
 - Weather icon set: Sam is choosing (Material, Lucide, Phosphor light or Tabler).
+
+### Uplift Round 2: navigation (2026-11-16)
+
+From the professional review (Round 1, look and feel, was PRs #20 to #23).
+- **Bottom tab bar** (`src/zones/shared/tabs.ts`): Plan, Map, Hit list, Camps. Replaces the floating buttons. Adding a
+  place is the Add button in the Hit list tab, or press and hold on the map.
+- **Draggable sheets** (`src/zones/shared/sheet.ts`): a place card opens short (name, verdict pill for the next four days,
+  distance from home, Directions, Share, Edit) and drags up for the full forecast. No raw coordinates. The Hit list and
+  Camps panels drag the same way.
+- **Plan results lead with the best pick**: a "Best this weekend" card, then a compact list with a verdict pill and day strip.
+  Detail is one tap away on the place card.
+- Next (Round 3, not started): drive times, "tell me when it's a Go" alerts, done list, fire and park alerts.
