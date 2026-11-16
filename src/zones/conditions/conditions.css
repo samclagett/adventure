@@ -1,0 +1,126 @@
+/* Conditions button, sheet, map bubbles and the pin card section. Colours come from src/style.css and hitlist.css. */
+
+/* Verdict accents: muted, matching the pin colours. */
+:root { --cd-go: #8fa66b; --cd-mar: #c9a45c; --cd-skip: #8a9196; }
+
+.cd-btn {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 116px);
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 40px;
+  padding: 7px 12px 7px 9px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: none;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px #5b9bb5, 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.cd-btn .hl-icon { width: 22px; height: 22px; }
+.cd-btn.on { box-shadow: inset 0 0 0 3px #5b9bb5, 0 4px 14px rgba(0, 0, 0, 0.35); font-weight: 600; }
+.cd-btn.loading .hl-icon { animation: cd-pulse 1s ease-in-out infinite alternate; }
+@keyframes cd-pulse { to { opacity: 0.35; } }
+
+.cd-sheet {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 62%;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-solid);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 0.95rem;
+}
+.cd-sheet[hidden] { display: none; }
+@media (min-width: 700px) {
+  .cd-sheet { left: 12px; right: auto; bottom: 12px; width: 420px; max-height: calc(100% - 24px); border-radius: 18px; border: 1px solid var(--border); }
+}
+.cd-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px); }
+.cd-sheet h2 { margin: 0 40px 10px 0; font-size: 1.2rem; }
+.cd-sheet h3, .cd-card h3 { display: flex; align-items: center; gap: 6px; margin: 16px 0 6px; font-size: 0.95rem; }
+.cd-sheet h3 .hl-icon { width: 24px; height: 24px; }
+.cd-sheet p, .cd-card p { margin: 8px 0; line-height: 1.4; }
+.cd-close { position: absolute; z-index: 1; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; font: inherit; background: #234257; color: var(--text); cursor: pointer; }
+.cd-muted { color: var(--muted); font-size: 0.85rem; }
+.cd-warn { color: var(--warn); font-size: 0.88rem; }
+.cd-link { font: inherit; color: var(--accent); background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer; }
+.cd-foot { margin-top: 14px; }
+.cd-toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 0.88rem; color: var(--muted); }
+.cd-toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.cd-windows { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 4px; }
+.cd-windows::-webkit-scrollbar { display: none; }
+.cd-windows button { flex: none; font: inherit; font-size: 0.85rem; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+.cd-windows button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
+
+/* One row per place in the sheet. The left edge shows the surf verdict. */
+.cd-row { display: grid; grid-template-columns: 30px 1fr; gap: 2px 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 9px 12px 9px 8px; margin-bottom: 6px; cursor: pointer; }
+.cd-row-icon { grid-row: span 2; color: var(--pin); }
+.cd-row-icon .hl-icon { width: 30px; height: 30px; }
+.cd-row-name { font-weight: 600; }
+.cd-row-sum { font-size: 0.85rem; color: var(--muted); line-height: 1.35; }
+.cd-row.cd-v-go { border-left-color: var(--cd-go); }
+.cd-row.cd-v-mar { border-left-color: var(--cd-mar); }
+.cd-row.cd-v-skip { border-left-color: var(--cd-skip); }
+
+/* Callout bubble above each pin, shown from regional zoom in. Lifted by the pin's height (--pin-s from pins.ts). */
+.cd-bubble { display: none; padding: 0; border: none; background: none; font: inherit; cursor: pointer; }
+.cd-zoom .cd-bubble { display: block; }
+.cd-zoom .cd-bubble.cd-hidden { visibility: hidden; }
+.cd-bubble-box {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  max-width: 170px;
+  margin-bottom: calc(60px * var(--pin-s, 1));
+  padding: 5px 8px 6px;
+  border-radius: 9px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  text-align: left;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+.cd-bubble-box::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; margin-left: -5px; background: var(--paper); transform: rotate(45deg); }
+.cd-bubble-box b { font-size: 0.78rem; }
+.cd-bubble-box em { font-style: normal; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #6b767c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-bubble-box span { color: #3c4a52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-bubble-box.cd-has-v { border-left: 4px solid var(--cd-skip); }
+.cd-bubble-box.cd-v-go { border-left-color: var(--cd-go); }
+.cd-bubble-box.cd-v-mar { border-left-color: var(--cd-mar); }
+
+/* Little day-by-day verdict strip in a surf bubble. */
+.cd-strip { display: flex !important; gap: 2px; margin-top: 3px; }
+.cd-strip i { flex: 1; min-width: 6px; height: 5px; border-radius: 2px; background: #d6cfc1; }
+.cd-strip i.cd-v-go { background: var(--cd-go); }
+.cd-strip i.cd-v-mar { background: var(--cd-mar); }
+.cd-strip i.cd-v-skip { background: var(--cd-skip); opacity: 0.55; }
+
+/* Section on the pin card. */
+.cd-card { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
+.cd-card .cd-windows { margin-bottom: 6px; }
+.cd-get { display: flex; align-items: center; gap: 8px; font: inherit; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; cursor: pointer; }
+.cd-get .hl-icon { width: 22px; height: 22px; }
+.cd-days { display: grid; gap: 4px; }
+.cd-day { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; padding: 7px 10px; border-radius: 10px; background: #0e2130; border-left: 4px solid transparent; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.cd-day-name { font-weight: 600; min-width: 48px; }
+.cd-day small { flex-basis: 100%; color: var(--muted); font-size: 0.8rem; }
+.cd-day.cd-v-go { border-left-color: var(--cd-go); }
+.cd-day.cd-v-mar { border-left-color: var(--cd-mar); }
+.cd-day.cd-v-skip { border-left-color: var(--cd-skip); }
+.cd-verdict { font-weight: 600; }
+.cd-v-go .cd-verdict { color: #c9dbae; }
+.cd-v-mar .cd-verdict { color: #e6cf9c; }
+.cd-v-skip .cd-verdict { color: var(--muted); }

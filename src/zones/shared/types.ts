@@ -11,6 +11,8 @@ export interface HitListItem {
   lng: number | null;
   notes: string | null;
   link: string | null;
+  /** Compass bearing (degrees) a beach faces out to sea, used for onshore/offshore wind. Null = not set. */
+  faces: number | null;
   created_at: string;
   updated_at: string;
 }

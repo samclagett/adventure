@@ -10,4 +10,9 @@ Agreed 2026-11-09. Tick items off here as they land.
    place (Nominatim, limited to NSW/ACT/VIC/TAS), tapping the map, or pasting a full Google Maps link. Items with no
    location go in the "To locate" list. Tap a pin for its card (notes, link, edit, delete). Saved to Supabase `hit_list`,
    category in the existing `activity` column. **Deferred:** bulk paste of a messy list.
-4. **Conditions pipeline test**: "Get conditions" button triggers a GitHub Action that pulls Open-Meteo data for the pins and shows one simple callout bubble.
+4. ✅ **Conditions** (2026-11-16): a "Conditions" button fetches Open-Meteo forecasts straight from the browser (Sam's call:
+   faster than a GitHub Action and no token on the phone; Actions stay for scraped sources later). Window picker (this weekend,
+   next 5 days, next week, next 2 weeks). Each pin gets a callout bubble with what matters for its category, and each pin card a
+   day-by-day breakdown. Surf spots also get model swell (metres, never converted to feet), wind relative to which way the beach
+   faces (new `faces` column), the best window of the day, tides, water temperature and a first go/marginal/skip verdict.
+   Lessons came from Sam's "Daily Surf Report" scheduled task; its 16 beaches are now on the hit list.

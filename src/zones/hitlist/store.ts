@@ -2,7 +2,7 @@ import { supabase } from '../shared/supabase';
 import type { HitListItem } from '../shared/types';
 
 /** The fields a user fills in. `activity` holds the category id (see categories.ts). */
-export type ItemFields = Pick<HitListItem, 'name' | 'activity' | 'lat' | 'lng' | 'notes' | 'link'>;
+export type ItemFields = Pick<HitListItem, 'name' | 'activity' | 'lat' | 'lng' | 'notes' | 'link' | 'faces'>;
 
 function db() {
   if (!supabase) throw new Error("Supabase isn't configured yet.");

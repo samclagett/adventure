@@ -19,6 +19,8 @@ interface Draft {
   link: string;
   lat: number | null;
   lng: number | null;
+  /** Which way a beach faces (degrees), for surf spots. */
+  faces: number | null;
   /** Where the location came from, e.g. a search result's name or "Dropped pin". */
   where: string;
 }
@@ -34,11 +36,29 @@ function fmt(n: number) {
   return n.toFixed(5);
 }
 
+/** The 8 compass points a beach can face, for the surf spot form. */
+const FACINGS: [string, number][] = [['N', 0], ['NE', 45], ['E', 90], ['SE', 135], ['S', 180], ['SW', 225], ['W', 270], ['NW', 315]];
+const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+const compass = (deg: number) => COMPASS16[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
+/** Categories whose form asks which way the beach faces. */
+const HAS_FACING = new Set(['surfing']);
+
+/** What other zones can do with the hit list (see main.ts). */
+export interface HitListApi {
+  reload(): Promise<void>;
+  /** Called with the located items shown on the map, whenever that changes (region, filter, edits). */
+  onVisibleChange(cb: (items: HitListItem[]) => void): void;
+  /** Open an item's card (and fly to it). */
+  openItem(id: string): void;
+  /** Add a section to every pin card. `fill` is called with the card's empty section element. */
+  addCardSection(fill: (item: HitListItem, el: HTMLElement) => void): void;
+}
+
 /**
  * The hit list: pins on the map, and a bottom sheet for the list (with the category filter at its top),
  * adding, viewing, editing and deleting adventures. Data is saved in Supabase (`hit_list`).
  */
-export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
+export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi {
   const map = adv.map;
   let items: HitListItem[] = [];
   let signedIn = false;
@@ -50,6 +70,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
   let results: PlaceMatch[] = [];
   let picking = false;
   let view: 'list' | 'other' | null = null;
+  const visibleListeners: ((items: HitListItem[]) => void)[] = [];
+  const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
 
   // ---- Floating UI ----
   // One "Hit list" button, top left: opens the list, with category filters at the top of it.
@@ -87,7 +109,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
   }
 
   function refresh() {
-    pins.show(visibleItems());
+    const shown = visibleItems();
+    pins.show(shown);
+    const located = shown.filter((i) => i.lat != null && i.lng != null);
+    visibleListeners.forEach((cb) => cb(located));
     // Names beside the pins only while some categories are picked, so the map stays tidy otherwise.
     map.getContainer().classList.toggle('hl-show-names', filter.size > 0);
     const toLocate = items.filter((i) => i.lat == null).length;
@@ -211,13 +236,21 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       <h2>${esc(item.name)}</h2>
       ${item.notes ? `<p class="hl-notes">${esc(item.notes)}</p>` : ''}
       ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60))}</a></p>` : ''}
+      ${item.faces != null && HAS_FACING.has(c.id) ? `<p class="hl-muted">Beach faces ${compass(item.faces)} (${item.faces}°)</p>` : ''}
       ${item.lat != null ? `<p class="hl-muted">${fmt(item.lat)}, ${fmt(item.lng!)} · <a href="${gmaps}" target="_blank" rel="noopener">Open in Google Maps</a></p>` : '<p class="hl-muted">Not on the map yet.</p>'}
+      <div class="hl-card-extra"></div>
       <div class="hl-actions">
         <button type="button" class="hl-primary" data-act="edit">Edit</button>
         <button type="button" class="hl-danger" data-act="delete">Delete</button>
       </div>
       <p class="hl-error" hidden></p>
     `);
+    const extra = sheet.querySelector<HTMLElement>('.hl-card-extra')!;
+    cardSections.forEach((fill) => {
+      const el = document.createElement('div');
+      extra.append(el);
+      fill(item, el);
+    });
     sheet.querySelector('[data-act="edit"]')!.addEventListener('click', () => openForm(draftFrom(item)));
     sheet.querySelector('[data-act="delete"]')!.addEventListener('click', async () => {
       if (!confirm(`Delete “${item.name}” from the hit list?`)) return;
@@ -244,6 +277,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
       link: item.link ?? '',
       lat: item.lat,
       lng: item.lng,
+      faces: item.faces,
       where: item.lat != null ? 'Saved pin' : '',
     };
   }
@@ -260,7 +294,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) =>
       b.addEventListener('click', () => {
         locTab = 'search';
-        openForm({ activity: b.dataset.cat!, name: '', notes: '', link: '', lat: null, lng: null, where: '' });
+        openForm({ activity: b.dataset.cat!, name: '', notes: '', link: '', lat: null, lng: null, faces: null, where: '' });
       }),
     );
   }
@@ -319,6 +353,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
         <button type="button" data-tab="link" class="${locTab === 'link' ? 'on' : ''}">Maps link</button>
       </div>
       <div class="hl-tabpanel">${locPanel()}</div>
+      ${HAS_FACING.has(c.id) ? `<div class="hl-field">Beach faces <small>(out to sea, for onshore and offshore wind)</small></div>
+      <div class="hl-facing">${FACINGS.map(([label, deg]) => `<button type="button" data-face="${deg}" class="${d.faces != null && compass(d.faces) === label ? 'on' : ''}">${label}</button>`).join('')}${
+        d.faces != null && !FACINGS.some(([l]) => l === compass(d.faces!)) ? `<span class="hl-muted">${compass(d.faces)} (${d.faces}°)</span>` : ''
+      }</div>` : ''}
       <label class="hl-field">Notes<textarea name="notes" rows="3" placeholder="Best season, who wants to go, gear…">${esc(d.notes)}</textarea></label>
       <label class="hl-field">Link<input name="link" type="url" inputmode="url" value="${esc(d.link)}" placeholder="AllTrails, park page…" /></label>
       <div class="hl-actions">
@@ -344,6 +382,13 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     sheet.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
         locTab = b.dataset.tab as LocTab;
+        openForm(d);
+      }),
+    );
+    sheet.querySelectorAll<HTMLButtonElement>('[data-face]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const deg = Number(b.dataset.face);
+        d.faces = d.faces === deg ? null : deg;
         openForm(d);
       }),
     );
@@ -459,7 +504,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     }
     let link = d.link.trim();
     if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`;
-    const fields: store.ItemFields = { name, activity: d.activity, lat: d.lat, lng: d.lng, notes: d.notes.trim() || null, link: link || null };
+    const fields: store.ItemFields = { name, activity: d.activity, lat: d.lat, lng: d.lng, notes: d.notes.trim() || null, link: link || null, faces: HAS_FACING.has(d.activity) ? d.faces : null };
     const btn = sheet.querySelector<HTMLButtonElement>('[data-act="save"]')!;
     btn.disabled = true;
     btn.textContent = 'Saving…';
@@ -505,5 +550,18 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap) {
     signedIn = now;
   });
 
-  return { reload: load };
+  return {
+    reload: load,
+    onVisibleChange(cb) {
+      visibleListeners.push(cb);
+      cb(visibleItems().filter((i) => i.lat != null && i.lng != null));
+    },
+    openItem(id) {
+      const item = items.find((i) => i.id === id);
+      if (item) openCard(item);
+    },
+    addCardSection(fill) {
+      cardSections.push(fill);
+    },
+  };
 }
