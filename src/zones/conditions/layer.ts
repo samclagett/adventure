@@ -111,7 +111,12 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     markers.clear();
     if (!on) return;
     for (const item of items) {
-      const c = chip(item);
+      let c: ReturnType<typeof chip> = null;
+      try {
+        c = chip(item);
+      } catch (err) {
+        console.error('Weather chip for', item.name, err);
+      }
       if (!c) continue;
       const el = document.createElement('button');
       el.type = 'button';

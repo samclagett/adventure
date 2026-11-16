@@ -270,7 +270,7 @@ export function daysOf(f: Forecast, dates: string[], category: string, faces: nu
   const marine = marineHasData(f.marine) ? f.marine : undefined;
   return dates
     .map((date) => {
-      const i = d.date.indexOf(date);
+      const i = d.time?.indexOf(date) ?? -1;
       if (i < 0) return null;
       const water = marine ? avg(hoursOf(marine.time, marine.sea_surface_temperature, date).map(([, v]) => v)) : null;
       const day: Day = {

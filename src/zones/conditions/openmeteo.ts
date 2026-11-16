@@ -24,7 +24,8 @@ export interface Place {
 }
 
 export interface DailyWeather {
-  date: string[];
+  /** The days, YYYY-MM-DD (Open-Meteo calls this `time`). */
+  time: string[];
   weather_code: (number | null)[];
   temperature_2m_max: (number | null)[];
   temperature_2m_min: (number | null)[];
