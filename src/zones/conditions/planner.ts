@@ -7,8 +7,9 @@ import { searchPlaces, type PlaceMatch } from '../hitlist/geocode';
 import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, dayShort, type Option, type WindowId } from './summary';
 
 /**
- * The opening screen: "What do you feel like, and when?", then every matching place ranked by its
- * conditions, with a line on how they change across the window. Tapping one flies to it.
+ * The opening screen, in two steps. First "What do you feel like, when, and from where?" with a
+ * "Show places" button; then every matching place ranked by its conditions, with a line on how
+ * they change across the window. Tapping one flies to it; "Back" returns to the questions.
  * "Explore the map" closes it; the Plan button brings it back.
  */
 
@@ -49,6 +50,8 @@ export function mountPlanner(
   let items: HitListItem[] = [];
   let isOpen = false;
   let showAll = false;
+  /** Two steps: the questions, then the ranked places. */
+  let step: 'ask' | 'results' = 'ask';
   /** Where this search starts: home, unless changed for this search. */
   let from: Base | null = getHome();
   let editingFrom = !from;
@@ -156,7 +159,13 @@ export function mountPlanner(
   function render() {
     if (!isOpen) return;
     const scroll = screen.querySelector('.pl-body')?.scrollTop ?? 0;
-    screen.innerHTML = `<div class="pl-body">
+    const actLabel = prefs.activity === 'any' ? 'Anything' : prefs.activity ? categoryOf(prefs.activity).label : '';
+    const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
+    const blocker = !prefs.activity ? 'Pick an activity' : !from || editingFrom ? 'Pick where you’re starting from' : '';
+    if (step === 'results' && blocker) step = 'ask';
+    screen.innerHTML =
+      step === 'ask'
+        ? `<div class="pl-body">
       <div class="pl-top"><h2>Where to?</h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Explore the map</span></button></div>
       <p class="pl-q">What do you feel like?</p>
       <div class="pl-acts">
@@ -166,17 +175,32 @@ export function mountPlanner(
       <p class="pl-q">When?</p>
       <div class="pl-when">${WINDOWS.map((w) => `<button type="button" data-win="${w.id}" class="${w.id === prefs.windowId ? 'on' : ''}">${w.label}</button>`).join('')}</div>
       ${fromHtml()}
+    </div>
+    <div class="pl-foot-bar"><button type="button" class="pl-go" data-act="show" ${blocker ? 'disabled' : ''}>${blocker || 'Show places'}</button></div>`
+        : `<div class="pl-body">
+      <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · from ${esc(from!.name)}</small></h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Map</span></button></div>
       ${resultsHtml()}
     </div>`;
     screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = scroll;
     screen.querySelector('[data-act="explore"]')!.addEventListener('click', close);
+    screen.querySelector('[data-act="show"]')?.addEventListener('click', () => {
+      step = 'results';
+      showAll = false;
+      screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = 0;
+      render();
+      screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = 0;
+    });
+    screen.querySelector('[data-act="back"]')?.addEventListener('click', () => {
+      step = 'ask';
+      render();
+      screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = 0;
+    });
     screen.querySelectorAll<HTMLButtonElement>('[data-act-id]').forEach((b) =>
       b.addEventListener('click', () => {
         prefs.activity = b.dataset.actId!;
         showAll = false;
         savePrefs();
         render();
-        screen.querySelector('.pl-results, .pl-loading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }),
     );
     screen.querySelectorAll<HTMLButtonElement>('[data-win]').forEach((b) =>
