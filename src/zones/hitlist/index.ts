@@ -151,7 +151,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   /** Fly so the point sits in the part of the map the sheet doesn't cover. */
   function flyTo(lat: number, lng: number) {
     const covered = sheet.hidden ? 0 : sheet.offsetHeight;
-    map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 11), offset: [0, -covered / 2], duration: 1500, essential: true });
+    adv.flyToPlace(lat, lng, covered);
   }
 
   function needSignIn(): boolean {

@@ -28,7 +28,7 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap) {
     <summary aria-label="Mountain height">${MOUNTAIN_ICON}</summary>
     <label class="relief-pop">
       <span>Mountain height</span>
-      <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.5" aria-label="Mountain height" />
+      <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.25" aria-label="Mountain height" />
       <output></output>
     </label>
   `;
