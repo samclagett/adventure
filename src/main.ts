@@ -1,3 +1,7 @@
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/barlow-semi-condensed/latin-600.css';
 import './style.css';
 import { mountMap } from './zones/map';
 import { mountHitList } from './zones/hitlist';

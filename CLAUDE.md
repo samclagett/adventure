@@ -34,6 +34,8 @@ Touching a second zone? Claim that too. Keep `shared` edits small, because they 
 ## Rules
 
 - Phones first: test at phone width, and keep the light quality mode fast.
+- One look everywhere: use the design system described at the top of `src/style.css` (colours, corners, fonts,
+  paper-and-ink for primary buttons and anything selected, category icons as ink on a paper disc). Don't add new colours or button styles in zone CSS.
 - Never commit secrets. The Supabase URL and anon key are public by design and come from
   repo variables at build time (see SETUP.md). Anything else secret goes in GitHub Actions secrets.
 - Run `npm run build` before pushing; it type-checks too.

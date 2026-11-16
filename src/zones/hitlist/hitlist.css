@@ -1,5 +1,4 @@
 /* Hit list UI. Uses the colour variables from src/style.css. `--pin` is each category's muted accent. */
-:root { --paper: #f1ebdf; --ink: #1b2830; }
 .hl-icon { width: 20px; height: 20px; flex: none; display: block; }
 
 /* "Hit list" button, top left. Opens the list, with the category filter at its top (openList in index.ts). */
@@ -8,20 +7,6 @@
   z-index: 2;
   top: calc(env(safe-area-inset-top) + 12px);
   left: 12px;
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  min-height: 40px;
-  padding: 8px 12px 8px 10px;
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--text);
-  background: var(--panel);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  cursor: pointer;
 }
 .hl-list-btn.on { border-color: var(--paper); }
 .hl-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--paper); color: var(--ink); font-size: 0.78rem; font-weight: 700; display: inline-grid; place-items: center; }
@@ -31,7 +16,7 @@
 .hl-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
 .hl-link { font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: none; border: none; padding: 4px 0; cursor: pointer; }
 .hl-filter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.hl-filter-grid .hl-chip { width: 100%; border-radius: 12px; padding: 6px 10px; min-height: 44px; min-width: 0; gap: 8px; font-size: 0.88rem; line-height: 1.2; background: #0e2130; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.hl-filter-grid .hl-chip { width: 100%; border-radius: var(--r-m); padding: 6px 10px; min-height: 44px; min-width: 0; gap: 8px; font-size: 0.88rem; line-height: 1.2; background: var(--field); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .hl-filter-grid .hl-chip > span:first-of-type { flex: 1; text-align: left; white-space: normal; min-width: 0; }
 .hl-filter-grid .hl-chip.on { background: var(--paper); }
 .hl-filter-grid .hl-chip .hl-icon-sketch { width: 26px; height: 26px; margin: -4px 0; }
@@ -76,7 +61,7 @@
   white-space: nowrap;
   padding: 2px 7px;
   border-radius: 7px;
-  background: rgba(11, 26, 36, 0.72);
+  background: rgba(12, 24, 32, 0.78);
   color: var(--text);
   font-size: 0.75rem;
   font-weight: 600;
@@ -138,8 +123,8 @@
 }
 /* The pin being placed stays full size so it's easy to drag. */
 .hl-pin-draft { --s: 1; }
-.hl-pin-draft .hl-pin-shape { width: 50px; height: 50px; box-shadow: 0 0 0 3px var(--accent), 0 3px 10px rgba(0, 0, 0, 0.5); animation: hl-bob 1.2s ease-in-out infinite alternate; }
-.hl-pin-draft .hl-pin-shape::after { box-shadow: 2px 2px 0 1px var(--accent); }
+.hl-pin-draft .hl-pin-shape { width: 50px; height: 50px; box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--paper), 0 3px 10px rgba(0, 0, 0, 0.5); animation: hl-bob 1.2s ease-in-out infinite alternate; }
+.hl-pin-draft .hl-pin-shape::after { box-shadow: 2px 2px 0 1px var(--ink); }
 .hl-pin-draft .hl-icon { width: 38px; height: 38px; }
 @keyframes hl-bob { to { translate: 0 -6px; } }
 
@@ -150,7 +135,7 @@
   font: inherit;
   cursor: pointer;
 }
-.hl-badge { background: rgba(246, 173, 85, 0.18); color: var(--warn); border-radius: 999px; padding: 1px 8px; font-size: 0.78rem; font-weight: 600; }
+.hl-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); border-radius: 999px; padding: 1px 8px; font-size: 0.78rem; font-weight: 600; }
 .hl-add-btn {
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom) + 62px);
@@ -158,11 +143,12 @@
   height: 52px;
   border-radius: 50%;
   border: none;
-  background: var(--accent);
-  color: #062026;
+  background: var(--paper);
+  color: var(--ink);
   font-size: 2rem;
+  font-weight: 300;
   line-height: 1;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow);
 }
 
 /* Bottom sheet: list, card and add/edit form. Covers the map controls while open. */
@@ -177,12 +163,12 @@
   flex-direction: column;
   background: var(--panel-solid);
   border-top: 1px solid var(--border);
-  border-radius: 18px 18px 0 0;
+  border-radius: var(--r-l) 18px 0 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
   font-size: 0.95rem;
 }
 @media (min-width: 700px) {
-  .hl-sheet { left: auto; right: 12px; bottom: 12px; width: 400px; max-height: calc(100% - 24px); border-radius: 18px; border: 1px solid var(--border); }
+  .hl-sheet { left: auto; right: 12px; bottom: 12px; width: 400px; max-height: calc(100% - 24px); border-radius: var(--r-l); border: 1px solid var(--border); }
 }
 .hl-sheet-body {
   overflow-y: auto;
@@ -206,7 +192,7 @@
   border-radius: 50%;
   border: none;
   font: inherit;
-  background: #234257;
+  background: var(--raised);
   color: var(--text);
   cursor: pointer;
   z-index: 1;
@@ -220,10 +206,10 @@
   width: 100%;
   text-align: left;
   color: var(--text);
-  background: #0e2130;
+  background: var(--field);
   border: 1px solid var(--border);
   border-left: 4px solid var(--pin, var(--muted));
-  border-radius: 12px;
+  border-radius: var(--r-m);
   padding: 10px 12px;
   margin-bottom: 6px;
   cursor: pointer;
@@ -240,20 +226,20 @@
   gap: 10px;
   text-align: left;
   color: var(--text);
-  background: #0e2130;
+  background: var(--field);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-m);
   padding: 12px;
   min-height: 52px;
   cursor: pointer;
 }
-.hl-cat-grid .hl-icon { width: 36px; height: 36px; color: var(--paper); }
+.hl-cat-grid .hl-icon { width: 40px; height: 40px; padding: 4px; border-radius: 50%; background: var(--paper); color: var(--ink); }
 
 .hl-cat-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--pin); font-weight: 600; font-size: 0.85rem; border-radius: 999px; padding: 4px 10px; margin-bottom: 8px; }
 
 .hl-cat-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px 8px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
 .hl-cat-row::-webkit-scrollbar { display: none; }
-.hl-cat-row .hl-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: #0e2130; }
+.hl-cat-row .hl-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--field); }
 .hl-cat-row .hl-chip.on { background: var(--paper); }
 
 .hl-field { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 0.88rem; }
@@ -263,15 +249,15 @@
   font-size: 16px; /* 16px stops iPhone Safari zooming in on focus. */
   width: 100%;
   padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #2b4b60;
-  background: #0e2130;
+  border-radius: var(--r-s);
+  border: 1px solid var(--border);
+  background: var(--field);
   color: var(--text);
 }
 .hl-sheet textarea { resize: vertical; }
 
-.hl-where { margin-top: 6px; padding: 10px 12px; border-radius: 10px; background: rgba(246, 173, 85, 0.12); color: var(--text); font-size: 0.9rem; line-height: 1.4; }
-.hl-where.ok { background: rgba(79, 209, 197, 0.12); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.hl-where { margin-top: 6px; padding: 10px 12px; border-radius: var(--r-s); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--text); font-size: 0.9rem; line-height: 1.4; }
+.hl-where.ok { background: color-mix(in srgb, var(--accent) 14%, transparent); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .hl-where small { color: var(--muted); }
 .hl-where .hl-icon { width: 18px; height: 18px; }
 .hl-wide { display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -279,9 +265,9 @@
 .hl-sheet h3 .hl-icon { width: 18px; height: 18px; }
 .hl-where button { margin-left: auto; background: none; border: none; color: var(--warn); cursor: pointer; padding: 4px; }
 
-.hl-tabs { display: flex; gap: 4px; margin-top: 8px; background: #0e2130; border-radius: 12px; padding: 4px; }
+.hl-tabs { display: flex; gap: 4px; margin-top: 8px; background: var(--field); border-radius: var(--r-m); padding: 4px; }
 .hl-tabs button { flex: 1; border: none; background: none; color: var(--muted); border-radius: 9px; padding: 8px 4px; min-height: 38px; cursor: pointer; font-size: 0.85rem; }
-.hl-tabs button.on { background: var(--accent); color: #062026; font-weight: 600; }
+.hl-tabs button.on { background: var(--paper); color: var(--ink); font-weight: 600; }
 .hl-tabpanel { margin-top: 8px; }
 .hl-search,
 .hl-link { display: flex; gap: 6px; }
@@ -290,9 +276,9 @@
 .hl-wide,
 .hl-actions button {
   border: 1px solid var(--border);
-  background: #1a3a4f;
+  background: var(--raised);
   color: var(--text);
-  border-radius: 10px;
+  border-radius: var(--r-s);
   padding: 10px 14px;
   min-height: 44px;
   cursor: pointer;
@@ -302,8 +288,8 @@
 
 .hl-actions { display: flex; gap: 8px; margin-top: 16px; }
 .hl-actions button { flex: 1; }
-.hl-actions .hl-primary { background: var(--accent); color: #062026; border: none; font-weight: 600; }
-.hl-actions .hl-danger { background: none; color: var(--warn); border-color: rgba(246, 173, 85, 0.5); }
+.hl-actions .hl-primary { background: var(--paper); color: var(--ink); border: none; font-weight: 600; }
+.hl-actions .hl-danger { background: none; color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
 .hl-actions button:disabled { opacity: 0.6; }
 
 /* "Tap the map" banner while dropping a pin. */
@@ -318,12 +304,12 @@
   align-items: center;
   padding: 10px 12px;
   background: var(--panel-solid);
-  border: 1px solid var(--accent);
-  border-radius: 14px;
+  border: 1px solid var(--paper);
+  border-radius: var(--r-m);
   font-size: 0.92rem;
 }
 .hl-banner span { flex: 1; }
-.hl-banner button { font: inherit; border: none; background: #1a3a4f; color: var(--text); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+.hl-banner button { font: inherit; border: none; background: var(--raised); color: var(--text); border-radius: var(--r-s); padding: 10px 14px; cursor: pointer; }
 
 /* While the sheet is open, hide the floating buttons it would overlap. */
 .hl-sheet-open .hl-add-btn,
@@ -339,6 +325,6 @@
 
 /* "Beach faces" compass buttons on the surf spot form. */
 .hl-facing { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
-.hl-facing button { font: inherit; font-size: 0.85rem; min-width: 44px; min-height: 36px; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.hl-facing button { font: inherit; font-size: 0.85rem; min-width: 44px; min-height: 36px; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
 .hl-facing button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
 .hl-field small { color: var(--muted); font-weight: 400; }

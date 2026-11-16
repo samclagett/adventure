@@ -51,7 +51,7 @@ export const COLORS = {
   halo: 'rgba(11, 26, 36, 0.55)',
   ghost: '#08141c',
   outline: '#ffffff',
-  activeGlow: '#4fd1c5',
+  activeGlow: '#6fc3b2',
 };
 
 const demSource = {
