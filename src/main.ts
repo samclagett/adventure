@@ -18,12 +18,12 @@ app.innerHTML = `
       <div id="status" class="status">Checking connection…</div>
       <div id="auth"></div>
       <h2>Settings</h2>
-      <p class="muted">More settings will live here.</p>
+      <div id="map-settings"></div>
     </div>
   </details>
 `;
 
-const adv = mountMap(app.querySelector<HTMLDivElement>('#map')!);
+const adv = mountMap(app.querySelector<HTMLDivElement>('#map')!, app.querySelector<HTMLDivElement>('#map-settings'));
 const hitList = mountHitList(app, adv);
 mountCampsites(app, adv);
 mountConditions(app, adv, hitList);

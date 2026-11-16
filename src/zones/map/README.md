@@ -7,7 +7,8 @@ The 3D map (MapLibre GL), terrain, state selection, pins, visual style and the q
 - `map.ts`: creates the map, camera views for Australia/NSW/VIC, tap-a-state-to-zoom.
 - `style.ts`: the look. Elevation-tinted land and ocean, hillshade, ghosted states.
 - `quality.ts`: light (phones: no 3D terrain, pixel ratio 1) vs full (3D terrain + sky). Remembered per device.
-- `controls.ts`: region buttons and quality toggle (bottom bar), and the mountain-height button (top right) that opens the slider.
+- `controls.ts`: region buttons (bottom bar). The 3D switch and mountain-height slider are drawn into the account menu's Settings
+  (main.ts passes that element to `mountMap`). The compass only shows while the map is turned away from north.
 - `regions.ts`: `regionOf` / `inRegion`, which state a point is in. Other zones use it to follow the region buttons.
 - Park names come from `public/data/park-labels.geojson` (one point per park), made by `scripts/map/park_labels.py`.
 - `data/australia-states.json`: simplified state outlines from Natural Earth (public domain).

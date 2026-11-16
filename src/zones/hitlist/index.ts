@@ -52,6 +52,10 @@ export interface HitListApi {
   onItemsChange(cb: (items: HitListItem[]) => void): void;
   /** Open an item's card (and fly to it). */
   openItem(id: string): void;
+  /** True while an item's pin is folded into a numbered group on the map (zoomed out). */
+  isGrouped(id: string): boolean;
+  /** Called whenever pins are grouped or ungrouped (after zooming). */
+  onGroupsChange(cb: () => void): void;
   /** Add a section to every pin card. `fill` is called with the card's empty section element. */
   addCardSection(fill: (item: HitListItem, el: HTMLElement) => void): void;
 }
@@ -101,6 +105,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   parent.append(listBtn, addBtn, sheet, banner);
 
   const pins = new Pins(map, (item) => openCard(item));
+  const groupListeners: (() => void)[] = [];
+  pins.onGroupsChange = () => groupListeners.forEach((cb) => cb());
 
   /** Items in the selected region (NSW, VIC, TAS or all of Australia). Unlocated items always count. */
   function regionItems() {
@@ -568,6 +574,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     openItem(id) {
       const item = items.find((i) => i.id === id);
       if (item) openCard(item);
+    },
+    isGrouped: (id) => pins.isGrouped(id),
+    onGroupsChange(cb) {
+      groupListeners.push(cb);
     },
     addCardSection(fill) {
       cardSections.push(fill);

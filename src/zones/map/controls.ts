@@ -1,14 +1,11 @@
 import type { AdventureMap, Region } from './map';
 import { getQuality, getRelief, saveQuality, saveRelief, RELIEF_MAX, RELIEF_MIN, type Quality } from './quality';
 
-const MOUNTAIN_ICON =
-  '<svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M120-240q-25 0-36-22t4-42l160-213q6-8 14.5-12t17.5-4q9 0 17.5 4t14.5 12l148 197h300L560-586l-68 90q-12 16-28 16.5t-28-8.5q-12-9-16-24.5t8-31.5l100-133q6-8 14.5-12t17.5-4q9 0 17.5 4t14.5 12l280 373q15 20 4 42t-36 22H120Zm340-80h300-312 68.5H460Zm-260 0h160l-80-107-80 107Zm0 0h160-160Z"/></svg>';
-
 /**
- * The region picker and light/full quality toggle (bottom bar), and the mountain height button
- * (top right) that opens the height-exaggeration slider.
+ * The region picker (bottom bar), plus the map settings that live in the account menu:
+ * mountain height and the 3D on/off switch. Keeping those two off the map leaves it calmer.
  */
-export function mountControls(parent: HTMLElement, adv: AdventureMap) {
+export function mountControls(parent: HTMLElement, adv: AdventureMap, settings: HTMLElement | null) {
   const bar = document.createElement('div');
   bar.className = 'map-controls';
   bar.innerHTML = `
@@ -18,35 +15,8 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap) {
       <button data-region="VIC">VIC</button>
       <button data-region="TAS">TAS</button>
     </div>
-    <button class="quality" aria-label="Graphics quality"></button>
   `;
   parent.appendChild(bar);
-
-  const relief = document.createElement('details');
-  relief.className = 'relief-control';
-  relief.innerHTML = `
-    <summary aria-label="Mountain height">${MOUNTAIN_ICON}</summary>
-    <label class="relief-pop">
-      <span>Mountain height</span>
-      <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.25" aria-label="Mountain height" />
-      <output></output>
-    </label>
-  `;
-  parent.appendChild(relief);
-  // Close the slider when tapping anywhere else.
-  document.addEventListener('pointerdown', (e) => {
-    if (relief.open && !relief.contains(e.target as Node)) relief.open = false;
-  });
-  const slider = relief.querySelector<HTMLInputElement>('input')!;
-  const out = relief.querySelector('output')!;
-  slider.value = String(getRelief());
-  out.textContent = `${slider.value}×`;
-  slider.addEventListener('input', () => {
-    const r = Number(slider.value);
-    out.textContent = `${r}×`;
-    adv.setRelief(r);
-    saveRelief(r);
-  });
 
   const regionButtons = bar.querySelectorAll<HTMLButtonElement>('[data-region]');
   regionButtons.forEach((btn) =>
@@ -56,17 +26,39 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap) {
     regionButtons.forEach((b) => b.classList.toggle('active', b.dataset.region === region));
   });
 
-  const qualityBtn = bar.querySelector<HTMLButtonElement>('.quality')!;
+  // The compass only shows while the map is turned away from north; tap it to face north again.
+  const map = adv.map;
+  const showCompass = () => map.getContainer().classList.toggle('map-rotated', Math.abs(map.getBearing()) > 1);
+  map.on('rotate', showCompass);
+  showCompass();
+
+  if (!settings) return;
   let quality: Quality = getQuality();
-  const render = () => {
-    qualityBtn.textContent = quality === 'full' ? '3D' : 'Light';
-    qualityBtn.title = quality === 'full' ? '3D terrain on. Tap for faster light mode.' : 'Fast mode. Tap for 3D terrain.';
-  };
-  render();
-  qualityBtn.addEventListener('click', () => {
-    quality = quality === 'full' ? 'light' : 'full';
+  settings.innerHTML = `
+    <label class="setting">
+      <span>3D terrain<small>Turn off if the map feels slow</small></span>
+      <input type="checkbox" class="switch" data-setting="3d" ${quality === 'full' ? 'checked' : ''} />
+    </label>
+    <label class="setting setting-range">
+      <span>Mountain height <output></output></span>
+      <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.25" data-setting="relief" />
+    </label>
+  `;
+  const slider = settings.querySelector<HTMLInputElement>('[data-setting="relief"]')!;
+  const out = settings.querySelector('output')!;
+  const label = (r: number) => (r === 1 ? 'real' : `${r}×`);
+  slider.value = String(getRelief());
+  out.textContent = label(Number(slider.value));
+  slider.addEventListener('input', () => {
+    const r = Number(slider.value);
+    out.textContent = label(r);
+    adv.setRelief(r);
+    saveRelief(r);
+  });
+  const toggle = settings.querySelector<HTMLInputElement>('[data-setting="3d"]')!;
+  toggle.addEventListener('change', () => {
+    quality = toggle.checked ? 'full' : 'light';
     saveQuality(quality);
     adv.setQuality(quality);
-    render();
   });
 }

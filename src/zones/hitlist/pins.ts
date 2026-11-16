@@ -18,16 +18,42 @@ function pinElement(icon: string, color: string, extraClass = '', name = ''): HT
 /** Zoom level from which pin names show while a category is picked. */
 const NAMES_MIN_ZOOM = 7;
 
-/** Pin size for a zoom level: about a third size when looking at a whole state, full size from zoom 12. */
+/** Pin size for a zoom level: about half size when looking at a whole state, full size from zoom 12. */
 function pinScale(zoom: number): number {
-  const t = Math.min(1, Math.max(0, (zoom - 3) / 9));
-  return 0.35 + 0.65 * t;
+  const t = Math.min(1, Math.max(0, (zoom - 4) / 8));
+  return 0.5 + 0.5 * t;
+}
+
+/** From this zoom in, every pin shows on its own. Further out, pins that would pile up become one numbered circle. */
+const GROUP_MAX_ZOOM = 11.5;
+/** How close (in screen pixels) two pins can be before they are grouped. */
+const GROUP_RADIUS = 36;
+
+/** Where a point sits on the flat world map, in pixels, at a zoom level (standard web-map maths). */
+function worldPx(lat: number, lng: number, zoom: number): [number, number] {
+  const size = 512 * 2 ** zoom;
+  const sin = Math.sin((lat * Math.PI) / 180);
+  return [((lng + 180) / 360) * size, (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * size];
+}
+
+interface Group {
+  ids: string[];
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
 }
 
 /** Keeps one marker per located hit list item on the map. */
 export class Pins {
   private markers = new Map<string, maplibregl.Marker>();
   private draft: maplibregl.Marker | null = null;
+  private items: HitListItem[] = [];
+  private groupMarkers: maplibregl.Marker[] = [];
+  private grouped = new Set<string>();
+  private groupStep = -1;
+  /** Called whenever the set of grouped pins changes (the weather layer hides chips for grouped pins). */
+  onGroupsChange: () => void = () => {};
 
   constructor(
     private map: maplibregl.Map,
@@ -42,9 +68,66 @@ export class Pins {
     };
     map.on('zoom', resize);
     resize();
+    // Regroup when the zoom has moved half a level, so groups stay steady while panning.
+    map.on('zoomend', () => {
+      if (Math.round(map.getZoom() * 2) !== this.groupStep) this.regroup();
+    });
+  }
+
+  /** True while this item's pin is folded into a numbered group. */
+  isGrouped(id: string): boolean {
+    return this.grouped.has(id);
+  }
+
+  /** Fold pins that would pile up into numbered circles; tap one to zoom in on its pins. */
+  private regroup() {
+    const zoom = this.map.getZoom();
+    this.groupStep = Math.round(zoom * 2);
+    this.groupMarkers.forEach((m) => m.remove());
+    this.groupMarkers = [];
+    this.grouped.clear();
+    const groups: Group[] = [];
+    if (zoom < GROUP_MAX_ZOOM) {
+      for (const item of this.items) {
+        if (item.lat == null || item.lng == null) continue;
+        const [x, y] = worldPx(item.lat, item.lng, zoom);
+        const g = groups.find((o) => Math.hypot(o.x - x, o.y - y) < GROUP_RADIUS);
+        if (g) {
+          const n = g.ids.length;
+          g.x = (g.x * n + x) / (n + 1);
+          g.y = (g.y * n + y) / (n + 1);
+          g.lat = (g.lat * n + item.lat) / (n + 1);
+          g.lng = (g.lng * n + item.lng) / (n + 1);
+          g.ids.push(item.id);
+        } else groups.push({ ids: [item.id], x, y, lat: item.lat, lng: item.lng });
+      }
+    }
+    for (const g of groups) {
+      if (g.ids.length < 2) continue;
+      g.ids.forEach((id) => this.grouped.add(id));
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'hl-group';
+      el.textContent = String(g.ids.length);
+      el.setAttribute('aria-label', `${g.ids.length} adventures here. Tap to zoom in.`);
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const members = this.items.filter((i) => g.ids.includes(i.id));
+        const bounds = new maplibregl.LngLatBounds();
+        members.forEach((i) => bounds.extend([i.lng!, i.lat!]));
+        // Zoom to fit the group's pins. If they are so close that this barely zooms, step in on the group instead.
+        const cam = this.map.cameraForBounds(bounds, { padding: { top: 140, bottom: 180, left: 60, right: 60 }, maxZoom: 13 });
+        const zoom = Math.max(cam?.zoom ?? 0, this.map.getZoom() + 1.5);
+        this.map.flyTo({ center: zoom === cam?.zoom ? cam.center : [g.lng, g.lat], zoom, duration: 1200, essential: true });
+      });
+      this.groupMarkers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([g.lng, g.lat]).addTo(this.map));
+    }
+    this.markers.forEach((m, id) => m.getElement().classList.toggle('hl-grouped', this.grouped.has(id)));
+    this.onGroupsChange();
   }
 
   show(items: HitListItem[]) {
+    this.items = items;
     this.markers.forEach((m) => m.remove());
     this.markers.clear();
     for (const item of items) {
@@ -62,6 +145,7 @@ export class Pins {
         .addTo(this.map);
       this.markers.set(item.id, marker);
     }
+    this.regroup();
   }
 
   /** The pin being placed or edited. Draggable so it can be nudged into place. */
