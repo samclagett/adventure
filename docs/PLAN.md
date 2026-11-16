@@ -27,3 +27,11 @@ Sam found the first version slow and asked for a different approach:
 - Every activity now gets go / marginal / skip ratings from simple rules (summary.ts, `checksFor`).
 - Speed: the marine forecast only goes out 8 days (asking for 14 failed and retried place by place, which was the slowness).
   Forecasts for the whole hit list now come in 3 requests and are cached on the phone for an hour.
+
+Round 3 (2026-11-16, Sam's answers):
+- Forecasts are one per area (0.25° grid, about 25 km), not per pin; each pin still gets its own summary from its area.
+- `.github/workflows/conditions.yml` refreshes every area every 3 hours into conditions.json on the `conditions-data`
+  branch (Supabase function `conditions_areas`), so the app opens with conditions loaded. "Update now" fetches live.
+- Home base is saved on each phone (one shared login), defaults the Plan screen's start point, and can be changed for one search.
+  The list shows straight-line distance and ranks nearer places first within each rating. Travel times come later.
+- Weather icon set: Sam is choosing (Material, Lucide, Phosphor light or Tabler).
