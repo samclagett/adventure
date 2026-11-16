@@ -46,4 +46,11 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   Camps panels drag the same way.
 - **Plan results lead with the best pick**: a "Best this weekend" card, then a compact list with a verdict pill and day strip.
   Detail is one tap away on the place card.
-- Next (Round 3, not started): drive times, "tell me when it's a Go" alerts, done list, fire and park alerts.
+- Next (Round 3): drive times, "tell me when it's a Go" alerts, done list, fire and park alerts.
+
+### Uplift Round 3: features (2026-11-16)
+
+- **Drive times** (`src/zones/conditions/drive.ts`): by road from home, from the free public OSRM router (one request
+  for every place, saved on the phone). Shown on the Plan list, the best pick and the place card ("1 h 40 drive from
+  Sydney"); Plan ranks nearer drives first within each rating. Straight-line km shows until a drive time is in, or
+  where there's no road (New Zealand).

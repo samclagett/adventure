@@ -8,6 +8,8 @@ import { mountPlanner } from './planner';
 import { mountLayer } from './layer';
 import { mountCardSection } from './card';
 import { showTab } from '../shared/tabs';
+import { getHome } from './home';
+import { ensureDrives } from './drive';
 
 /**
  * Conditions, in three parts:
@@ -33,6 +35,9 @@ export function mountConditions(parent: HTMLElement, adv: AdventureMap, hl: HitL
     planner.setItems(all);
     // Fetch for every place up front, so the planner and the layer are ready together.
     if (all.length) data.ensure(all);
+    // Drive times from home for every place, once per phone (saved), so the Plan list and cards have them.
+    const home = getHome();
+    if (home && all.length) void ensureDrives(home, all);
   });
   hl.onVisibleChange((items) => {
     visible = items;

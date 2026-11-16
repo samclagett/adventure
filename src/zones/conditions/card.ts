@@ -3,7 +3,8 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
 import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
-import { distanceKm, distanceText, getHome } from './home';
+import { getHome } from './home';
+import { ensureDrives, onDriveChange, travelText } from './drive';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
 
 /**
@@ -37,7 +38,7 @@ function periodHtml(p: Period): string {
 /** The summary at the top of a place card, shown even when the card is pulled down. */
 function summaryHtml(item: HitListItem, data: ConditionsData): string {
   const home = getHome();
-  const dist = home && item.lat != null ? `${distanceText(distanceKm(home, { lat: item.lat, lng: item.lng! }))} from ${home.name}` : '';
+  const dist = home && item.lat != null ? `${travelText(home, { lat: item.lat, lng: item.lng! })} from ${home.name}` : '';
   const f = data.get(item);
   if (!f) return `<div class="cd-sum"><span class="cd-muted">${data.loading ? 'Getting the forecast…' : 'No forecast yet'}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
   const cat = categoryOf(item.activity).id;
@@ -59,6 +60,7 @@ function summaryHtml(item: HitListItem, data: ConditionsData): string {
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
   let refillSummary: (() => void) | null = null;
   data.onChange(() => refillSummary?.());
+  onDriveChange(() => refillSummary?.());
   hl.addCardSummary((item, el) => {
     if (item.lat == null || item.lng == null) return;
     const fill = () => {
@@ -67,6 +69,8 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
     };
     refillSummary = fill;
     fill();
+    const home = getHome();
+    if (home) void ensureDrives(home, [item]);
   });
 
   let windowId: WindowId = 'week';

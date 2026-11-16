@@ -2,7 +2,8 @@ import { regionOf, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
 import { CATEGORIES, categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
-import { PRESETS, distanceKm, distanceText, getHome, setHome, type Base } from './home';
+import { PRESETS, getHome, setHome, type Base } from './home';
+import { ensureDrives, onDriveChange, travelMinutes, travelText } from './drive';
 import { searchPlaces, type PlaceMatch } from '../hitlist/geocode';
 import { onTab, showTab } from '../shared/tabs';
 import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, dayShort, type Option, type WindowId } from './summary';
@@ -88,7 +89,7 @@ export function mountPlanner(
       })
       .sort((a, b) => {
         if (!a.option || !b.option) return a.option ? -1 : b.option ? 1 : 0;
-        const dist = (i: HitListItem) => (from ? distanceKm(from, { lat: i.lat!, lng: i.lng! }) : 0);
+        const dist = (i: HitListItem) => (from ? travelMinutes(from, { lat: i.lat!, lng: i.lng! }) : 0);
         return verdictRank(a.option.verdict) - verdictRank(b.option.verdict) || dist(a.item) - dist(b.item) || b.option.goDays - a.option.goDays;
       });
   }
@@ -105,7 +106,7 @@ export function mountPlanner(
         : `<p class="pl-muted pl-updated">${data.fetchedAt(items) ? `Forecasts from ${new Date(data.fetchedAt(items)!).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''} <button type="button" class="pl-link" data-act="update">Update now</button></p>`;
     const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
     const goCount = list.filter((x) => x.option?.verdict === 'go').length;
-    const km = (i: HitListItem) => (from ? distanceText(distanceKm(from, { lat: i.lat!, lng: i.lng! })) : '');
+    const km = (i: HitListItem) => (from ? travelText(from, { lat: i.lat!, lng: i.lng! }) : '');
     /** "Go Sat" for the pill, and the rest ("6–9am · 1.1 m 8 s SSE · offshore") for the line under the name. */
     const split = (o: Option) => {
       const [first, ...rest] = o.headline.split(' · ');
@@ -163,7 +164,7 @@ export function mountPlanner(
     // While loading (or after an error) the status leads; otherwise it sits quietly under the list.
     const busy = data.loading || !!data.error;
     return `${busy ? status : ''}${hero}${rest.length ? heading : ''}<div class="pl-results">${rows}</div>${more}${busy ? '' : status}
-      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Distances are straight-line. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
+      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
   }
 
   function fromHtml(): string {
@@ -199,6 +200,7 @@ export function mountPlanner(
     const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
     const blocker = !prefs.activity ? 'Pick an activity' : !from || editingFrom ? 'Pick where you’re starting from' : '';
     if (step === 'results' && blocker) step = 'ask';
+    if (step === 'results' && from) void ensureDrives(from, items);
     screen.innerHTML =
       step === 'ask'
         ? `<div class="pl-body pl-ask">
@@ -309,6 +311,7 @@ export function mountPlanner(
   }
 
   data.onChange(render);
+  onDriveChange(render);
 
   return {
     setItems(next: HitListItem[]) {
