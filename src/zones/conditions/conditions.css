@@ -2,7 +2,7 @@
    Colours come from src/style.css and hitlist.css. */
 
 /* Verdict accents: muted, matching the pin colours. */
-:root { --cd-go: var(--cd-go); --cd-mar: #c9a45c; --cd-skip: #8a9196; }
+:root { --cd-go: #8fa66b; --cd-mar: #c9a45c; --cd-skip: #8a9196; }
 
 .cd-muted { color: var(--muted); font-size: 0.85rem; }
 .cd-warn { color: var(--warn); font-size: 0.88rem; }
@@ -13,20 +13,13 @@
 .cd-windows button { flex: none; font: inherit; font-size: 0.85rem; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; padding: 7px 12px; cursor: pointer; }
 .cd-windows button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
 
-/* ---- Plan screen (opening screen) ---- */
-.pl-btn {
-  position: absolute;
-  z-index: 2;
-  left: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 116px);
-}
-
-.pl-screen { position: absolute; inset: 0; z-index: 8; background: var(--bg); display: flex; flex-direction: column; }
+/* ---- Plan screen (the Plan tab, and the opening screen) ---- */
+.pl-screen { position: absolute; inset: 0 0 var(--tabbar-h); z-index: 8; background: var(--bg); display: flex; flex-direction: column; }
 .pl-screen[hidden] { display: none; }
 @media (min-width: 700px) {
-  .pl-screen { inset: 12px auto 12px 12px; width: 440px; border: 1px solid var(--border); border-radius: var(--r-l); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45); }
+  .pl-screen { inset: 12px auto calc(var(--tabbar-h) + 12px) 12px; width: 440px; border: 1px solid var(--border); border-radius: var(--r-l); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45); }
 }
-.pl-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px); }
+.pl-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: calc(env(safe-area-inset-top) + 16px) 16px 24px; }
 .pl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pl-top h2 { margin: 0; font-size: 1.9rem; }
 .pl-title { flex: 1; min-width: 0; font-size: 1.5rem !important; line-height: 1.15; }
@@ -34,11 +27,9 @@
 .pl-back { flex: none; width: 40px; height: 40px; font: inherit; font-size: 1.7rem; line-height: 1; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
 /* Inside the scrolling area and sticky, so it shows under the questions even where the screen height is off (iPhone toolbars). */
 .pl-ask { padding-bottom: 0; }
-.pl-foot-bar { position: sticky; bottom: 0; margin: 24px -16px 0; padding: 12px 16px calc(env(safe-area-inset-bottom) + 16px); background: var(--bg); }
+.pl-foot-bar { position: sticky; bottom: 0; margin: 24px -16px 0; padding: 12px 16px 16px; background: var(--bg); }
 .pl-go { width: 100%; min-height: 50px; font: inherit; font-size: 1rem; font-weight: 600; color: var(--ink); background: var(--paper); border: none; border-radius: var(--r-m); cursor: pointer; }
 .pl-go:disabled { opacity: 0.35; cursor: default; }
-.pl-explore { display: flex; align-items: center; gap: 6px; font: inherit; font-size: 0.88rem; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; padding: 7px 12px 7px 9px; cursor: pointer; }
-.pl-explore .hl-icon { width: 20px; height: 20px; }
 .pl-q { margin: 20px 0 8px; color: var(--muted); font-size: 0.9rem; }
 .pl-acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .pl-acts button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px 8px; font: inherit; font-size: 0.72rem; line-height: 1.15; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: var(--r-m); cursor: pointer; }
@@ -80,7 +71,7 @@
 .wx-bar {
   position: absolute;
   z-index: 3;
-  top: calc(env(safe-area-inset-top) + 64px);
+  top: calc(env(safe-area-inset-top) + 12px);
   left: 12px;
   display: flex;
   align-items: center;
@@ -100,7 +91,7 @@
 .wx-step { width: 30px; height: 36px; font-size: 1.4rem !important; line-height: 1; }
 .wx-step:disabled { opacity: 0.3; cursor: default; }
 .wx-day { min-width: 74px; text-align: center; font-size: 0.88rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.pl-open .wx-bar, .pl-open .pl-btn { visibility: hidden; }
+.pl-open .wx-bar { visibility: hidden; }
 
 .wx-marker { padding: 0; border: none; background: none; font: inherit; cursor: pointer; }
 .wx-marker.wx-hidden { visibility: hidden; }

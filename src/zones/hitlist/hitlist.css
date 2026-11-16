@@ -1,17 +1,11 @@
 /* Hit list UI. Uses the colour variables from src/style.css. `--pin` is each category's muted accent. */
 .hl-icon { width: 20px; height: 20px; flex: none; display: block; }
 
-/* "Hit list" button, top left. Opens the list, with the category filter at its top (openList in index.ts). */
-.hl-list-btn {
-  position: absolute;
-  z-index: 2;
-  top: calc(env(safe-area-inset-top) + 12px);
-  left: 12px;
-}
-.hl-list-btn.on { border-color: var(--paper); }
-.hl-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--paper); color: var(--ink); font-size: 0.78rem; font-weight: 700; display: inline-grid; place-items: center; }
-/* Orange dot: some adventures still need a pin. */
-.hl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-left: -2px; }
+/* Top of the list: title and the Add button (a primary button, paper and ink), clear of the close button. */
+.hl-head { display: flex; align-items: center; gap: 10px; margin-right: 44px; }
+.hl-head h2 { flex: 1; margin: 0 !important; }
+.hl-add { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 14px 6px 10px; border: none; border-radius: 999px; background: var(--paper); color: var(--ink); font-weight: 600; cursor: pointer; }
+.hl-add .hl-icon { width: 18px; height: 18px; }
 
 .hl-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
 .hl-link { font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: none; border: none; padding: 4px 0; cursor: pointer; }
@@ -128,36 +122,14 @@
 .hl-pin-draft .hl-icon { width: 38px; height: 38px; }
 @keyframes hl-bob { to { translate: 0 -6px; } }
 
-/* Floating add button. */
-.hl-add-btn {
-  position: absolute;
-  z-index: 2;
-  font: inherit;
-  cursor: pointer;
-}
 .hl-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); border-radius: 999px; padding: 1px 8px; font-size: 0.78rem; font-weight: 600; }
-.hl-add-btn {
-  right: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 62px);
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 2rem;
-  font-weight: 300;
-  line-height: 1;
-  box-shadow: var(--shadow);
-}
-
-/* Bottom sheet: list, card and add/edit form. Covers the map controls while open. */
+/* Bottom sheet: list, card and add/edit form. Sits on the tab bar and covers the map controls while open. */
 .hl-sheet {
   position: absolute;
   z-index: 5;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--tabbar-h);
   max-height: 62%;
   display: flex;
   flex-direction: column;
@@ -168,13 +140,13 @@
   font-size: 0.95rem;
 }
 @media (min-width: 700px) {
-  .hl-sheet { left: auto; right: 12px; bottom: 12px; width: 400px; max-height: calc(100% - 24px); border-radius: var(--r-l); border: 1px solid var(--border); }
+  .hl-sheet { left: auto; right: 12px; bottom: calc(var(--tabbar-h) + 12px); width: 400px; max-height: calc(100% - var(--tabbar-h) - 24px); border-radius: var(--r-l); border: 1px solid var(--border); }
 }
 .hl-sheet-body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px);
+  padding: 16px;
 }
 .hl-sheet h2 { margin: 0 40px 8px 0; font-size: 1.2rem; }
 .hl-sheet h3 { margin: 18px 0 6px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
@@ -298,7 +270,7 @@
   z-index: 5;
   left: 12px;
   right: 12px;
-  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  bottom: calc(var(--tabbar-h) + 12px);
   display: flex;
   gap: 10px;
   align-items: center;
@@ -310,10 +282,6 @@
 }
 .hl-banner span { flex: 1; }
 .hl-banner button { font: inherit; border: none; background: var(--raised); color: var(--text); border-radius: var(--r-s); padding: 10px 14px; cursor: pointer; }
-
-/* While the sheet is open, hide the floating buttons it would overlap. */
-.hl-sheet-open .hl-add-btn,
-.hl-sheet-open .hl-list-btn { display: none; }
 
 /* `display` rules above would otherwise override the hidden attribute. */
 .hl-sheet[hidden],

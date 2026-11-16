@@ -7,6 +7,7 @@ import { ConditionsData } from './data';
 import { mountPlanner } from './planner';
 import { mountLayer } from './layer';
 import { mountCardSection } from './card';
+import { showTab } from '../shared/tabs';
 
 /**
  * Conditions, in three parts:
@@ -38,8 +39,8 @@ export function mountConditions(parent: HTMLElement, adv: AdventureMap, hl: HitL
     layer.setItems(visible);
   });
 
-  // Open on the planner once signed in (the hit list loads then). Signed out, the map shows as before.
+  // Open on the Plan tab once signed in (the hit list loads then). Signed out, the map shows as before.
   supabase?.auth.getSession().then(({ data: s }) => {
-    if (s.session) planner.open();
+    if (s.session) showTab('plan');
   });
 }

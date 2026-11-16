@@ -9,6 +9,7 @@ import { Pins } from './pins';
 import * as store from './store';
 import { searchPlaces, type PlaceMatch } from './geocode';
 import { parseLocationText } from './gmaps';
+import { currentTab, onTab, setTabBadge, showTab } from '../shared/tabs';
 
 /** What the add/edit form is working on. `id` is set when editing an existing item. */
 interface Draft {
@@ -81,18 +82,9 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   const located = () => items.filter((i) => i.lat != null && i.lng != null);
   const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
 
-  // ---- Floating UI ----
-  // One "Hit list" button, top left: opens the list, with category filters at the top of it.
-  const listBtn = document.createElement('button');
-  listBtn.className = 'hl-list-btn';
-  listBtn.type = 'button';
-
-  const addBtn = document.createElement('button');
-  addBtn.className = 'hl-add-btn';
-  addBtn.type = 'button';
-  addBtn.setAttribute('aria-label', 'Add an adventure');
-  addBtn.textContent = '+';
-
+  // ---- Sheet and banner ----
+  // The Hit list tab opens the list (category filters at its top, and the Add button).
+  // Pressing and holding on the map also adds an adventure there.
   const sheet = document.createElement('section');
   sheet.className = 'hl-sheet';
   sheet.hidden = true;
@@ -102,7 +94,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   banner.hidden = true;
   banner.innerHTML = `<span>Tap the map where it is. Drag the pin to fine-tune.</span><button type="button">Cancel</button>`;
 
-  parent.append(listBtn, addBtn, sheet, banner);
+  parent.append(sheet, banner);
 
   const pins = new Pins(map, (item) => openCard(item));
   const groupListeners: (() => void)[] = [];
@@ -126,10 +118,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     itemsListeners.forEach((cb) => cb(located()));
     // Names beside the pins only while some categories are picked, so the map stays tidy otherwise.
     map.getContainer().classList.toggle('hl-show-names', filter.size > 0);
+    // Badge on the Hit list tab: how many categories are picked, or a dot while some adventures still need a pin.
     const toLocate = items.filter((i) => i.lat == null).length;
-    listBtn.innerHTML = `${ICONS.list} Hit list${filter.size ? `<span class="hl-count" title="Categories picked">${filter.size}</span>` : ''}${toLocate ? `<span class="hl-dot" title="${toLocate} to locate"></span>` : ''}`;
-    listBtn.classList.toggle('on', filter.size > 0);
-    listBtn.setAttribute('aria-label', `Hit list${filter.size ? `, ${filter.size} categories picked` : ''}${toLocate ? `, ${toLocate} to locate` : ''}`);
+    if (filter.size) setTabBadge('list', String(filter.size), `${filter.size} categories picked`);
+    else if (toLocate) setTabBadge('list', '', `${toLocate} to locate`);
+    else setTabBadge('list', null);
     if (view === 'list') openList();
   }
 
@@ -140,7 +133,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   function openSheet(html: string) {
     sheet.innerHTML = `<button type="button" class="hl-close" aria-label="Close">✕</button><div class="hl-sheet-body">${html}</div>`;
     sheet.hidden = false;
-    sheet.querySelector('.hl-close')!.addEventListener('click', closeSheet);
+    sheet.querySelector('.hl-close')!.addEventListener('click', () => {
+      closeSheet();
+      if (currentTab() === 'list') showTab('map');
+    });
     parent.classList.add('hl-sheet-open');
   }
 
@@ -200,7 +196,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     const toLocate = shown.filter((i) => i.lat == null);
     const filterNote = filter.size ? ` · showing ${[...filter].map((id) => categoryOf(id).label).join(', ')}` : '';
     const regionNote = region === 'AUS' ? '' : ` in ${region}`;
-    let html = `<h2>Hit list</h2><p class="hl-muted">${inArea} adventure${inArea === 1 ? '' : 's'}${regionNote}${esc(filterNote)}</p>`;
+    let html = `<div class="hl-head"><h2>Hit list</h2><button type="button" class="hl-add" data-act="add">${ICONS.plus}<span>Add</span></button></div><p class="hl-muted">${inArea} adventure${inArea === 1 ? '' : 's'}${regionNote}${esc(filterNote)}</p>`;
     html += categoryFilter();
     if (loadError) html += `<p class="hl-error">Couldn’t load the hit list: ${esc(loadError)}</p>`;
     if (toLocate.length) {
@@ -211,7 +207,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       if (inCat.length) html += `<h3>${c.icon} ${esc(c.label)} (${inCat.length})</h3>${inCat.map(itemRow).join('')}`;
     }
     if (!shown.length && !loadError) {
-      html += `<p class="hl-muted">${items.length ? `Nothing${regionNote} in the selected categories.` : 'Nothing yet. Tap <b>+</b> to add your first adventure.'}</p>`;
+      html += `<p class="hl-muted">${items.length ? `Nothing${regionNote} in the selected categories.` : 'Nothing yet. Tap <b>Add</b>, or press and hold on the map, to add your first adventure.'}</p>`;
     }
     openSheet(html);
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((btn) =>
@@ -222,6 +218,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
         refresh();
       }),
     );
+    sheet.querySelector('[data-act="add"]')!.addEventListener('click', () => openCategoryPicker());
     sheet.querySelector('[data-act="clear"]')?.addEventListener('click', () => {
       filter.clear();
       refresh();
@@ -256,6 +253,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       </div>
       <p class="hl-error" hidden></p>
     `);
+    // A place card belongs to the map, wherever it was opened from.
+    if (currentTab() !== 'map') showTab('map');
     const extra = sheet.querySelector<HTMLElement>('.hl-card-extra')!;
     cardSections.forEach((fill) => {
       const el = document.createElement('div');
@@ -293,7 +292,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     };
   }
 
-  function openCategoryPicker() {
+  /** Step one of adding: pick a category. `at` is set when adding from a long press on the map. */
+  function openCategoryPicker(at?: { lat: number; lng: number }) {
     if (needSignIn()) return;
     view = 'other';
     openSheet(`
@@ -305,7 +305,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) =>
       b.addEventListener('click', () => {
         locTab = 'search';
-        openForm({ activity: b.dataset.cat!, name: '', notes: '', link: '', lat: null, lng: null, faces: null, where: '' });
+        openForm({ activity: b.dataset.cat!, name: '', notes: '', link: '', lat: at?.lat ?? null, lng: at?.lng ?? null, faces: null, where: at ? 'Dropped pin' : '' });
       }),
     );
   }
@@ -535,8 +535,47 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     }
   }
 
-  listBtn.addEventListener('click', () => (view === 'list' ? closeSheet() : openList()));
-  addBtn.addEventListener('click', openCategoryPicker);
+  // ---- Tabs ----
+  // Hit list opens the list. Map closes the list but keeps a place card open. Camps closes the sheet.
+  // Plan covers everything, so the sheet is left as it is underneath.
+  onTab((tab) => {
+    if (picking) {
+      stopPicking();
+      closeSheet();
+    }
+    if (tab === 'list') openList();
+    else if (tab === 'map' && view === 'list') closeSheet();
+    else if (tab === 'camps') closeSheet();
+  });
+
+  // ---- Press and hold on the map to add an adventure there ----
+  let pressTimer = 0;
+  let pressStart: { x: number; y: number } | null = null;
+  const cancelPress = () => {
+    clearTimeout(pressTimer);
+    pressStart = null;
+  };
+  map.on('touchstart', (e) => {
+    cancelPress();
+    if (picking || e.points.length !== 1) return;
+    const at = e.lngLat;
+    pressStart = { x: e.point.x, y: e.point.y };
+    pressTimer = window.setTimeout(() => {
+      pressStart = null;
+      navigator.vibrate?.(10);
+      openCategoryPicker({ lat: at.lat, lng: at.lng });
+    }, 600);
+  });
+  map.on('touchmove', (e) => {
+    if (pressStart && Math.hypot(e.point.x - pressStart.x, e.point.y - pressStart.y) > 10) cancelPress();
+  });
+  map.on('touchend', cancelPress);
+  map.on('touchcancel', cancelPress);
+  map.on('movestart', cancelPress);
+  // Right-click on a computer does the same.
+  map.on('contextmenu', (e) => {
+    if (!picking) openCategoryPicker({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+  });
 
   // ---- Loading ----
 
