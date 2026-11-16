@@ -9,6 +9,7 @@ import { mountCampsites } from './zones/campsites';
 import { mountConditions } from './zones/conditions';
 import { supabase } from './zones/shared/supabase';
 import { ICONS } from './zones/hitlist/icons';
+import { mountTabBar } from './zones/shared/tabs';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -27,6 +28,8 @@ app.innerHTML = `
   </details>
 `;
 
+// The tab bar comes first, so every zone can switch tabs and set badges as it starts.
+mountTabBar(app);
 const adv = mountMap(app.querySelector<HTMLDivElement>('#map')!, app.querySelector<HTMLDivElement>('#map-settings'));
 const hitList = mountHitList(app, adv);
 mountCampsites(app, adv);

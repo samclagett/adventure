@@ -6,6 +6,8 @@
  * - Category icons are always ink on a paper disc, like the pins. Category colours are only thin rings and edges.
  * - Corners: --r-s for inputs and small buttons, --r-m for buttons and rows, --r-l for sheets. Pills are 999px.
  * - Type: Inter for everything, Barlow Semi Condensed for headings.
+ * - Layout: the tab bar (shared/tabs.ts) is always at the bottom. Sheets and bottom controls sit above it
+ *   with `bottom: var(--tabbar-h)`; the tab bar already keeps clear of the iPhone home bar.
  */
 :root {
   --bg: #0c1820;
@@ -25,6 +27,7 @@
   --r-m: 14px;
   --r-l: 18px;
   --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --tabbar-h: calc(60px + env(safe-area-inset-bottom));
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   font-family: var(--font-body);
@@ -33,32 +36,50 @@
 }
 h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.01em; }
 
-/* Floating buttons on the map (Hit list, Plan, campsites): one dark glass style. Zone CSS only positions them. */
-.hl-list-btn,
-.pl-btn,
-.cs-btn {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  min-height: 40px;
-  padding: 8px 12px 8px 10px;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text);
-  background: var(--panel);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: var(--r-m);
-  cursor: pointer;
+/* Bottom tab bar (shared/tabs.ts): Plan, Map, Hit list, Camps. The selected tab is a paper pill with an ink icon. */
+.tabbar {
+  position: absolute;
+  z-index: 9;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--tabbar-h);
+  padding: 6px 8px env(safe-area-inset-bottom);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--panel-solid);
+  border-top: 1px solid var(--border);
 }
-.hl-list-btn .hl-icon, .pl-btn .hl-icon, .cs-btn .hl-icon { width: 22px; height: 22px; }
+.tabbar button {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  padding: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-pill { position: relative; width: 56px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background 0.15s; }
+.tab-icon { width: 24px; height: 24px; }
+.tabbar button.on { color: var(--text); font-weight: 600; }
+.tabbar button.on .tab-pill { background: var(--paper); color: var(--ink); }
+.tab-badge { position: absolute; top: -3px; right: 6px; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 2px var(--panel-solid); font-size: 0.68rem; font-weight: 700; line-height: 17px; text-align: center; }
+.tabbar button.on .tab-badge { background: var(--ink); color: var(--paper); }
+.tabbar .tab-badge.tab-dot { min-width: 9px; width: 9px; height: 9px; padding: 0; top: 2px; right: 12px; background: var(--warn); }
+.tab-badge[hidden] { display: none; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 #app { position: fixed; inset: 0; }
-#map { position: absolute; inset: 0; }
+#map { position: absolute; inset: 0 0 var(--tabbar-h); }
+/* Press and hold on the map adds an adventure (hitlist), so stop iPhone's text selection and callout there. */
+#map { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
 /* Floating panels sit above the map and respect the iPhone notch / home bar. */
 .map-controls,
@@ -76,7 +97,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
 .map-controls {
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  bottom: 12px;
   display: flex;
   gap: 4px;
   padding: 4px;

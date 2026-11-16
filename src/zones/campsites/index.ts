@@ -2,10 +2,10 @@ import './campsites.css';
 import { inRegion, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
 import { supabase } from '../shared/supabase';
-import { ICONS } from '../hitlist/icons';
+import { currentTab, onTab, showTab } from '../shared/tabs';
 
 /**
- * "Any free campsites?" button and panel.
+ * The Camps tab: "Any free campsites?" panel.
  *
  * Free nights come from campsites.json on the `campsite-data` branch, written every 6 hours by
  * .github/workflows/campsites.yml (scripts/campsites/check.py). The panel matches those results to
@@ -109,15 +109,10 @@ const isNsw = (link: string | null) => !!link && link.startsWith('https://www.na
 export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
   let windowId: Window = 'weekend';
 
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'cs-btn';
-  btn.innerHTML = `${ICONS.camping} Any free campsites?`;
-
   const sheet = document.createElement('section');
   sheet.className = 'cs-sheet';
   sheet.hidden = true;
-  parent.append(btn, sheet);
+  parent.append(sheet);
 
   let open = false;
   let lastItems: HitListItem[] = [];
@@ -137,6 +132,7 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
     sheet.querySelector('.cs-close')!.addEventListener('click', (e) => {
       e.stopPropagation();
       close();
+      if (currentTab() === 'camps') showTab('map');
     });
   }
 
@@ -218,9 +214,9 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
       (w) => `<button type="button" role="tab" data-w="${w.id}" class="${w.id === windowId ? 'on' : ''}">${w.label}</button>`,
     ).join('')}</div>`;
     const summary = !allItems.length
-      ? 'No camping spots on the hit list yet. Add one with the <b>+</b> button and pick Camping.'
+      ? 'No camping spots on the hit list yet. Add one from the Hit list tab and pick Camping.'
       : !items.length
-        ? `No camping spots on the hit list${where}. Pick another region at the bottom.`
+        ? `No camping spots on the hit list${where}. Pick another region on the map.`
         : freeCount
           ? `${freeCount} of ${items.length} camping spot${items.length === 1 ? '' : 's'}${where} ${freeCount === 1 ? 'has' : 'have'} a free night.`
           : `Nothing free${where} in these dates.`;
@@ -259,10 +255,15 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
     if (open && lastItems.length) render(lastItems, lastData);
   });
 
-  btn.addEventListener('click', async () => {
+  async function openPanel() {
     show('<h2>Any free campsites?</h2><p class="cs-muted">Looking…</p>');
     const [items, data] = await Promise.all([loadCamping(), loadResults()]);
     if (typeof items === 'string') show(`<h2>Any free campsites?</h2><p class="cs-muted">${items}</p>`);
     else render(items, data);
+  }
+
+  onTab((tab) => {
+    if (tab === 'camps') openPanel();
+    else if (open) close();
   });
 }

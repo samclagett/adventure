@@ -4,23 +4,19 @@ import { CATEGORIES, categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
 import { PRESETS, distanceKm, distanceText, getHome, setHome, type Base } from './home';
 import { searchPlaces, type PlaceMatch } from '../hitlist/geocode';
+import { onTab, showTab } from '../shared/tabs';
 import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, dayShort, type Option, type WindowId } from './summary';
 
 /**
  * The opening screen, in two steps. First "What do you feel like, when, and from where?" with a
  * "Show places" button; then every matching place ranked by its conditions, with a line on how
- * they change across the window. Tapping one flies to it; "Back" returns to the questions.
- * "Explore the map" closes it; the Plan button brings it back.
+ * they change across the window. Tapping one switches to the Map tab and flies to it; "Back" returns
+ * to the questions. It is the Plan tab: the other tabs close it.
  */
 
 const PREFS_KEY = 'adventure.planner';
 /** How many places to list before "Show all". */
 const SHORT_LIST = 12;
-
-const ICON_EXPLORE =
-  '<svg class="hl-icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m592-127-243-86-188 75q-8 3-15 1.5t-13-5.5q-6-4-9.5-10t-3.5-14v-565q0-13 7.5-23t19.5-15l182-64q5-2 10-2.5t10-.5q5 0 10 .5t10 2.5l243 85 187-75q8-3 15-2t13 5q6 4 9.5 10.5T840-795v572q0 11-7.5 19T814-192l-182 65q-5 2-10 2.5t-10 .5q-5 0-10-.5t-10-2.5Zm-14-68v-505l-196-66v505l196 66Zm60 0 142-47v-512l-142 54v505Zm-458-12 142-54v-505l-142 47v512Zm458-493v505-505Zm-316-66v505-505Z"/></svg>';
-const ICON_PLAN =
-  '<svg class="hl-icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm-53 113 166-76q8-4 14-10t10-14l76-166q4-10-3-17t-17-3l-166 76q-8 4-14 10t-10 14l-76 166q-4 10 3 17t17 3Zm53-73q-17 0-28.5-11.5T440-480q0-17 11.5-28.5T480-520q17 0 28.5 11.5T520-480q0 17-11.5 28.5T480-440Z"/></svg>';
 
 function esc(s: string | null | undefined): string {
   return (s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -64,12 +60,8 @@ export function mountPlanner(
   screen.hidden = true;
   screen.setAttribute('aria-label', 'Plan an adventure');
 
-  const planBtn = document.createElement('button');
-  planBtn.type = 'button';
-  planBtn.className = 'pl-btn';
-  planBtn.innerHTML = `${ICON_PLAN}<span>Plan</span>`;
-  planBtn.addEventListener('click', () => open());
-  parent.append(planBtn, screen);
+  parent.append(screen);
+  onTab((tab) => (tab === 'plan' ? open() : isOpen && close()));
 
   function savePrefs() {
     try {
@@ -172,7 +164,7 @@ export function mountPlanner(
     screen.innerHTML =
       step === 'ask'
         ? `<div class="pl-body pl-ask">
-      <div class="pl-top"><h2>Where to?</h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Explore the map</span></button></div>
+      <div class="pl-top"><h2>Where to?</h2></div>
       <p class="pl-q">What do you feel like?</p>
       <div class="pl-acts">
         ${CATEGORIES.filter((c) => c.id !== 'other').map((c) => `<button type="button" data-act-id="${c.id}" class="${prefs.activity === c.id ? 'on' : ''}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
@@ -184,11 +176,10 @@ export function mountPlanner(
       <div class="pl-foot-bar"><button type="button" class="pl-go" data-act="show" ${blocker ? 'disabled' : ''}>${blocker || 'Show places'}</button></div>
     </div>`
         : `<div class="pl-body">
-      <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · from ${esc(from!.name)}</small></h2><button type="button" class="pl-explore" data-act="explore">${ICON_EXPLORE}<span>Map</span></button></div>
+      <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · from ${esc(from!.name)}</small></h2></div>
       ${resultsHtml()}
     </div>`;
     screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = scroll;
-    screen.querySelector('[data-act="explore"]')!.addEventListener('click', close);
     screen.querySelector('[data-act="show"]')?.addEventListener('click', () => {
       step = 'results';
       showAll = false;
@@ -259,7 +250,7 @@ export function mountPlanner(
       row.addEventListener('click', () => {
         const item = items.find((i) => i.id === row.dataset.id)!;
         const opt = options().find((o) => o.item.id === item.id)?.option;
-        close();
+        showTab('map');
         go(item, opt?.bestDate ?? null);
       }),
     );
@@ -282,7 +273,6 @@ export function mountPlanner(
   data.onChange(render);
 
   return {
-    open,
     setItems(next: HitListItem[]) {
       items = next;
       render();
