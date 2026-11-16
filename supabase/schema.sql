@@ -49,3 +49,26 @@ as $$
 $$;
 revoke all on function public.campsite_links() from public;
 grant execute on function public.campsite_links() to anon, authenticated;
+
+-- Conditions refresh job (scripts/conditions/fetch.py) reads one rounded point per 0.25° grid square that has
+-- hit list places, and whether any are coastal, using the public anon key. No names, notes or links.
+-- The grid must match `areaId` in src/zones/conditions/data.ts.
+create or replace function public.conditions_areas()
+returns table (area text, lat double precision, lng double precision, coastal boolean)
+language sql stable security definer set search_path = public
+as $$
+  with p as (
+    select floor(h.lat / 0.25)::int as gy, floor(h.lng / 0.25)::int as gx,
+           round(h.lat::numeric, 3)::float8 as lat, round(h.lng::numeric, 3)::float8 as lng,
+           h.activity in ('surfing', 'diving', 'kayaking') as coastal
+    from public.hit_list h
+    where h.lat is not null and h.lng is not null
+  )
+  select gy || '_' || gx,
+         (array_agg(lat order by coastal desc, lat, lng))[1],
+         (array_agg(lng order by coastal desc, lat, lng))[1],
+         bool_or(coastal)
+  from p group by gy, gx;
+$$;
+revoke all on function public.conditions_areas() from public;
+grant execute on function public.conditions_areas() to anon, authenticated;

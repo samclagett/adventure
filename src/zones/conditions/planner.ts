@@ -2,6 +2,8 @@ import { regionOf, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
 import { CATEGORIES, categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
+import { PRESETS, distanceKm, distanceText, getHome, setHome, type Base } from './home';
+import { searchPlaces, type PlaceMatch } from '../hitlist/geocode';
 import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, dayShort, type Option, type WindowId } from './summary';
 
 /**
@@ -47,6 +49,12 @@ export function mountPlanner(
   let items: HitListItem[] = [];
   let isOpen = false;
   let showAll = false;
+  /** Where this search starts: home, unless changed for this search. */
+  let from: Base | null = getHome();
+  let editingFrom = !from;
+  let makeHome = !from;
+  let found: PlaceMatch[] = [];
+  let searchMsg = '';
 
   const screen = document.createElement('section');
   screen.className = 'pl-screen';
@@ -79,7 +87,8 @@ export function mountPlanner(
       })
       .sort((a, b) => {
         if (!a.option || !b.option) return a.option ? -1 : b.option ? 1 : 0;
-        return verdictRank(a.option.verdict) - verdictRank(b.option.verdict) || b.option.goDays - a.option.goDays || a.item.name.localeCompare(b.item.name);
+        const dist = (i: HitListItem) => (from ? distanceKm(from, { lat: i.lat!, lng: i.lng! }) : 0);
+        return verdictRank(a.option.verdict) - verdictRank(b.option.verdict) || dist(a.item) - dist(b.item) || b.option.goDays - a.option.goDays;
       });
   }
 
@@ -92,7 +101,7 @@ export function mountPlanner(
       ? `<p class="pl-muted pl-loading">Getting forecasts for ${items.length} places…</p>`
       : data.error
         ? `<p class="pl-warn">Couldn’t get all forecasts: ${esc(data.error)}. <button type="button" class="pl-link" data-act="retry">Try again</button></p>`
-        : '';
+        : `<p class="pl-muted pl-updated">${data.fetchedAt(items) ? `Forecasts from ${new Date(data.fetchedAt(items)!).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''} <button type="button" class="pl-link" data-act="update">Update now</button></p>`;
     const goCount = list.filter((x) => x.option?.verdict === 'go').length;
     const lead = list[0]?.option
       ? `<p class="pl-summary">${goCount ? `${goCount} of ${list.length} places look good ${esc(WINDOWS.find((w) => w.id === prefs.windowId)!.short)}.` : `Nothing looks great ${esc(WINDOWS.find((w) => w.id === prefs.windowId)!.short)}. Best of the rest:`}</p>`
@@ -101,7 +110,7 @@ export function mountPlanner(
     const rows = shown
       .map(({ item, option }) => {
         const c = categoryOf(item.activity);
-        const where = regionOf(item.lat!, item.lng!) ?? '';
+        const where = [regionOf(item.lat!, item.lng!) ?? '', from ? `${distanceText(distanceKm(from, { lat: item.lat!, lng: item.lng! }))} from ${from.name}` : ''].filter(Boolean).join(' · ');
         const strip = option && option.strip.length > 1
           ? `<span class="pl-strip">${option.strip.map((s) => `<i class="pl-v-${s.verdict}" title="${dayShort(s.date)}: ${VERDICT_WORD[s.verdict]}"></i>`).join('')}</span>`
           : '';
@@ -115,7 +124,33 @@ export function mountPlanner(
       .join('');
     const more = !showAll && list.length > SHORT_LIST ? `<button type="button" class="pl-more" data-act="all">Show all ${list.length}</button>` : '';
     return `${status}${lead}<div class="pl-results">${rows}</div>${more}
-      <p class="pl-muted pl-foot">Forecasts from Open-Meteo${data.fetchedAt(items) ? `, fetched ${new Date(data.fetchedAt(items)!).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}` : ''}. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
+      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Distances are straight-line. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
+  }
+
+  function fromHtml(): string {
+    const home = getHome();
+    if (!editingFrom && from) {
+      const isHome = home && home.name === from.name && home.lat === from.lat;
+      return `<p class="pl-from">From <b>${esc(from.name)}</b>${isHome ? ' <span class="pl-muted">(home)</span>' : ''} <button type="button" class="pl-link" data-act="change-from">Change</button></p>`;
+    }
+    return `<div class="pl-from-edit">
+      <p class="pl-q">${home ? 'Starting from?' : 'Where’s home? It’s saved on this phone.'}</p>
+      <div class="pl-when">${PRESETS.map((b, n) => `<button type="button" data-preset="${n}" class="${from?.name === b.name ? 'on' : ''}">${esc(b.name)}</button>`).join('')}</div>
+      <form class="pl-search"><input name="q" type="search" placeholder="Or search a town" enterkeyhint="search" /><button type="submit">Search</button></form>
+      ${found.map((r, n) => `<button type="button" class="pl-found" data-found="${n}"><b>${esc(r.name)}</b><small>${esc(r.detail)}</small></button>`).join('')}
+      ${searchMsg ? `<p class="pl-muted">${esc(searchMsg)}</p>` : ''}
+      ${home ? `<label class="pl-check"><input type="checkbox" data-act="make-home" ${makeHome ? 'checked' : ''} /> Make this my home</label>` : ''}
+      ${home ? '<button type="button" class="pl-link" data-act="cancel-from">Cancel</button>' : ''}
+    </div>`;
+  }
+
+  function chooseFrom(b: Base) {
+    from = b;
+    if (makeHome || !getHome()) setHome(b);
+    editingFrom = false;
+    found = [];
+    searchMsg = '';
+    render();
   }
 
   function render() {
@@ -130,6 +165,7 @@ export function mountPlanner(
       </div>
       <p class="pl-q">When?</p>
       <div class="pl-when">${WINDOWS.map((w) => `<button type="button" data-win="${w.id}" class="${w.id === prefs.windowId ? 'on' : ''}">${w.label}</button>`).join('')}</div>
+      ${fromHtml()}
       ${resultsHtml()}
     </div>`;
     screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = scroll;
@@ -150,6 +186,40 @@ export function mountPlanner(
         render();
       }),
     );
+    screen.querySelector('[data-act="update"]')?.addEventListener('click', () => data.ensure(items, true));
+    screen.querySelector('[data-act="change-from"]')?.addEventListener('click', () => {
+      editingFrom = true;
+      makeHome = false;
+      render();
+    });
+    screen.querySelector('[data-act="cancel-from"]')?.addEventListener('click', () => {
+      editingFrom = false;
+      found = [];
+      render();
+    });
+    screen.querySelector<HTMLInputElement>('[data-act="make-home"]')?.addEventListener('change', (e) => (makeHome = (e.target as HTMLInputElement).checked));
+    screen.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach((b) => b.addEventListener('click', () => chooseFrom(PRESETS[Number(b.dataset.preset)])));
+    screen.querySelectorAll<HTMLButtonElement>('[data-found]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const r = found[Number(b.dataset.found)];
+        chooseFrom({ name: r.name, lat: r.lat, lng: r.lng });
+      }),
+    );
+    const form = screen.querySelector<HTMLFormElement>('.pl-search');
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = String(new FormData(form).get('q')).trim();
+      if (!q) return;
+      searchMsg = 'Searching…';
+      render();
+      try {
+        found = await searchPlaces(q);
+        searchMsg = found.length ? '' : 'No matches. Try a nearby town.';
+      } catch (err) {
+        searchMsg = err instanceof Error ? err.message : String(err);
+      }
+      render();
+    });
     screen.querySelector('[data-act="retry"]')?.addEventListener('click', () => data.ensure(items, true));
     screen.querySelector('[data-act="all"]')?.addEventListener('click', () => {
       showAll = true;

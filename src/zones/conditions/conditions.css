@@ -155,3 +155,15 @@
 .cd-v-go .cd-verdict { color: #c9dbae; }
 .cd-v-mar .cd-verdict { color: #e6cf9c; }
 .cd-v-skip .cd-verdict { color: var(--muted); }
+
+/* Plan screen: where trips start from. */
+.pl-from { margin: 14px 0 0; font-size: 0.9rem; }
+.pl-from-edit { margin-top: 6px; }
+.pl-search { display: flex; gap: 6px; margin-top: 8px; }
+.pl-search input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+.pl-search button { font: inherit; color: var(--ink); background: var(--paper); border: none; border-radius: 10px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+.pl-found { display: grid; width: 100%; text-align: left; margin-top: 6px; font: inherit; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.pl-found small { color: var(--muted); font-size: 0.78rem; }
+.pl-check { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 0.88rem; color: var(--muted); }
+.pl-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.pl-updated { margin: 16px 0 0; }
