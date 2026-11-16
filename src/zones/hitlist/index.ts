@@ -10,6 +10,8 @@ import * as store from './store';
 import { searchPlaces, type PlaceMatch } from './geocode';
 import { parseLocationText } from './gmaps';
 import { currentTab, onTab, setTabBadge, showTab } from '../shared/tabs';
+import { makeDraggable, type Snap } from '../shared/sheet';
+import { regionOf } from '../map';
 
 /** What the add/edit form is working on. `id` is set when editing an existing item. */
 interface Draft {
@@ -59,6 +61,8 @@ export interface HitListApi {
   onGroupsChange(cb: () => void): void;
   /** Add a section to every pin card. `fill` is called with the card's empty section element. */
   addCardSection(fill: (item: HitListItem, el: HTMLElement) => void): void;
+  /** Fill the short summary at the top of each place card (shown while the card is pulled down). */
+  addCardSummary(fill: (item: HitListItem, el: HTMLElement) => void): void;
 }
 
 /**
@@ -81,6 +85,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   const itemsListeners: ((items: HitListItem[]) => void)[] = [];
   const located = () => items.filter((i) => i.lat != null && i.lng != null);
   const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
+  const cardSummaries: ((item: HitListItem, el: HTMLElement) => void)[] = [];
 
   // ---- Sheet and banner ----
   // The Hit list tab opens the list (category filters at its top, and the Add button).
@@ -130,18 +135,32 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
 
   // ---- Bottom sheet ----
 
-  function openSheet(html: string) {
-    sheet.innerHTML = `<button type="button" class="hl-close" aria-label="Close">✕</button><div class="hl-sheet-body">${html}</div>`;
+  /**
+   * Draw the sheet. `kind` names what it shows ('list', 'form', 'card:<id>'…): redrawing the same kind
+   * keeps the height the person dragged it to; a new kind starts at `start`.
+   */
+  let sheetKind = '';
+  function openSheet(html: string, kind: string, start: Snap = 'half', snaps: Snap[] = ['half', 'full']) {
+    sheet.innerHTML = `<div class="sheet-grab" role="button" aria-label="Drag to resize"></div><button type="button" class="hl-close" aria-label="Close">✕</button><div class="hl-sheet-body">${html}</div>`;
+    sheet.querySelector('.hl-close')!.addEventListener('click', userClose);
+    const fresh = sheet.hidden || kind !== sheetKind;
     sheet.hidden = false;
-    sheet.querySelector('.hl-close')!.addEventListener('click', () => {
-      closeSheet();
-      if (currentTab() === 'list') showTab('map');
-    });
     parent.classList.add('hl-sheet-open');
+    if (fresh) drag.open(start, snaps);
+    sheetKind = kind;
   }
+
+  /** Closed by the person (✕ or dragged down): go back to the map if the Hit list tab was showing. */
+  function userClose() {
+    closeSheet();
+    if (currentTab() === 'list') showTab('map');
+  }
+  const drag = makeDraggable(sheet, userClose);
 
   function closeSheet() {
     sheet.hidden = true;
+    sheet.style.height = '';
+    sheetKind = '';
     view = null;
     draft = null;
     results = [];
@@ -152,7 +171,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
 
   /** Fly so the point sits in the part of the map the sheet doesn't cover. */
   function flyTo(lat: number, lng: number) {
-    const covered = sheet.hidden ? 0 : sheet.offsetHeight;
+    // The height the sheet is heading to (it may still be sliding there).
+    const covered = sheet.hidden ? 0 : parseFloat(sheet.style.height) || sheet.offsetHeight;
     adv.flyToPlace(lat, lng, covered);
   }
 
@@ -161,7 +181,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     view = 'other';
     openSheet(`<h2>Sign in first</h2><p class="hl-muted">${
       supabase ? 'Tap the account button at the top right and use the shared login. Your hit list appears once you’re in.' : 'Supabase isn’t set up yet (see SETUP.md).'
-    }</p>`);
+    }</p>`, 'signin');
     return true;
   }
 
@@ -209,7 +229,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     if (!shown.length && !loadError) {
       html += `<p class="hl-muted">${items.length ? `Nothing${regionNote} in the selected categories.` : 'Nothing yet. Tap <b>Add</b>, or press and hold on the map, to add your first adventure.'}</p>`;
     }
-    openSheet(html);
+    openSheet(html, 'list');
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((btn) =>
       btn.addEventListener('click', () => {
         const id = btn.dataset.cat!;
@@ -234,34 +254,73 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
 
   // ---- Card ----
 
+  /**
+   * A place card. Pulled down ("peek") it shows the name, a short forecast summary and the main
+   * buttons, with the map above; drag it up for notes and the full forecast.
+   */
   function openCard(item: HitListItem) {
     if (picking) return;
     view = 'other';
     const c = categoryOf(item.activity);
-    const gmaps = item.lat != null ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : '';
-    openSheet(`
-      <div class="hl-cat-tag" style="--pin:${c.color}">${c.icon} ${esc(c.label)}</div>
-      <h2>${esc(item.name)}</h2>
-      ${item.notes ? `<p class="hl-notes">${esc(item.notes)}</p>` : ''}
-      ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60))}</a></p>` : ''}
-      ${item.faces != null && HAS_FACING.has(c.id) ? `<p class="hl-muted">Beach faces ${compass(item.faces)} (${item.faces}°)</p>` : ''}
-      ${item.lat != null ? `<p class="hl-muted">${fmt(item.lat)}, ${fmt(item.lng!)} · <a href="${gmaps}" target="_blank" rel="noopener">Open in Google Maps</a></p>` : '<p class="hl-muted">Not on the map yet.</p>'}
-      <div class="hl-card-extra"></div>
-      <div class="hl-actions">
-        <button type="button" class="hl-primary" data-act="edit">Edit</button>
-        <button type="button" class="hl-danger" data-act="delete">Delete</button>
+    const located = item.lat != null && item.lng != null;
+    const region = located ? regionOf(item.lat!, item.lng!) : null;
+    const sub = [c.label, region].filter(Boolean).join(' · ');
+    const directions = located ? `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}` : '';
+    openSheet(
+      `
+      <div class="hl-peek">
+        <div class="hl-card-head" data-drag style="--pin:${c.color}">
+          <span class="hl-card-icon">${c.icon}</span>
+          <div><h2>${esc(item.name)}</h2><small>${esc(sub)}</small></div>
+        </div>
+        <div class="hl-card-summary"></div>
+        <div class="hl-card-buttons">
+          ${located ? `<a class="hl-card-btn hl-primary" href="${directions}" target="_blank" rel="noopener">${ICONS.directions}<span>Directions</span></a>` : ''}
+          <button type="button" class="hl-card-btn" data-act="share">${ICONS.share}<span>Share</span></button>
+          <button type="button" class="hl-card-btn" data-act="edit">${ICONS.edit}<span>Edit</span></button>
+        </div>
       </div>
+      ${item.notes ? `<p class="hl-notes">${esc(item.notes)}</p>` : ''}
+      ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*/, ''))}</a></p>` : ''}
+      ${item.faces != null && HAS_FACING.has(c.id) ? `<p class="hl-muted">Beach faces ${compass(item.faces)}</p>` : ''}
+      ${located ? '' : '<p class="hl-muted">Not on the map yet.</p>'}
+      <div class="hl-card-extra"></div>
+      <button type="button" class="hl-delete" data-act="delete">Delete from the hit list</button>
       <p class="hl-error" hidden></p>
-    `);
+    `,
+      `card:${item.id}`,
+      'peek',
+      ['peek', 'half', 'full'],
+    );
     // A place card belongs to the map, wherever it was opened from.
     if (currentTab() !== 'map') showTab('map');
+    const summary = sheet.querySelector<HTMLElement>('.hl-card-summary')!;
+    cardSummaries.forEach((fill) => fill(item, summary));
     const extra = sheet.querySelector<HTMLElement>('.hl-card-extra')!;
     cardSections.forEach((fill) => {
       const el = document.createElement('div');
       extra.append(el);
       fill(item, el);
     });
+    // Peek shows everything down to the buttons.
+    const peek = sheet.querySelector<HTMLElement>('.hl-peek')!;
+    drag.open('peek', ['peek', 'half', 'full'], peek.offsetTop + peek.offsetHeight + 8);
+
     sheet.querySelector('[data-act="edit"]')!.addEventListener('click', () => openForm(draftFrom(item)));
+    sheet.querySelector('[data-act="share"]')!.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const url = located ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : item.link ?? '';
+      const text = [item.name, item.notes?.split('\n')[0]].filter(Boolean).join(' · ');
+      try {
+        if (navigator.share) await navigator.share({ title: item.name, text, url: url || undefined });
+        else {
+          await navigator.clipboard.writeText([text, url].filter(Boolean).join('\n'));
+          btn.querySelector('span')!.textContent = 'Copied';
+        }
+      } catch {
+        /* share sheet closed */
+      }
+    });
     sheet.querySelector('[data-act="delete"]')!.addEventListener('click', async () => {
       if (!confirm(`Delete “${item.name}” from the hit list?`)) return;
       try {
@@ -273,7 +332,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
         showError(err);
       }
     });
-    if (item.lat != null) flyTo(item.lat, item.lng!);
+    if (located) flyTo(item.lat!, item.lng!);
   }
 
   // ---- Add / edit ----
@@ -301,7 +360,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       <div class="hl-cat-grid">
         ${CATEGORIES.map((c) => `<button type="button" data-cat="${c.id}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
       </div>
-    `);
+    `, 'picker');
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) =>
       b.addEventListener('click', () => {
         locTab = 'search';
@@ -375,7 +434,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
         <button type="button" data-act="cancel">Cancel</button>
       </div>
       <p class="hl-error" hidden></p>
-    `);
+    `, 'form');
 
     // Keep the draft in step with what's typed, so re-rendering the form never loses anything.
     const bind = (name: 'name' | 'notes' | 'link') =>
@@ -620,6 +679,9 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     },
     addCardSection(fill) {
       cardSections.push(fill);
+    },
+    addCardSummary(fill) {
+      cardSummaries.push(fill);
     },
   };
 }

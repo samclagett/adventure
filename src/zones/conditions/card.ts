@@ -2,10 +2,14 @@ import type { HitListApi } from '../hitlist';
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
-import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, type Period, type WindowId } from './summary';
+import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
+import { distanceKm, distanceText, getHome } from './home';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
 
-/** The day-by-day Conditions section on each pin card. */
+/**
+ * Conditions on each place card: a short summary at the top (best of the next four days, a day strip and
+ * the distance from home), and the day-by-day section further down.
+ */
 
 const WINDOW_KEY = 'adventure.conditions.window';
 
@@ -30,7 +34,41 @@ function periodHtml(p: Period): string {
   return `<span class="cd-p cd-p-${p.id}" role="img" aria-label="${esc(said)}" title="${esc(said)}"><span class="cd-p-label">${p.label}</span>${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : '<b></b>'}<span class="cd-p-meta">${wind}${rain}</span></span>`;
 }
 
+/** The summary at the top of a place card, shown even when the card is pulled down. */
+function summaryHtml(item: HitListItem, data: ConditionsData): string {
+  const home = getHome();
+  const dist = home && item.lat != null ? `${distanceText(distanceKm(home, { lat: item.lat, lng: item.lng! }))} from ${home.name}` : '';
+  const f = data.get(item);
+  if (!f) return `<div class="cd-sum"><span class="cd-muted">${data.loading ? 'Getting the forecast…' : 'No forecast yet'}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  const cat = categoryOf(item.activity).id;
+  const dates = daysFor('5days').slice(0, 4);
+  const verdicts: Verdict[] = daysOf(f, dates, cat, item.faces).map((d) => rateDay(cat, d).verdict);
+  const name = (iso: string) => (iso === todayIso() ? 'today' : dayShort(iso));
+  const firstGo = verdicts.indexOf('go');
+  const firstMar = verdicts.indexOf('mar');
+  const pill =
+    firstGo >= 0
+      ? `<span class="cd-pill cd-v-go">Go ${name(dates[firstGo])}</span>`
+      : firstMar >= 0
+        ? `<span class="cd-pill cd-v-mar">${VERDICT_WORD.mar} ${name(dates[firstMar])}</span>`
+        : `<span class="cd-pill cd-v-skip">Not in the next 4 days</span>`;
+  const strip = dates.map((d, n) => `<span class="cd-v-${verdicts[n]}" title="${dayShort(d)}: ${VERDICT_WORD[verdicts[n]]}">${dayShort(d)}</span>`).join('');
+  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+}
+
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
+  let refillSummary: (() => void) | null = null;
+  data.onChange(() => refillSummary?.());
+  hl.addCardSummary((item, el) => {
+    if (item.lat == null || item.lng == null) return;
+    const fill = () => {
+      if (!el.isConnected) return;
+      el.innerHTML = summaryHtml(item, data);
+    };
+    refillSummary = fill;
+    fill();
+  });
+
   let windowId: WindowId = 'week';
   try {
     const saved = localStorage.getItem(WINDOW_KEY) as WindowId | null;

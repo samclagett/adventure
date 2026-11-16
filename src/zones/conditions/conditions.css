@@ -168,3 +168,15 @@
 .wx-compact .wx-chip .wx-wind, .wx-compact .wx-chip .wx-swell { display: none; }
 .wx-compact .wx-chip .wx-icon { width: 16px; height: 16px; }
 .wx-compact .wx-periods .wx-icon:not(:first-child) { display: none; }
+
+/* Summary at the top of a place card (card.ts): a verdict pill and the next four days. */
+.cd-sum { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cd-pill { font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--field); color: var(--muted); }
+.cd-pill.cd-v-go { background: color-mix(in srgb, var(--cd-go) 24%, transparent); color: #c9dbae; }
+.cd-pill.cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.cd-sum-days { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; min-width: 160px; }
+.cd-sum-days span { text-align: center; font-size: 0.75rem; font-weight: 600; padding: 4px 0; border-radius: 7px; background: var(--field); color: var(--muted); }
+.cd-sum-days .cd-v-go { background: color-mix(in srgb, var(--cd-go) 28%, transparent); color: #d4e4bd; }
+.cd-sum-days .cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.cd-sum-days .cd-v-skip { opacity: 0.6; }
+.cd-sum-dist { display: block; margin-top: 6px; color: var(--muted); font-size: 0.8rem; }
