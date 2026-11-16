@@ -5,7 +5,7 @@
   left: 0;
   right: 0;
   bottom: var(--tabbar-h);
-  max-height: 62%;
+  height: 55%;
   display: flex;
   flex-direction: column;
   background: var(--panel-solid);
@@ -18,11 +18,11 @@
 @media (min-width: 700px) {
   .cs-sheet { left: 12px; right: auto; bottom: calc(var(--tabbar-h) + 12px); width: 400px; max-height: calc(100% - var(--tabbar-h) - 24px); border-radius: var(--r-l); border: 1px solid var(--border); }
 }
-.cs-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px; }
+.cs-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 16px 16px; }
 .cs-sheet h2 { margin: 0 40px 10px 0; font-size: 1.2rem; }
 .cs-sheet p { margin: 8px 0; line-height: 1.4; }
 .cs-sheet a { color: var(--accent); }
-.cs-close { position: absolute; z-index: 1; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; font: inherit; background: var(--raised); color: var(--text); cursor: pointer; }
+.cs-close { position: absolute; z-index: 1; top: 14px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; font: inherit; background: var(--raised); color: var(--text); cursor: pointer; }
 .cs-muted { color: var(--muted); font-size: 0.88rem; }
 .cs-warn { color: var(--warn); font-size: 0.88rem; }
 .cs-foot { margin-top: 14px; }

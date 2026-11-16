@@ -3,6 +3,7 @@ import { inRegion, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
 import { supabase } from '../shared/supabase';
 import { currentTab, onTab, showTab } from '../shared/tabs';
+import { makeDraggable } from '../shared/sheet';
 
 /**
  * The Camps tab: "Any free campsites?" panel.
@@ -121,13 +122,22 @@ export function mountCampsites(parent: HTMLElement, adv: AdventureMap) {
   function close() {
     open = false;
     sheet.hidden = true;
+    sheet.style.height = '';
     parent.classList.remove('cs-open');
   }
 
+  // Drag the panel up for more, or down to close it (shared/sheet.ts).
+  const drag = makeDraggable(sheet, () => {
+    close();
+    if (currentTab() === 'camps') showTab('map');
+  });
+
   function show(html: string) {
+    const fresh = sheet.hidden;
     open = true;
-    sheet.innerHTML = `<button type="button" class="cs-close" aria-label="Close">✕</button><div class="cs-body">${html}</div>`;
+    sheet.innerHTML = `<div class="sheet-grab" role="button" aria-label="Drag to resize"></div><button type="button" class="cs-close" aria-label="Close">✕</button><div class="cs-body">${html}</div>`;
     sheet.hidden = false;
+    if (fresh) drag.open('half', ['half', 'full']);
     parent.classList.add('cs-open');
     sheet.querySelector('.cs-close')!.addEventListener('click', (e) => {
       e.stopPropagation();
