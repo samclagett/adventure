@@ -2,6 +2,7 @@ import './style.css';
 import { mountMap } from './zones/map';
 import { mountHitList } from './zones/hitlist';
 import { mountCampsites } from './zones/campsites';
+import { mountConditions } from './zones/conditions';
 import { supabase } from './zones/shared/supabase';
 import { ICONS } from './zones/hitlist/icons';
 
@@ -23,8 +24,9 @@ app.innerHTML = `
 `;
 
 const adv = mountMap(app.querySelector<HTMLDivElement>('#map')!);
-mountHitList(app, adv);
+const hitList = mountHitList(app, adv);
 mountCampsites(app, adv);
+mountConditions(app, adv, hitList);
 
 // ---- Account panel (Supabase shared login) ----
 

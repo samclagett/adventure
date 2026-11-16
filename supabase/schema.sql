@@ -10,6 +10,7 @@ create table if not exists public.hit_list (
   lng         double precision,
   notes       text,
   link        text,             -- AllTrails, park page, etc.
+  faces       smallint check (faces between 0 and 359), -- which way a surf beach faces (degrees), for onshore/offshore
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
@@ -21,6 +22,9 @@ begin
   return new;
 end;
 $$;
+
+-- Added 2026-11-16 (conditions). For databases made before then.
+alter table public.hit_list add column if not exists faces smallint check (faces between 0 and 359);
 
 drop trigger if exists hit_list_touch on public.hit_list;
 create trigger hit_list_touch before update on public.hit_list

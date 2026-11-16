@@ -48,6 +48,7 @@ Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (t
 - Sources (an ever-growing list): BOM as the anchor, plus WillyWeather, Swellnet, Surfline and Open-Meteo (free weather and marine API).
 - Also needed: river heights (paddling and crossings), water temperature, water quality and dive visibility.
 - Hazards: fire danger, park closures, track and road closures.
+- Built (2026-11-16): Open-Meteo weather and marine forecasts, fetched from the browser, with per-category bubbles and day-by-day pin cards. Surf: model swell in metres (never shown as feet, which only Surfline's face height can give), onshore/offshore from each beach's facing, best window, tides, water temperature and a rough go/marginal/skip verdict.
 
 ## Hit list and locations
 

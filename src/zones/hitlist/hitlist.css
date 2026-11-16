@@ -319,3 +319,9 @@
 .hl-row-icon .hl-icon-sketch { width: 30px; height: 30px; }
 .hl-sheet h3 .hl-icon-sketch { width: 22px; height: 22px; }
 .hl-cat-tag .hl-icon-sketch { width: 22px; height: 22px; margin: -3px 0; }
+
+/* "Beach faces" compass buttons on the surf spot form. */
+.hl-facing { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.hl-facing button { font: inherit; font-size: 0.85rem; min-width: 44px; min-height: 36px; color: var(--text); background: #0e2130; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.hl-facing button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
+.hl-field small { color: var(--muted); font-weight: 400; }
