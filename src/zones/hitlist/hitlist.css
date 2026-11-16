@@ -319,25 +319,3 @@
 .hl-row-icon .hl-icon-sketch { width: 30px; height: 30px; }
 .hl-sheet h3 .hl-icon-sketch { width: 22px; height: 22px; }
 .hl-cat-tag .hl-icon-sketch { width: 22px; height: 22px; margin: -3px 0; }
-
-/* "Fly around in 3D" on the pin card (the flythrough itself lives in the map zone). */
-.hl-fly {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 16px;
-  min-height: 44px;
-  font: inherit;
-  font-weight: 600;
-  color: var(--text);
-  background: rgba(79, 209, 197, 0.08);
-  border: 1px solid rgba(79, 209, 197, 0.45);
-  border-radius: 10px;
-  cursor: pointer;
-}
-.hl-fly .hl-icon { width: 20px; height: 20px; color: var(--accent); }
-.hl-fly + .hl-actions { margin-top: 8px; }
-/* Other pins step back while the flythrough runs. */
-body.adv-flying .hl-pin { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
