@@ -1,16 +1,14 @@
 /**
- * Quality setting. "light" keeps phones fast (flat shaded map, no 3D terrain);
- * "full" turns on 3D terrain, sky and sharper rendering.
+ * Quality setting. "full" (the default everywhere, since iPhones handle it well) turns on 3D terrain,
+ * sky and sharper rendering; "light" is a fast flat map for older phones.
  */
 export type Quality = 'light' | 'full';
 
-const KEY = 'adventure.quality';
+// v2: the default changed to 3D (Nov 2026), so earlier saved choices are ignored once.
+const KEY = 'adventure.quality.v2';
 
-/** Phones and small tablets default to light; desktops default to full. */
 function defaultQuality(): Quality {
-  const coarse = window.matchMedia('(pointer: coarse)').matches;
-  const small = Math.min(window.screen.width, window.screen.height) < 820;
-  return coarse && small ? 'light' : 'full';
+  return 'full';
 }
 
 export function getQuality(): Quality {
@@ -31,11 +29,12 @@ export function saveQuality(q: Quality) {
   }
 }
 
-const RELIEF_KEY = 'adventure.relief';
+// v2: the default changed from 5x to near real height (Nov 2026).
+const RELIEF_KEY = 'adventure.relief.v2';
 export const RELIEF_MIN = 1;
-export const RELIEF_MAX = 10;
-/** Default height exaggeration: Australia's mountains are old and low, so 5x makes them stand out. */
-export const RELIEF_DEFAULT = 5;
+export const RELIEF_MAX = 5;
+/** Default height: a touch above real, so ranges read without looking spiky. The slider adds drama. */
+export const RELIEF_DEFAULT = 1.5;
 
 export function getRelief(): number {
   try {

@@ -5,8 +5,12 @@ import rivers from './data/rivers.json';
 import lakes from './data/lakes.json';
 
 /**
- * The map's look: a stylised, slightly game-like blend of real terrain and flat colour.
- * - Ocean depth and land height are tinted from the same free elevation tiles that give 3D terrain.
+ * The map's look ("hybrid", chosen Nov 2026): soft atlas colours with satellite imagery blended in.
+ * - Land height is tinted in soft greens to stone, like a printed topo map, from the same free
+ *   elevation tiles that give 3D terrain. Ocean depth is tinted from them too.
+ * - Sentinel-2 cloudless satellite imagery (EOX, free for non-commercial use with credit) is laid over
+ *   it, partly see-through and a little desaturated, so it reads as real country but stays calm behind pins.
+ * - Shading is lit from the north-west, like a printed map.
  * - States outside NSW and Victoria are "ghosted" with a dark wash.
  * - Major rivers, lakes, cities and towns come from Natural Earth (public domain), bundled with the app.
  * - National parks and named beaches come from Overture Maps (OpenStreetMap data, ODbL), in public/data.
@@ -30,14 +34,19 @@ const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{
 const TERRAIN_ATTRIBUTION =
   '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain: Mapzen, AWS Open Data</a> · <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a>';
 
+// Sentinel-2 cloudless 2020 by EOX: free, keyless, CC BY-NC-SA 4.0 (fine for a personal, non-commercial app).
+const SATELLITE_TILES = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg';
+const SATELLITE_ATTRIBUTION =
+  '<a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless by EOX</a> (Contains modified Copernicus Sentinel data 2020)';
+
 export const COLORS = {
   ocean: '#0a2a3d',
-  river: '#2b9be0',
-  riverLabel: '#e6f8ff',
+  river: '#4b93bb',
+  riverLabel: '#e6f4fa',
   label: '#fffaf0',
-  park: '#2f8f4e',
-  parkLabel: '#c9f7c9',
-  beach: '#f2dfa4',
+  park: '#3f6f45',
+  parkLabel: '#dcecd2',
+  beach: '#eadcb4',
   /** A soft, see-through glow behind labels so they read on any terrain, without a heavy outline. */
   halo: 'rgba(11, 26, 36, 0.55)',
   ghost: '#08141c',
@@ -71,12 +80,13 @@ export function buildStyle(): StyleSpecification {
       parkLabels: { type: 'geojson', data: `${DATA}/park-labels.geojson` },
       beaches: { type: 'geojson', data: `${DATA}/beaches.geojson` },
       sand: { type: 'geojson', data: `${DATA}/beach-sand.geojson` },
+      satellite: { type: 'raster', tiles: [SATELLITE_TILES], tileSize: 256, maxzoom: 15, attribution: SATELLITE_ATTRIBUTION },
     },
     layers: [
       { id: 'ocean', type: 'background', paint: { 'background-color': COLORS.ocean } },
       {
-        // Height tint: deep ocean → shallows → beach → greens → ochre → dark rock → snow.
-        // Stops are packed into 0–2000 m because Australian ranges are low; each band reads distinctly.
+        // Height tint, atlas style: soft sage on the coast, greens through the ranges, stone and pale rock up high.
+        // Stops sit in 0–2200 m because Australian ranges are low.
         id: 'relief',
         type: 'color-relief',
         source: 'shade',
@@ -85,26 +95,35 @@ export function buildStyle(): StyleSpecification {
             'interpolate',
             ['linear'],
             ['elevation'],
-            -4000, '#06202f',
-            -200, '#0c3b55',
-            -20, '#1a6f86',
-            -1, '#3fb3b8',
+            -4000, '#0a2433',
+            -200, '#12374c',
+            -20, '#2a6378',
+            -1, '#4f8d99',
             // Zoomed in, the elevation data often reads the sea as exactly 0 m: keep that water-coloured.
-            0, '#2a96ad',
-            // Low coastal land is pale green, so real beach sand (its own layer) stands out.
-            1, '#cfdc9e',
-            30, '#a8cf7e',
-            150, '#6fb25e',
-            350, '#4f9447',
-            550, '#7f9a4c',
-            750, '#a08a55',
-            950, '#9b6d45',
-            1200, '#7d5a45',
-            1500, '#9c948c',
-            1800, '#d9d6d2',
-            2000, '#ffffff',
+            0, '#3f7f8f',
+            1, '#d5dbbd',
+            50, '#c3d0a4',
+            200, '#a9be8c',
+            450, '#93aa7c',
+            750, '#a6a682',
+            1000, '#b6ab92',
+            1300, '#c4bba9',
+            1700, '#d9d4cb',
+            2200, '#f2f0ec',
           ],
           'color-relief-opacity': 1,
+        },
+      },
+      {
+        // Real colour from satellite, blended over the atlas tint.
+        id: 'satellite',
+        type: 'raster',
+        source: 'satellite',
+        paint: {
+          'raster-opacity': 0.55,
+          'raster-saturation': -0.3,
+          'raster-contrast': 0.05,
+          'raster-fade-duration': 200,
         },
       },
       {
@@ -112,13 +131,12 @@ export function buildStyle(): StyleSpecification {
         type: 'hillshade',
         source: 'shade',
         paint: {
-          'hillshade-exaggeration': 0.45,
-          // Light from several directions makes ridges and gullies pop more than a single sun.
-          'hillshade-method': 'multidirectional',
-          'hillshade-illumination-direction': [270, 315, 0, 45],
-          'hillshade-illumination-altitude': [30, 30, 30, 30],
-          'hillshade-highlight-color': ['#fff7e0', '#fff7e0', '#fff7e0', '#fff7e0'],
-          'hillshade-shadow-color': ['#0b1a24', '#0b1a24', '#0b1a24', '#0b1a24'],
+          'hillshade-exaggeration': 0.4,
+          // Lit from the north-west like a printed topo map; this method keeps flat ground untouched.
+          'hillshade-method': 'igor',
+          'hillshade-illumination-direction': 315,
+          'hillshade-highlight-color': '#fffbea',
+          'hillshade-shadow-color': '#1d2a26',
           'hillshade-accent-color': '#2c3e2f',
         },
       },
@@ -130,11 +148,11 @@ export function buildStyle(): StyleSpecification {
         paint: {
           'color-relief-color': [
             'interpolate', ['linear'], ['elevation'],
-            -4000, 'rgba(6, 32, 47, 0.8)',
-            -200, 'rgba(12, 59, 85, 0.7)',
-            -20, 'rgba(26, 111, 134, 0.45)',
-            -0.5, 'rgba(63, 179, 184, 0.2)',
-            0, 'rgba(42, 150, 173, 0.35)',
+            -4000, 'rgba(10, 36, 51, 0.85)',
+            -200, 'rgba(18, 55, 76, 0.75)',
+            -20, 'rgba(42, 99, 120, 0.4)',
+            -0.5, 'rgba(79, 141, 153, 0.15)',
+            0, 'rgba(63, 127, 143, 0.3)',
             1, 'rgba(0, 0, 0, 0)',
           ],
         },
@@ -143,27 +161,27 @@ export function buildStyle(): StyleSpecification {
         id: 'parks-fill',
         type: 'fill',
         source: 'parks',
-        paint: { 'fill-color': COLORS.park, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.35, 10, 0.22] },
+        paint: { 'fill-color': COLORS.park, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.28, 10, 0.12] },
       },
       {
         id: 'parks-outline',
         type: 'line',
         source: 'parks',
-        minzoom: 6,
-        paint: { 'line-color': '#7fe0a0', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 2] },
+        minzoom: 9, // dashed park edges only once zoomed in; at state level they read as noise
+        paint: { 'line-color': '#cfe6c4', 'line-width': 1, 'line-opacity': 0.35, 'line-dasharray': [3, 2] },
       },
       {
         // Beach sand, outlined like on a satellite map.
         id: 'beach-sand',
         type: 'fill',
         source: 'sand',
-        paint: { 'fill-color': COLORS.beach, 'fill-opacity': 0.95, 'fill-antialias': true },
+        paint: { 'fill-color': COLORS.beach, 'fill-opacity': 0.7, 'fill-antialias': true },
       },
       {
         id: 'lakes',
         type: 'fill',
         source: 'lakes',
-        paint: { 'fill-color': '#1f86a8', 'fill-opacity': 0.85, 'fill-outline-color': COLORS.river },
+        paint: { 'fill-color': '#3f7f99', 'fill-opacity': 0.8, 'fill-outline-color': COLORS.river },
       },
       {
         // Rivers get wider as you zoom in; the biggest (lowest rank) are widest.

@@ -12,7 +12,9 @@ The 3D map (MapLibre GL), terrain, state selection, pins, visual style and the q
 - Park names come from `public/data/park-labels.geojson` (one point per park), made by `scripts/map/park_labels.py`.
 - `data/australia-states.json`: simplified state outlines from Natural Earth (public domain).
   `active: true` marks the states the app covers (NSW incl. ACT and Jervis Bay, VIC and TAS).
-- Mountain height: `setRelief(1–4)` exaggerates 3D terrain (Full mode) and hillshade strength (both modes). Default 2.5×, remembered per device.
+- Mountain height: `setRelief(1–5)` exaggerates 3D terrain (Full mode) and hillshade strength (both modes). Default 1.5× (near real height), remembered per device.
+- Look: "hybrid" (Nov 2026): soft atlas height colours with Sentinel-2 cloudless satellite (EOX, free for non-commercial use with credit) blended in at 55%. 3D ("full") is the default everywhere.
+- `flyToPlace(lat, lng, coveredBottom)` flies in tilted so the 3D shows, and switches the region bar to that place's state.
 
 Terrain comes from the free, keyless AWS Terrain Tiles (Terrarium encoding). No API keys anywhere.
 - `data/places.json`, `data/rivers.json`, `data/lakes.json`: 93 cities and towns, major rivers and lakes in NSW/ACT/VIC/TAS,

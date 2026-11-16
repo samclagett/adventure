@@ -6,6 +6,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { buildStyle } from './style';
 import type { Quality } from './quality';
 import { getRelief } from './quality';
+import { regionOf } from './regions';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -36,11 +37,16 @@ export interface AdventureMap {
   map: maplibregl.Map;
   flyToRegion(region: Region | 'AUS'): void;
   setQuality(q: Quality): void;
-  /** How much to exaggerate height: 1 = real, 10 = extreme. */
+  /** How much to exaggerate height: 1 = real, 5 = dramatic. */
   setRelief(r: number): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
   /** The region picked with the region buttons (or by tapping a state). */
   getRegion(): Region | 'AUS';
+  /**
+   * Fly to one place, tilted so the 3D terrain shows. Also switches the region bar to the place's
+   * state (NSW, VIC or TAS). `coveredBottom` is how many pixels a sheet covers at the bottom.
+   */
+  flyToPlace(lat: number, lng: number, coveredBottom?: number): void;
   /** Turn tap-a-state-to-zoom off while another zone wants map taps (e.g. dropping a pin). */
   setTapToZoom(on: boolean): void;
 }
@@ -69,14 +75,15 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     currentQuality = q;
     if (q === 'full') {
       map.setTerrain({ source: 'terrain', exaggeration: relief });
+      // A soft sky with a pale haze on the horizon, like distance on a clear day.
       map.setSky({
-        'sky-color': '#5fa8d3',
-        'horizon-color': '#cfe8f0',
-        'fog-color': '#0b1a24',
-        'sky-horizon-blend': 0.6,
-        'horizon-fog-blend': 0.4,
-        'fog-ground-blend': 0.3,
-        'atmosphere-blend': 0.8,
+        'sky-color': '#8fb8d0',
+        'horizon-color': '#dde7ea',
+        'fog-color': '#d3dde0',
+        'sky-horizon-blend': 0.7,
+        'horizon-fog-blend': 0.6,
+        'fog-ground-blend': 0.6,
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 1, 12, 0],
       });
     } else {
       map.setTerrain(null);
@@ -91,8 +98,8 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
    * Light mode shades a bit harder to make up for the missing 3D.
    */
   function applyShading() {
-    const base = currentQuality === 'light' ? 0.5 : 0.35;
-    map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(1, base + 0.07 * relief));
+    const base = currentQuality === 'light' ? 0.4 : 0.2;
+    map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(0.8, base + 0.08 * relief));
   }
 
   /** Highlight the picked state; darken the other active states like the rest of Australia. */
@@ -115,6 +122,29 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     listeners.forEach((cb) => cb(region));
   }
 
+  /** Switch the region (bar, highlight, pin filter) without moving the camera. */
+  function setRegion(region: Region | 'AUS') {
+    if (region === current) return;
+    current = region;
+    if (map.isStyleLoaded()) setSelected(region);
+    listeners.forEach((cb) => cb(region));
+  }
+
+  function flyToPlace(lat: number, lng: number, coveredBottom = 0) {
+    const region = regionOf(lat, lng);
+    if (region) setRegion(region);
+    const full = currentQuality === 'full';
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(map.getZoom(), 12),
+      pitch: full ? 55 : Math.min(map.getPitch(), 35),
+      bearing: map.getBearing(),
+      offset: [0, -coveredBottom / 2],
+      duration: 2000,
+      essential: true,
+    });
+  }
+
   map.on('load', () => {
     // Keep the credits folded into the small (i) button so they don't sit under the bottom bar.
     container.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
@@ -133,6 +163,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   return {
     map,
     flyToRegion,
+    flyToPlace,
     setRelief(r) {
       relief = r;
       if (!map.isStyleLoaded()) return;
