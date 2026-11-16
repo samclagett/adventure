@@ -103,28 +103,66 @@ export function mountPlanner(
       : data.error
         ? `<p class="pl-warn">Couldn’t get all forecasts: ${esc(data.error)}. <button type="button" class="pl-link" data-act="retry">Try again</button></p>`
         : `<p class="pl-muted pl-updated">${data.fetchedAt(items) ? `Forecasts from ${new Date(data.fetchedAt(items)!).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''} <button type="button" class="pl-link" data-act="update">Update now</button></p>`;
+    const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
     const goCount = list.filter((x) => x.option?.verdict === 'go').length;
-    const lead = list[0]?.option
-      ? `<p class="pl-summary">${goCount ? `${goCount} of ${list.length} places look good ${esc(WINDOWS.find((w) => w.id === prefs.windowId)!.short)}.` : `Nothing looks great ${esc(WINDOWS.find((w) => w.id === prefs.windowId)!.short)}. Best of the rest:`}</p>`
-      : '';
-    const shown = showAll ? list : list.slice(0, SHORT_LIST);
+    const km = (i: HitListItem) => (from ? distanceText(distanceKm(from, { lat: i.lat!, lng: i.lng! })) : '');
+    /** "Go Sat" for the pill, and the rest ("6–9am · 1.1 m 8 s SSE · offshore") for the line under the name. */
+    const split = (o: Option) => {
+      const [first, ...rest] = o.headline.split(' · ');
+      const poor = o.verdict === 'skip' || o.verdict === 'na';
+      if (poor) return { pill: VERDICT_WORD[o.verdict], line: first };
+      // "Go Fri 5am–12pm": the verdict and day go in the pill, the hours start the line.
+      const words = first.split(' ');
+      const hours = words.slice(2).join(' ');
+      return { pill: words.slice(0, 2).join(' '), line: [hours, ...rest].filter(Boolean).join(' · ') };
+    };
+    const strip = (o: Option | null) =>
+      o && o.strip.length > 1 ? `<span class="pl-strip">${o.strip.map((x) => `<i class="pl-v-${x.verdict}" title="${dayShort(x.date)}: ${VERDICT_WORD[x.verdict]}"></i>`).join('')}</span>` : '';
+
+    // The best pick leads: the top of the ranking (best rating, then nearest), if it's better than skip.
+    const top = list[0];
+    const hasBest = !!top?.option && (top.option.verdict === 'go' || top.option.verdict === 'mar');
+    let hero = '';
+    if (hasBest) {
+      const { item, option } = top;
+      const o = option!;
+      const c = categoryOf(item.activity);
+      const { pill, line } = split(o);
+      const days =
+        o.strip.length > 1 && o.strip.length <= 7
+          ? `<span class="pl-days">${o.strip.map((x) => `<span class="pl-v-${x.verdict}">${dayShort(x.date)}</span>`).join('')}</span>`
+          : strip(o);
+      hero = `<p class="pl-eyebrow">Best ${esc(win.short)}</p>
+        <button type="button" class="pl-hero pl-row-btn" data-id="${item.id}" style="--pin:${c.color}">
+          <span class="pl-hero-head"><span class="pl-row-icon">${c.icon}</span>
+          <span class="pl-row-main"><b>${esc(item.name)}</b><small>${esc([regionOf(item.lat!, item.lng!), km(item) && `${km(item)} from ${from!.name}`].filter(Boolean).join(' · '))}</small></span></span>
+          <span class="pl-pill pl-v-${o.verdict}">${esc(pill)}</span>
+          ${line ? `<span class="pl-hero-line">${esc(line)}</span>` : ''}
+          ${days}
+        </button>`;
+    }
+    const rest = hasBest ? list.slice(1) : list;
+    const shown = showAll ? rest : rest.slice(0, SHORT_LIST);
+    const moreGood = goCount - (top?.option?.verdict === 'go' ? 1 : 0);
+    const heading = hasBest
+      ? `<p class="pl-eyebrow pl-rest-head">${moreGood > 0 ? `${moreGood} more ${moreGood === 1 ? 'looks' : 'look'} good` : 'The rest'}</p>`
+      : `<p class="pl-summary">Nothing looks good ${esc(win.short)}.</p>`;
     const rows = shown
       .map(({ item, option }) => {
         const c = categoryOf(item.activity);
-        const where = [regionOf(item.lat!, item.lng!) ?? '', from ? `${distanceText(distanceKm(from, { lat: item.lat!, lng: item.lng! }))} from ${from.name}` : ''].filter(Boolean).join(' · ');
-        const strip = option && option.strip.length > 1
-          ? `<span class="pl-strip">${option.strip.map((s) => `<i class="pl-v-${s.verdict}" title="${dayShort(s.date)}: ${VERDICT_WORD[s.verdict]}"></i>`).join('')}</span>`
-          : '';
-        return `<button type="button" class="pl-row ${option ? `pl-v-${option.verdict}` : ''}" data-id="${item.id}" style="--pin:${c.color}">
+        const s = option ? split(option) : null;
+        const sub = [km(item), s?.line || (option ? '' : data.loading ? 'Loading…' : 'No forecast')].filter(Boolean).join(' · ');
+        return `<button type="button" class="pl-row pl-row-btn" data-id="${item.id}" style="--pin:${c.color}">
           <span class="pl-row-icon">${c.icon}</span>
-          <span class="pl-row-main"><b>${esc(item.name)}</b>${where ? `<small>${esc(where)}</small>` : ''}
-          <span class="pl-row-head">${option ? esc(option.headline) : data.loading ? 'Loading…' : 'No forecast'}</span>
-          ${option?.detail ? `<span class="pl-row-detail">${esc(option.detail)}</span>` : ''}${strip}</span>
+          <span class="pl-row-main"><b>${esc(item.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${strip(option)}</span>
+          ${option ? `<span class="pl-pill pl-v-${option.verdict}">${VERDICT_WORD[option.verdict]}</span>` : ''}
         </button>`;
       })
       .join('');
-    const more = !showAll && list.length > SHORT_LIST ? `<button type="button" class="pl-more" data-act="all">Show all ${list.length}</button>` : '';
-    return `${status}${lead}<div class="pl-results">${rows}</div>${more}
+    const more = !showAll && rest.length > SHORT_LIST ? `<button type="button" class="pl-more" data-act="all">Show all ${rest.length}</button>` : '';
+    // While loading (or after an error) the status leads; otherwise it sits quietly under the list.
+    const busy = data.loading || !!data.error;
+    return `${busy ? status : ''}${hero}${rest.length ? heading : ''}<div class="pl-results">${rows}</div>${more}${busy ? '' : status}
       <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Distances are straight-line. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
   }
 
@@ -246,7 +284,7 @@ export function mountPlanner(
       showAll = true;
       render();
     });
-    screen.querySelectorAll<HTMLButtonElement>('.pl-row').forEach((row) =>
+    screen.querySelectorAll<HTMLButtonElement>('.pl-row-btn').forEach((row) =>
       row.addEventListener('click', () => {
         const item = items.find((i) => i.id === row.dataset.id)!;
         const opt = options().find((o) => o.item.id === item.id)?.option;

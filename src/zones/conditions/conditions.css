@@ -48,17 +48,11 @@
 .pl-loading { margin-top: 20px; animation: cd-pulse 1s ease-in-out infinite alternate; }
 @keyframes cd-pulse { to { opacity: 0.45; } }
 .pl-results { display: grid; gap: 6px; }
-.pl-row { display: grid; grid-template-columns: 34px 1fr; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: var(--r-m); padding: 10px 12px 10px 8px; cursor: pointer; }
+.pl-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: var(--r-m); padding: 9px 10px; cursor: pointer; }
 .pl-row-icon .hl-icon { width: 34px; height: 34px; padding: 3px; border-radius: 50%; background: var(--paper); color: var(--ink); }
 .pl-row-main { display: grid; gap: 2px; min-width: 0; }
 .pl-row-main b { font-size: 0.98rem; }
-.pl-row-main small { color: var(--muted); font-size: 0.75rem; margin-top: -2px; }
-.pl-row-head { font-size: 0.86rem; }
-.pl-row-detail { font-size: 0.8rem; color: var(--muted); }
-.pl-row.pl-v-go { border-left-color: var(--cd-go); }
-.pl-row.pl-v-mar { border-left-color: var(--cd-mar); }
-.pl-row.pl-v-skip { border-left-color: var(--cd-skip); }
-.pl-row.pl-v-go .pl-row-head { color: #d4e4bd; }
+.pl-row-main small { color: var(--muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-strip { display: flex; gap: 2px; margin-top: 5px; max-width: 220px; }
 .pl-strip i { flex: 1; min-width: 6px; height: 5px; border-radius: 2px; background: var(--border); }
 .pl-strip i.pl-v-go { background: var(--cd-go); }
@@ -180,3 +174,23 @@
 .cd-sum-days .cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
 .cd-sum-days .cd-v-skip { opacity: 0.6; }
 .cd-sum-dist { display: block; margin-top: 6px; color: var(--muted); font-size: 0.8rem; }
+
+/* Plan results: the best pick leads as a larger card, then a compact list with a verdict pill on each row. */
+.pl-eyebrow { margin: 20px 0 8px; color: var(--muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.pl-rest-head { margin-top: 22px; }
+.pl-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--panel-solid); border: 1px solid var(--border); border-radius: var(--r-l); padding: 14px; cursor: pointer; box-shadow: var(--shadow); }
+.pl-hero-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pl-hero .pl-row-icon .hl-icon { width: 48px; height: 48px; padding: 4px; box-shadow: 0 0 0 2px var(--pin); }
+.pl-hero b { font-family: var(--font-display); font-weight: 600; font-size: 1.35rem; line-height: 1.1; }
+.pl-hero-line { grid-column: 1 / -1; font-size: 0.9rem; }
+.pl-hero .pl-strip, .pl-days { grid-column: 1 / -1; }
+.pl-hero .pl-strip { max-width: none; }
+.pl-days { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.pl-days span { text-align: center; font-size: 0.75rem; font-weight: 600; padding: 5px 0; border-radius: 7px; background: var(--field); color: var(--muted); }
+.pl-days .pl-v-go { background: color-mix(in srgb, var(--cd-go) 28%, transparent); color: #d4e4bd; }
+.pl-days .pl-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.pl-days .pl-v-skip { opacity: 0.6; }
+.pl-pill { font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--raised); color: var(--muted); }
+.pl-pill.pl-v-go { background: color-mix(in srgb, var(--cd-go) 24%, transparent); color: #c9dbae; }
+.pl-pill.pl-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.pl-hero .pl-pill { font-size: 0.85rem; padding: 5px 12px; }
