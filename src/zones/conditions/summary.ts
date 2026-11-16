@@ -1,4 +1,5 @@
-import type { Forecast, HourlyMarine, HourlyWind } from './openmeteo';
+import type { Forecast, HourlyMarine, HourlyWeather, HourlyWind } from './openmeteo';
+import { periodKind, type WeatherKind } from './weather-icons';
 
 /**
  * Turns raw forecasts into what each category cares about: a short summary for the map bubble,
@@ -117,6 +118,30 @@ export interface SurfDay {
   tides: Tide[];
 }
 
+/** Part of a day: AM 6–11am, PM 12–8pm, and for camping the night (9pm to 5am next morning). */
+export interface Period {
+  id: 'am' | 'pm' | 'night';
+  label: string;
+  /** One symbol for the period, showing a mix when the hours differ. */
+  kind: WeatherKind;
+  /** Warmest for AM and PM, coldest for the night, °C. */
+  temp: number | null;
+  /** Total rain, mm. */
+  rain: number | null;
+  /** Highest chance of rain, %. */
+  rainProb: number | null;
+  /** Average wind, km/h, and where it comes from. */
+  wind: number | null;
+  windDir: number | null;
+}
+
+export const PERIODS: { id: Period['id']; label: string; from: number; to: number }[] = [
+  { id: 'am', label: 'AM', from: 6, to: 11 },
+  { id: 'pm', label: 'PM', from: 12, to: 20 },
+  // Hours past 23 are the next morning.
+  { id: 'night', label: 'Night', from: 21, to: 29 },
+];
+
 export interface Day {
   date: string;
   code: number | null;
@@ -132,6 +157,8 @@ export interface Day {
   water: number | null;
   /** Swell for the day (any coastal category), and the full surf read for surf spots. */
   surf: SurfDay | null;
+  /** AM and PM (and Night for camping). Empty when the forecast has no hourly weather. */
+  periods: Period[];
 }
 
 /** Angle between two compass bearings, 0–180. */
@@ -260,6 +287,45 @@ function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined,
   return { verdict, swellMin: Math.min(...hs), swellMax: Math.max(...hs), period, swellDir, best, am, pm, windRel, tides: tidesOn(marine, date) };
 }
 
+/** Indexes into the hourly lists for `date` from hour `from` to hour `to` (inclusive; past 23 runs into the next day). */
+function hourIndexes(time: string[], date: string, from: number, to: number): number[] {
+  const start = time.indexOf(`${date}T00:00`);
+  if (start < 0) return [];
+  const out: number[] = [];
+  for (let h = from; h <= to; h++) if (start + h < time.length) out.push(start + h);
+  return out;
+}
+
+function periodsOf(h: HourlyWeather | undefined, date: string, category: string): Period[] {
+  if (!h?.weather_code) return [];
+  return PERIODS.filter((p) => p.id !== 'night' || category === 'camping')
+    .map((p) => {
+      const idx = hourIndexes(h.time, date, p.from, p.to);
+      const nums = (list: (number | null)[]) => idx.map((i) => list[i]).filter((v): v is number => v != null);
+      const codes = idx.map((i) => h.weather_code[i]);
+      if (!codes.some((c) => c != null)) return null;
+      const temps = nums(h.temperature_2m);
+      const rain = nums(h.precipitation);
+      const probs = nums(h.precipitation_probability);
+      const speeds = nums(h.wind_speed_10m);
+      const dirs = nums(h.wind_direction_10m);
+      const x = avg(dirs.map((d) => Math.sin((d * Math.PI) / 180)));
+      const y = avg(dirs.map((d) => Math.cos((d * Math.PI) / 180)));
+      const period: Period = {
+        id: p.id,
+        label: p.label,
+        kind: periodKind(codes, p.id === 'night'),
+        temp: temps.length ? (p.id === 'night' ? Math.min(...temps) : Math.max(...temps)) : null,
+        rain: rain.length ? rain.reduce((a, b) => a + b, 0) : null,
+        rainProb: probs.length ? Math.max(...probs) : null,
+        wind: avg(speeds),
+        windDir: x != null && y != null ? ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360 : null,
+      };
+      return period;
+    })
+    .filter((p): p is Period => p != null);
+}
+
 function marineHasData(m: HourlyMarine | undefined): boolean {
   return !!m && (m.wave_height ?? []).some((v) => v != null);
 }
@@ -285,7 +351,8 @@ export function daysOf(f: Forecast, dates: string[], category: string, faces: nu
         windDir: d.wind_direction_10m_dominant[i],
         snow: d.snowfall_sum[i],
         water,
-        surf: marine ? surfDay(marine, f.hourlyWind, date, category === 'surfing' ? faces : null) : null,
+        surf: marine ? surfDay(marine, f.hourly ?? f.hourlyWind, date, category === 'surfing' ? faces : null) : null,
+        periods: periodsOf(f.hourly, date, category),
       };
       return day;
     })
@@ -407,14 +474,16 @@ export function rowsFor(category: string, days: Day[]): Row[] {
       return {
         date: d.date,
         verdict: s.verdict,
-        cells: [label, VERDICT_WORD[s.verdict], swellText(s), amPm ? `${amPm} km/h` : windCell(d)],
+        // With AM/PM periods the wind shows there, by the weather.
+        cells: [label, VERDICT_WORD[s.verdict], swellText(s), d.periods.length ? '' : amPm ? `${amPm} km/h` : windCell(d)],
         extra: [best, tides ? `Tides ${tides}` : ''].filter(Boolean).join(' · '),
       };
     }
     if (category === 'skiing') {
-      return { date: d.date, cells: [label, weatherWord(d.code), tempCell(d), d.snow != null && d.snow >= 0.5 ? `${round(d.snow)} cm snow` : 'no snow', windCell(d)] };
+      const snow = d.snow != null && d.snow >= 0.5 ? `${round(d.snow)} cm snow` : 'no snow';
+      return { date: d.date, cells: d.periods.length ? [label, tempCell(d), snow] : [label, weatherWord(d.code), tempCell(d), snow, windCell(d)] };
     }
-    const cells = [label, weatherWord(d.code), tempCell(d), rainCell(d), windCell(d)];
+    const cells = d.periods.length ? [label, tempCell(d)] : [label, weatherWord(d.code), tempCell(d), rainCell(d), windCell(d)];
     if ((category === 'diving' || category === 'kayaking') && d.surf) cells.push(`swell ${swellText(d.surf)}`);
     return { date: d.date, cells };
   });

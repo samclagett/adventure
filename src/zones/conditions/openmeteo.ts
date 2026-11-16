@@ -43,6 +43,14 @@ export interface HourlyWind {
   wind_direction_10m: (number | null)[];
 }
 
+/** Hour by hour weather, for every place: splits each day into morning, afternoon and night. */
+export interface HourlyWeather extends HourlyWind {
+  weather_code: (number | null)[];
+  temperature_2m: (number | null)[];
+  precipitation: (number | null)[];
+  precipitation_probability: (number | null)[];
+}
+
 export interface HourlyMarine {
   time: string[];
   wave_height: (number | null)[];
@@ -55,7 +63,9 @@ export interface HourlyMarine {
 
 export interface Forecast {
   daily: DailyWeather;
-  /** Only for coastal categories (surf, diving, kayaking), which need the wind hour by hour. */
+  /** Hour by hour weather (and wind). Missing from forecasts saved before 2026-11-16. */
+  hourly?: HourlyWeather;
+  /** Older saved forecasts: hourly wind for coastal places only. Replaced by `hourly`. */
   hourlyWind?: HourlyWind;
   /** Only for coastal categories. Missing or all-null when the place is too far from the sea. */
   marine?: HourlyMarine;
@@ -72,7 +82,7 @@ const DAILY_VARS = [
   'wind_direction_10m_dominant',
   'snowfall_sum',
 ];
-const WIND_VARS = ['wind_speed_10m', 'wind_direction_10m'];
+const HOURLY_VARS = ['weather_code', 'temperature_2m', 'precipitation', 'precipitation_probability', 'wind_speed_10m', 'wind_direction_10m'];
 const MARINE_VARS = ['wave_height', 'swell_wave_height', 'swell_wave_period', 'swell_wave_direction', 'sea_level_height_msl', 'sea_surface_temperature'];
 
 function chunks<T>(list: T[], size: number): T[][] {
@@ -127,26 +137,24 @@ async function getAll(base: string, places: Place[], params: Record<string, stri
 }
 
 /**
- * Forecasts for each place, in the same order. `coastal[i]` asks for hourly wind and marine data too.
+ * Forecasts for each place, in the same order. `coastal[i]` asks for the marine forecast too.
  * Throws only if nothing at all could be fetched.
  */
 export async function fetchForecasts(places: Place[], coastal: boolean[]): Promise<(Forecast | null)[]> {
   const coastIdx = places.map((_, i) => i).filter((i) => coastal[i]);
   const coastPlaces = coastIdx.map((i) => places[i]);
-  const [weather, wind, marine] = await Promise.all([
-    getAll(WEATHER_URL, places, { daily: DAILY_VARS.join(',') }),
-    coastPlaces.length ? getAll(WEATHER_URL, coastPlaces, { hourly: WIND_VARS.join(',') }) : Promise.resolve([]),
+  const [weather, marine] = await Promise.all([
+    getAll(WEATHER_URL, places, { daily: DAILY_VARS.join(','), hourly: HOURLY_VARS.join(',') }),
     // Marine data is a bonus: if it fails, weather still shows.
     // The marine API only goes out 8 days (asking for more fails the whole request).
     coastPlaces.length
       ? getAll(MARINE_URL, coastPlaces, { hourly: MARINE_VARS.join(','), forecast_days: String(MARINE_DAYS) }).catch(() => coastPlaces.map(() => null))
       : Promise.resolve([]),
   ]);
-  const result: (Forecast | null)[] = weather.map((w) => (w ? { daily: w.daily as DailyWeather } : null));
+  const result: (Forecast | null)[] = weather.map((w) => (w ? { daily: w.daily as DailyWeather, hourly: w.hourly as HourlyWeather } : null));
   coastIdx.forEach((placeIdx, n) => {
     const f = result[placeIdx];
     if (!f) return;
-    if (wind[n]) f.hourlyWind = wind[n]!.hourly as HourlyWind;
     if (marine[n]) f.marine = marine[n]!.hourly as HourlyMarine;
   });
   return result;
