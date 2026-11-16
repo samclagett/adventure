@@ -54,3 +54,7 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   for every place, saved on the phone). Shown on the Plan list, the best pick and the place card ("1 h 40 drive from
   Sydney"); Plan ranks nearer drives first within each rating. Straight-line km shows until a drive time is in, or
   where there's no road (New Zealand).
+- **Go alerts**: on hold (Sam, 2026-11-16). Options were app notifications (web push), the ntfy app, or email.
+- **Done list** (`src/zones/hitlist/done.ts`, table `done_trips`, private storage bucket `done-photos`): "Mark as done"
+  on a place card logs a visit with a date, an optional photo (shrunk on the phone to 1600 px JPEG) and a note. The Hit list
+  sheet has a To do / Done switch; Done lists every visit, newest first. A visit keeps the place's name if it's deleted.
