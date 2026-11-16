@@ -54,7 +54,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
   min-height: 34px;
 }
 .map-controls button.active { background: var(--accent); color: #062026; }
-.map-controls .quality { border-left: 1px solid var(--border); border-radius: 0 9px 9px 0; color: var(--muted); font-weight: 500; white-space: nowrap; }
 
 /* Account and settings: a round icon button at the top right that opens a small menu. */
 .account {
@@ -88,12 +87,14 @@ form button { background: var(--accent); color: #062026; border: none; font-weig
 .account .secondary { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #1a3a4f; color: var(--text); cursor: pointer; }
 
 /* MapLibre's own controls, tinted to match. */
-/* Sits under the account and mountain buttons. */
-#map .maplibregl-ctrl-top-right { top: calc(env(safe-area-inset-top) + 100px); }
+/* Sits under the account button. The compass only shows while the map is turned away from north. */
+#map .maplibregl-ctrl-top-right { top: calc(env(safe-area-inset-top) + 56px); }
+#map:not(.map-rotated) .maplibregl-ctrl-top-right .maplibregl-ctrl-compass { display: none; }
 /* Phones and tablets pinch to zoom, so hide + and −. The compass stays: tap it to face north again. */
 @media (hover: none) and (pointer: coarse) {
   #map .maplibregl-ctrl-zoom-in,
   #map .maplibregl-ctrl-zoom-out { display: none !important; }
+  #map:not(.map-rotated) .maplibregl-ctrl-top-right .maplibregl-ctrl-group { display: none; }
 }
 #map .maplibregl-ctrl-group { background: var(--panel-solid); border: 1px solid var(--border); }
 #map .maplibregl-ctrl-group button + button { border-top-color: var(--border); }
@@ -102,46 +103,15 @@ form button { background: var(--accent); color: #062026; border: none; font-weig
 #map .maplibregl-ctrl-attrib a { color: var(--muted); }
 #map .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
-/* Mountain height: a small round button under the account button; tap to show the slider. */
-.relief-control {
-  position: absolute;
-  z-index: 3;
-  top: calc(env(safe-area-inset-top) + 60px);
-  right: 12px;
-  font-size: 0.9rem;
-  color: var(--text);
-}
-.relief-control summary {
-  list-style: none;
-  cursor: pointer;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  margin-left: auto;
-  background: var(--panel);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-}
-.relief-control summary::-webkit-details-marker { display: none; }
-.relief-control summary svg { width: 24px; height: 24px; }
-.relief-control[open] summary { background: var(--accent); color: #062026; border-color: var(--accent); }
-.relief-pop {
-  position: absolute;
-  top: 0;
-  right: 48px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  height: 40px;
-  white-space: nowrap;
-  background: var(--panel-solid);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  color: var(--muted);
-}
-.relief-pop input { width: 110px; accent-color: var(--accent); }
-.relief-pop output { min-width: 2.2em; text-align: right; color: var(--text); }
+/* Map settings inside the account menu (map/controls.ts): 3D switch and mountain height. */
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.setting span { display: grid; gap: 1px; }
+.setting small { color: var(--muted); font-size: 0.8rem; }
+.setting output { display: inline; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.setting-range { display: grid; gap: 4px; margin-top: 8px; }
+.setting-range span { display: block; }
+.setting-range input { width: 100%; padding: 0; border: none; background: none; accent-color: var(--accent); }
+.switch { appearance: none; -webkit-appearance: none; flex: none; width: 46px; height: 28px; padding: 0; border-radius: 999px; border: 1px solid var(--border); background: #0e2130; position: relative; cursor: pointer; transition: background 0.15s; }
+.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--muted); transition: transform 0.15s, background 0.15s; }
+.switch:checked { background: var(--accent); border-color: var(--accent); }
+.switch:checked::after { transform: translateX(18px); background: #062026; }

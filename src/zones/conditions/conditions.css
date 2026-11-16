@@ -187,3 +187,9 @@
 .cd-p-wind { display: inline-flex; align-items: center; gap: 1px; }
 .cd-p-wind .wx-arrow { width: 11px; height: 11px; color: var(--muted); }
 .wx-periods { display: inline-flex; gap: 1px; }
+
+/* Zoomed out (layer.ts): chips show just the day's symbol and temperature. Wind and swell appear as you zoom in. */
+.wx-compact .wx-chip { gap: 0; padding: 2px 5px 2px 3px; font-size: 0.7rem; }
+.wx-compact .wx-chip .wx-wind, .wx-compact .wx-chip .wx-swell { display: none; }
+.wx-compact .wx-chip .wx-icon { width: 16px; height: 16px; }
+.wx-compact .wx-periods .wx-icon:not(:first-child) { display: none; }

@@ -119,6 +119,23 @@
   box-shadow: 2px 2px 0 0 var(--pin);
 }
 .hl-pin-shape .hl-icon { width: calc(32px * var(--s)); height: calc(32px * var(--s)); position: relative; z-index: 1; }
+/* Zoomed out, pins that would pile up fold into one numbered circle (pins.ts). Tap it to zoom in. */
+.hl-pin.hl-grouped { display: none; }
+.hl-group {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px rgba(241, 235, 223, 0.35), 0 3px 8px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
 /* The pin being placed stays full size so it's easy to drag. */
 .hl-pin-draft { --s: 1; }
 .hl-pin-draft .hl-pin-shape { width: 50px; height: 50px; box-shadow: 0 0 0 3px var(--accent), 0 3px 10px rgba(0, 0, 0, 0.5); animation: hl-bob 1.2s ease-in-out infinite alternate; }

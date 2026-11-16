@@ -112,6 +112,8 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     markers.clear();
     if (!on) return;
     for (const item of items) {
+      // No chip for pins folded into a numbered group; it appears once you zoom in.
+      if (hl.isGrouped(item.id)) continue;
       let c: ReturnType<typeof chip> = null;
       try {
         c = chip(item);
@@ -152,7 +154,18 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
       });
   }
 
+  /** Zoomed out, chips shrink to the weather symbol and temperature so they don't cover the map. */
+  const COMPACT_BELOW_ZOOM = 8;
+  function compact() {
+    const was = parent.classList.contains('wx-compact');
+    const now = map.getZoom() < COMPACT_BELOW_ZOOM;
+    if (was !== now) parent.classList.toggle('wx-compact', now);
+  }
+  map.on('zoom', compact);
+  compact();
+
   map.on('moveend', declutter);
+  hl.onGroupsChange(render);
   data.onChange(render);
   render();
 
