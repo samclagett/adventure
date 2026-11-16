@@ -11,5 +11,5 @@ Python fetchers for this zone live in `scripts/conditions/`.
 - `data.ts` keeps forecasts by area (0.25° grid), from the browser cache, then conditions.json written every
   3 hours by `scripts/conditions/fetch.py`, then live. `home.ts` is the home base saved on each phone.
 - `planner.ts` is the opening Plan screen, `layer.ts` the live weather layer in Explore mode, `card.ts` the pin card section.
-- `weather-icons.ts` holds the weather symbols (Material Symbols for now).
+- `weather-icons.ts` holds the weather symbols (Phosphor Icons, light weight).
 - Swell is model open-ocean swell in metres. Never convert it to feet: only Surfline's face height is in feet.
