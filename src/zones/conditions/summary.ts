@@ -6,11 +6,10 @@ import { periodKind, type WeatherKind } from './weather-icons';
  * and day-by-day rows for the pin card. No swell on a mountain, no snow on a beach.
  */
 
-export type WindowId = 'weekend' | '5days' | 'week' | '2weeks';
+export type WindowId = 'weekend' | '5days' | '2weeks';
 export const WINDOWS: { id: WindowId; label: string; short: string }[] = [
   { id: 'weekend', label: 'This weekend', short: 'this weekend' },
   { id: '5days', label: 'Next 5 days', short: 'next 5 days' },
-  { id: 'week', label: 'Next week', short: 'next week' },
   { id: '2weeks', label: 'Next 2 weeks', short: 'next 2 weeks' },
 ];
 
@@ -42,7 +41,7 @@ export function daysFor(w: WindowId, today = todayIso()): string[] {
     const fri = day === 6 ? addDays(today, -1) : day === 0 ? addDays(today, -2) : addDays(today, 5 - day);
     return [0, 1, 2].map((i) => addDays(fri, i)).filter((d) => d >= today);
   }
-  const n = w === '5days' ? 5 : w === 'week' ? 7 : 14;
+  const n = w === '5days' ? 5 : 14;
   return Array.from({ length: n }, (_, i) => addDays(today, i));
 }
 
@@ -199,7 +198,7 @@ function windOver(wind: HourlyWind, date: string, from: number, to: number): [nu
 }
 
 /** High and low tide times, found as turning points in the hourly sea level (refined to the minute). */
-function tidesOn(marine: HourlyMarine, date: string): Tide[] {
+export function tidesOn(marine: HourlyMarine, date: string): Tide[] {
   const out: Tide[] = [];
   const t = marine.time;
   const h = marine.sea_level_height_msl;
@@ -604,3 +603,39 @@ export function rateWindow(category: string, days: Day[]): Option | null {
 }
 
 export const verdictRank = (v: Verdict) => RANK[v];
+
+// ---- Sea for part of a day (the conditions table, matrix.ts) ----
+
+export interface PeriodSea {
+  /** Highest swell over the period, m (wave height where there's no swell figure). */
+  swell: number | null;
+  /** Swell period at that peak, seconds. */
+  swellPeriod: number | null;
+  /** Where the swell comes from, degrees. */
+  swellDir: number | null;
+  /** High and low tides within the period. */
+  tides: Tide[];
+}
+
+/** Swell and tides for one part of a day (AM 6–11am, PM 12–8pm, Night 9pm–5am). */
+export function seaFor(f: Forecast, date: string, id: Period['id']): PeriodSea | null {
+  const m = marineHasData(f.marine) ? f.marine! : null;
+  if (!m) return null;
+  const p = PERIODS.find((x) => x.id === id)!;
+  const idx = hourIndexes(m.time, date, p.from, p.to);
+  const swellList = m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m.wave_height;
+  let peak = -1;
+  idx.forEach((i) => {
+    if (swellList[i] != null && (peak < 0 || swellList[i]! > swellList[peak]!)) peak = i;
+  });
+  const tides = [...tidesOn(m, date), ...tidesOn(m, nextDay(date)).map((t) => ({ ...t, hour: t.hour + 24 }))]
+    .filter((t) => t.hour >= p.from && t.hour < p.to + 1);
+  if (peak < 0) return { swell: null, swellPeriod: null, swellDir: null, tides };
+  return { swell: swellList[peak], swellPeriod: m.swell_wave_period[peak], swellDir: m.swell_wave_direction[peak], tides };
+}
+
+function nextDay(iso: string): string {
+  const d = parseIso(iso);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}

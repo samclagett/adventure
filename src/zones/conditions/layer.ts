@@ -84,7 +84,7 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     const parts: string[] = [];
     // Morning and afternoon (and night for camping) symbols, else one for the day.
     const icons = day.periods.length
-      ? `<span class="wx-periods">${day.periods.map((p) => WEATHER_ICONS[p.kind]).join('')}</span>`
+      ? `<span class="wx-periods">${day.periods.map((p) => `<span class="wx-period">${WEATHER_ICONS[p.kind]}<small>${p.label}</small></span>`).join('')}</span>`
       : WEATHER_ICONS[weatherKind(day.code)];
     parts.push(`<span class="wx-part">${icons}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>`);
     if (day.wind != null) {

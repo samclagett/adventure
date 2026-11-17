@@ -330,3 +330,5 @@
 .hl-photo-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .hl-photo-preview { width: 56px; height: 56px; flex: none; border-radius: var(--r-s); background: var(--raised) center / cover no-repeat; }
 .hl-photo-big { margin-top: 12px; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--r-m); background: var(--raised) center / cover no-repeat; }
+/* "Other states" divider between the NSW area groups and the by-category groups (areas.ts). */
+.hl-eyebrow { margin: 18px 0 -4px; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

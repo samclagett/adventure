@@ -14,6 +14,7 @@ import { makeDraggable, type Snap } from '../shared/sheet';
 import { regionOf } from '../map';
 import * as done from './done';
 import type { DoneTrip } from './done';
+import { NSW_AREAS, nswAreaOf } from './areas';
 
 /** What the add/edit form is working on. `id` is set when editing an existing item. */
 interface Draft {
@@ -241,8 +242,19 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     if (toLocate.length) {
       html += `<h3>${ICONS.pin} To locate (${toLocate.length})</h3><p class="hl-muted">No pin yet. Tap one to find it.</p>${toLocate.map(itemRow).join('')}`;
     }
+    // NSW places group by where they are from Sydney; everywhere else groups by category.
+    const located = shown.filter((i) => i.lat != null);
+    const areaOf = new Map(located.map((i) => [i.id, nswAreaOf(i.lat!, i.lng!)]));
+    const catOrder = (i: HitListItem) => CATEGORIES.indexOf(categoryOf(i.activity));
+    for (const a of NSW_AREAS) {
+      const inArea = located.filter((i) => areaOf.get(i.id) === a.id).sort((x, y) => catOrder(x) - catOrder(y) || x.name.localeCompare(y.name));
+      if (inArea.length) html += `<h3>${ICONS.pin} ${esc(a.label)} (${inArea.length})</h3>${inArea.map(itemRow).join('')}`;
+    }
+    const elsewhere = located.filter((i) => !areaOf.get(i.id));
+    const anyNsw = located.length > elsewhere.length;
+    if (anyNsw && elsewhere.length) html += '<p class="hl-eyebrow">Other states</p>';
     for (const c of CATEGORIES) {
-      const inCat = shown.filter((i) => i.lat != null && categoryOf(i.activity).id === c.id);
+      const inCat = elsewhere.filter((i) => categoryOf(i.activity).id === c.id);
       if (inCat.length) html += `<h3>${c.icon} ${esc(c.label)} (${inCat.length})</h3>${inCat.map(itemRow).join('')}`;
     }
     if (!shown.length && !loadError) {

@@ -6,6 +6,7 @@ import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso
 import { getHome } from './home';
 import { ensureDrives, onDriveChange, travelText } from './drive';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
+import { openMatrix, TABLE_ICON } from './matrix';
 
 /**
  * Conditions on each place card: a short summary at the top (best of the next four days, a day strip and
@@ -54,7 +55,8 @@ function summaryHtml(item: HitListItem, data: ConditionsData): string {
         ? `<span class="cd-pill cd-v-mar">${VERDICT_WORD.mar} ${name(dates[firstMar])}</span>`
         : `<span class="cd-pill cd-v-skip">Not in the next 4 days</span>`;
   const strip = dates.map((d, n) => `<span class="cd-v-${verdicts[n]}" title="${dayShort(d)}: ${VERDICT_WORD[verdicts[n]]}">${dayShort(d)}</span>`).join('');
-  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  const table = `<button type="button" class="cd-table-btn" data-act="matrix" aria-label="Morning and afternoon conditions table">${TABLE_ICON}<span>AM / PM</span></button>`;
+  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span>${table}</div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
 }
 
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
@@ -66,6 +68,11 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
     const fill = () => {
       if (!el.isConnected) return;
       el.innerHTML = summaryHtml(item, data);
+      el.querySelector('[data-act="matrix"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const f = data.get(item);
+        if (f) openMatrix(item, f);
+      });
     };
     refillSummary = fill;
     fill();
@@ -73,7 +80,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
     if (home) void ensureDrives(home, [item]);
   });
 
-  let windowId: WindowId = 'week';
+  let windowId: WindowId = '5days';
   try {
     const saved = localStorage.getItem(WINDOW_KEY) as WindowId | null;
     if (saved && WINDOWS.some((w) => w.id === saved)) windowId = saved;
@@ -106,7 +113,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
         if (item.faces == null) notes.push('Set which way the beach faces (Edit) to see onshore and offshore wind.');
         if (!f.marine) notes.push('No marine forecast for this spot.');
       }
-      el.innerHTML = `<h3>Conditions</h3>
+      el.innerHTML = `<div class="cd-card-head"><h3>Conditions</h3><button type="button" class="cd-table-btn" data-act="matrix">${TABLE_ICON}<span>AM / PM table</span></button></div>
         <div class="cd-windows">${WINDOWS.map((w) => `<button type="button" data-win="${w.id}" class="${w.id === windowId ? 'on' : ''}">${w.label}</button>`).join('')}</div>
         ${water.length ? `<p class="cd-muted">Water about ${Math.round(water.reduce((a, b) => a + b, 0) / water.length)}°</p>` : ''}
         ${rows.length ? `<div class="cd-days">${rows
@@ -120,6 +127,10 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
           })
           .join('')}</div>` : '<p class="cd-muted">No forecast for these days yet.</p>'}
         ${notes.map((n) => `<p class="cd-muted">${esc(n)}</p>`).join('')}`;
+      el.querySelector('[data-act="matrix"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMatrix(item, f);
+      });
       el.querySelectorAll<HTMLButtonElement>('[data-win]').forEach((b) =>
         b.addEventListener('click', (e) => {
           e.stopPropagation();

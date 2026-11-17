@@ -58,3 +58,11 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
 - **Done list** (`src/zones/hitlist/done.ts`, table `done_trips`, private storage bucket `done-photos`): "Mark as done"
   on a place card logs a visit with a date, an optional photo (shrunk on the phone to 1600 px JPEG) and a note. The Hit list
   sheet has a To do / Done switch; Done lists every visit, newest first. A visit keeps the place's name if it's deleted.
+
+### Fixes 17 to 27 (2026-11-17)
+
+- **Chunk 1** (plan filters and conditions): "Next week" dropped from the window picker. Plan screen drive radius slider
+  (1 to 8 h from the start point, or Australia-wide; road time when known, else an estimate). Map weather chips label
+  each symbol AM / PM / Night. "AM / PM" button on a place card opens a conditions table (`conditions/matrix.ts`):
+  AM and PM columns per day for weather, temperature, rain, wind, wind at the beach, swell, period and tides.
+  NSW hit list places group by area from Sydney (`hitlist/areas.ts`).

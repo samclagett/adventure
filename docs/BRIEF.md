@@ -44,7 +44,9 @@ Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (t
 ## Conditions data
 
 - Fetched on demand ("Get conditions" button), not continuously. A wait of 1–2 minutes is fine.
-- Forecast window picker: this weekend, next 5 days, next week, next 2 weeks.
+- Forecast window picker: this weekend, next 5 days, next 2 weeks ("next week" dropped 2026-11-17).
+- Plan screen drive radius from home: 1 to 8 hours, or Australia-wide (2026-11-17).
+- Weather symbols are labelled AM / PM (and Night); a pop-up table shows AM and PM columns for weather, wind, swell and tides (2026-11-17).
 - Sources (an ever-growing list): BOM as the anchor, plus WillyWeather, Swellnet, Surfline and Open-Meteo (free weather and marine API).
 - Also needed: river heights (paddling and crossings), water temperature, water quality and dive visibility.
 - Hazards: fire danger, park closures, track and road closures.
@@ -54,6 +56,7 @@ Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (t
 
 - The list is added manually: paste in a list of any messiness.
 - Items the app can't place go into a "to locate" queue.
+- NSW places are grouped by where they are from Sydney: North of Sydney, Sydney and surrounds, Mountains and inland, South of Sydney (2026-11-17). Other states group by category for now.
 - Locations are stored as latitude/longitude. Users drop pins in the app, or paste a Google Maps share link and the app pulls out the coordinates.
 - Optional links to AllTrails and park sites for inspiration.
 - Future: link to Sam's notes app as a live source.

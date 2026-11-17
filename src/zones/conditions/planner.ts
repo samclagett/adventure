@@ -26,14 +26,21 @@ function esc(s: string | null | undefined): string {
 interface Prefs {
   activity: string;
   windowId: WindowId;
+  /** Longest drive from the start point, in hours (1 to 8), or null for Australia-wide. */
+  radius: number | null;
 }
+
+/** The drive radius slider runs 1 to 8 hours, and one more step past 8 means Australia-wide. */
+const RADIUS_MAX = 8;
+const radiusText = (r: number | null) => (r == null ? 'Australia-wide' : `Up to ${r} h drive`);
 
 function loadPrefs(): Prefs {
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<Prefs>;
-    return { activity: p.activity ?? '', windowId: WINDOWS.some((w) => w.id === p.windowId) ? p.windowId! : 'weekend' };
+    const radius = typeof p.radius === 'number' && p.radius >= 1 && p.radius <= RADIUS_MAX ? Math.round(p.radius) : null;
+    return { activity: p.activity ?? '', windowId: WINDOWS.some((w) => w.id === p.windowId) ? p.windowId! : 'weekend', radius };
   } catch {
-    return { activity: '', windowId: 'weekend' };
+    return { activity: '', windowId: 'weekend', radius: null };
   }
 }
 
@@ -72,9 +79,20 @@ export function mountPlanner(
     }
   }
 
+  /** Places of the chosen activity, before the drive radius. */
+  function ofActivity(): HitListItem[] {
+    return items.filter((i) => prefs.activity === 'any' || categoryOf(i.activity).id === prefs.activity);
+  }
+
+  /** Inside the drive radius from the start point. Uses the road time when known, otherwise an estimate. */
+  function inRadius(i: HitListItem): boolean {
+    if (prefs.radius == null || !from || i.lat == null || i.lng == null) return true;
+    return travelMinutes(from, { lat: i.lat, lng: i.lng }) <= prefs.radius * 60;
+  }
+
   function options(): { item: HitListItem; option: Option | null }[] {
     const dates = daysFor(prefs.windowId);
-    const chosen = items.filter((i) => prefs.activity === 'any' || categoryOf(i.activity).id === prefs.activity);
+    const chosen = ofActivity().filter(inRadius);
     return chosen
       .map((item) => {
         const f = data.get(item);
@@ -98,7 +116,11 @@ export function mountPlanner(
     if (!prefs.activity) return '';
     if (!items.length) return '<p class="pl-muted">Your hit list is empty or still loading. Sign in with the account button if you haven’t.</p>';
     const list = options();
-    if (!list.length) return `<p class="pl-muted">Nothing on your hit list for ${esc(categoryOf(prefs.activity).label.toLowerCase())} yet.</p>`;
+    const outside = ofActivity().length - list.length;
+    const actWord = prefs.activity === 'any' ? 'anything' : categoryOf(prefs.activity).label.toLowerCase();
+    if (!list.length && outside > 0)
+      return `<p class="pl-muted">Nothing for ${esc(actWord)} within ${prefs.radius} h of ${esc(from!.name)}. ${outside} place${outside === 1 ? ' is' : 's are'} further away. <button type="button" class="pl-link" data-act="no-radius">Show Australia-wide</button></p>`;
+    if (!list.length) return `<p class="pl-muted">Nothing on your hit list for ${esc(actWord)} yet.</p>`;
     const status = data.loading
       ? `<p class="pl-muted pl-loading">Getting forecasts for ${items.length} places…</p>`
       : data.error
@@ -163,7 +185,8 @@ export function mountPlanner(
     const more = !showAll && rest.length > SHORT_LIST ? `<button type="button" class="pl-more" data-act="all">Show all ${rest.length}</button>` : '';
     // While loading (or after an error) the status leads; otherwise it sits quietly under the list.
     const busy = data.loading || !!data.error;
-    return `${busy ? status : ''}${hero}${rest.length ? heading : ''}<div class="pl-results">${rows}</div>${more}${busy ? '' : status}
+    const outsideNote = outside > 0 ? `<p class="pl-muted">${outside} more place${outside === 1 ? ' is' : 's are'} over ${prefs.radius} h away. <button type="button" class="pl-link" data-act="no-radius">Show Australia-wide</button></p>` : '';
+    return `${busy ? status : ''}${hero}${rest.length ? heading : ''}<div class="pl-results">${rows}</div>${more}${outsideNote}${busy ? '' : status}
       <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
   }
 
@@ -213,10 +236,16 @@ export function mountPlanner(
       <p class="pl-q">When?</p>
       <div class="pl-when">${WINDOWS.map((w) => `<button type="button" data-win="${w.id}" class="${w.id === prefs.windowId ? 'on' : ''}">${w.label}</button>`).join('')}</div>
       ${fromHtml()}
+      <p class="pl-q">Drive radius${from ? ` from ${esc(from.name)}` : ''}</p>
+      <div class="pl-radius">
+        <input type="range" min="1" max="${RADIUS_MAX + 1}" step="1" value="${prefs.radius ?? RADIUS_MAX + 1}" aria-label="Drive radius in hours" />
+        <output>${radiusText(prefs.radius)}</output>
+        <div class="pl-radius-scale" aria-hidden="true"><span>1 h</span><span>8 h</span><span>All</span></div>
+      </div>
       <div class="pl-foot-bar"><button type="button" class="pl-go" data-act="show" ${blocker ? 'disabled' : ''}>${blocker || 'Show places'}</button></div>
     </div>`
         : `<div class="pl-body">
-      <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · from ${esc(from!.name)}</small></h2></div>
+      <div class="pl-top"><button type="button" class="pl-back" data-act="back" aria-label="Back to the questions">‹</button><h2 class="pl-title">${esc(actLabel)}<small>${esc(win.label)} · ${prefs.radius == null ? `from ${esc(from!.name)}` : `within ${prefs.radius} h of ${esc(from!.name)}`}</small></h2></div>
       ${resultsHtml()}
     </div>`;
     screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = scroll;
@@ -247,6 +276,18 @@ export function mountPlanner(
         render();
       }),
     );
+    const range = screen.querySelector<HTMLInputElement>('.pl-radius input');
+    range?.addEventListener('input', () => {
+      const v = Number(range.value);
+      prefs.radius = v > RADIUS_MAX ? null : v;
+      screen.querySelector('.pl-radius output')!.textContent = radiusText(prefs.radius);
+    });
+    range?.addEventListener('change', savePrefs);
+    screen.querySelector('[data-act="no-radius"]')?.addEventListener('click', () => {
+      prefs.radius = null;
+      savePrefs();
+      render();
+    });
     screen.querySelector('[data-act="update"]')?.addEventListener('click', () => data.ensure(items, true));
     screen.querySelector('[data-act="change-from"]')?.addEventListener('click', () => {
       editingFrom = true;
