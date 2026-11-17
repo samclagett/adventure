@@ -37,7 +37,9 @@ A visually rich, slightly game-like web app that combines conditions (weather, w
 ## Activities
 
 Hiking and camping are central. Also surfing, climbing, skiing, snorkelling and diving (one category), and kayaking/canoeing.
-Beaches and mountain biking were dropped as categories for now (2026-11-11).
+Beaches and mountain biking were dropped as categories for now (2026-11-11). Canyoning joined the main list on 2026-11-17, and kayaking/canoeing moved into a sub-list under "Other", where more activities will go later.
+
+Map look (2026-11-17): a crisp vector coastline and richer colours are being tried as a Settings switch ("Crisp coastline").
 
 Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (traced to SVG) on paper-coloured pins with muted accent colours.
 

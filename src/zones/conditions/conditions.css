@@ -33,7 +33,7 @@
 .pl-q { margin: 20px 0 8px; color: var(--muted); font-size: 0.9rem; }
 .pl-acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .pl-acts button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px 8px; font: inherit; font-size: 0.72rem; line-height: 1.15; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: var(--r-m); cursor: pointer; }
-.pl-acts button .hl-icon { width: 44px; height: 44px; padding: 5px; border-radius: 50%; background: var(--paper); color: var(--ink); }
+.pl-acts button .hl-icon { width: 44px; height: 44px; padding: 2px; border-radius: 50%; background: var(--paper); color: var(--ink); }
 .pl-acts button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
 .pl-acts button.on .hl-icon { color: var(--ink); }
 .pl-acts .pl-any { align-content: center; font-size: 0.85rem; }
@@ -49,7 +49,7 @@
 @keyframes cd-pulse { to { opacity: 0.45; } }
 .pl-results { display: grid; gap: 6px; }
 .pl-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: var(--r-m); padding: 9px 10px; cursor: pointer; }
-.pl-row-icon .hl-icon { width: 34px; height: 34px; padding: 3px; border-radius: 50%; background: var(--paper); color: var(--ink); }
+.pl-row-icon .hl-icon { width: 34px; height: 34px; padding: 1px; border-radius: 50%; background: var(--paper); color: var(--ink); }
 .pl-row-main { display: grid; gap: 2px; min-width: 0; }
 .pl-row-main b { font-size: 0.98rem; }
 .pl-row-main small { color: var(--muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -184,7 +184,7 @@
 .pl-rest-head { margin-top: 22px; }
 .pl-hero { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--panel-solid); border: 1px solid var(--border); border-radius: var(--r-l); padding: 14px; cursor: pointer; box-shadow: var(--shadow); }
 .pl-hero-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.pl-hero .pl-row-icon .hl-icon { width: 48px; height: 48px; padding: 4px; box-shadow: 0 0 0 2px var(--pin); }
+.pl-hero .pl-row-icon .hl-icon { width: 48px; height: 48px; padding: 2px; box-shadow: 0 0 0 2px var(--pin); }
 .pl-hero b { font-family: var(--font-display); font-weight: 600; font-size: 1.35rem; line-height: 1.1; }
 .pl-hero-line { grid-column: 1 / -1; font-size: 0.9rem; }
 .pl-hero .pl-strip, .pl-days { grid-column: 1 / -1; }
@@ -240,3 +240,9 @@
 .pl-radius-scale span:nth-child(1) { left: 8px; }
 .pl-radius-scale span:nth-child(2) { left: calc(8px + (100% - 16px) * 7 / 8); }
 .pl-radius-scale span:nth-child(3) { left: calc(100% - 8px); }
+
+/* Plan screen: Other's sub-list (kayaking and canoeing, more later), and Anything across the full width. */
+.pl-acts .pl-any { grid-column: 1 / -1; padding: 12px; }
+.pl-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border-radius: var(--r-m); background: var(--raised); }
+.pl-acts .pl-sub button { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; font-size: 0.85rem; border-radius: 999px; }
+.pl-acts .pl-sub button .hl-icon { width: 32px; height: 32px; padding: 3px; }

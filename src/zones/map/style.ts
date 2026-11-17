@@ -52,7 +52,74 @@ export const COLORS = {
   ghost: '#08141c',
   outline: '#ffffff',
   activeGlow: '#6fc3b2',
+  /** Crisp look: the sea and the shoreline. */
+  sea: '#0b4867',
+  shore: '#eef6f2',
 };
+
+/**
+ * Two looks, switchable in Settings while Sam compares them (2026-11-17):
+ * - classic: the Round 1 hybrid, where the coast comes from the elevation tiles (soft, a little blocky).
+ * - crisp: the sea drawn from a vector coastline (ocean.geojson) with a clean edge and a fine shoreline,
+ *   and richer land: stronger, more saturated satellite and deeper greens.
+ * Both are in one style; applyLook (map.ts) shows and hides layers and changes paint.
+ */
+export type Look = 'classic' | 'crisp';
+
+/**
+ * Height tint, atlas style: soft sage on the coast, greens through the ranges, stone and pale rock up high.
+ * Stops sit in 0–2200 m because Australian ranges are low.
+ */
+const RELIEF_CLASSIC = [
+  'interpolate', ['linear'], ['elevation'],
+  -4000, '#0a2433',
+  -200, '#12374c',
+  -20, '#2a6378',
+  -1, '#4f8d99',
+  // Zoomed in, the elevation data often reads the sea as exactly 0 m: keep that water-coloured.
+  0, '#3f7f8f',
+  1, '#d5dbbd',
+  50, '#c3d0a4',
+  200, '#a9be8c',
+  450, '#93aa7c',
+  750, '#a6a682',
+  1000, '#b6ab92',
+  1300, '#c4bba9',
+  1700, '#d9d4cb',
+  2200, '#f2f0ec',
+];
+
+/** Crisp look: richer greens, and sea level is land-coloured, because the vector sea now draws the water. */
+const RELIEF_CRISP = [
+  'interpolate', ['linear'], ['elevation'],
+  -4000, '#0a2433',
+  -1, '#0b4867',
+  0, '#c9d6a2',
+  50, '#b3c98a',
+  200, '#97b86f',
+  450, '#7fa060',
+  750, '#929a62',
+  1000, '#a89a78',
+  1300, '#bdb19a',
+  1700, '#d9d4cb',
+  2200, '#f4f2ee',
+];
+
+/** Layers only the crisp look shows. */
+export const CRISP_LAYERS = ['ocean-fill', 'ocean-depth', 'coastline'];
+/** Layers only the classic look shows. */
+export const CLASSIC_LAYERS = ['ocean-calm'];
+
+/** Paint that differs between the looks: [layer, property, classic value, crisp value]. */
+export const LOOK_PAINT: [string, string, unknown, unknown][] = [
+  ['relief', 'color-relief-color', RELIEF_CLASSIC, RELIEF_CRISP],
+  ['satellite', 'raster-opacity', 0.55, 0.72],
+  ['satellite', 'raster-saturation', -0.3, 0.12],
+  ['satellite', 'raster-contrast', 0.05, 0.14],
+  ['satellite', 'raster-brightness-min', 0, 0.02],
+  ['beach-sand', 'fill-opacity', 0.7, 0.85],
+  ['lakes', 'fill-color', '#3f7f99', '#1f6f8f'],
+];
 
 const demSource = {
   type: 'raster-dem' as const,
@@ -80,6 +147,8 @@ export function buildStyle(): StyleSpecification {
       parkLabels: { type: 'geojson', data: `${DATA}/park-labels.geojson` },
       beaches: { type: 'geojson', data: `${DATA}/beaches.geojson` },
       sand: { type: 'geojson', data: `${DATA}/beach-sand.geojson` },
+      // The sea as one vector shape (scripts/map/ocean.py), for a crisp coastline in the "crisp" look.
+      ocean: { type: 'geojson', data: `${DATA}/ocean.geojson`, attribution: '© OpenStreetMap contributors, Overture Maps', tolerance: 0.25 },
       satellite: { type: 'raster', tiles: [SATELLITE_TILES], tileSize: 256, maxzoom: 15, attribution: SATELLITE_ATTRIBUTION },
     },
     layers: [
@@ -91,26 +160,7 @@ export function buildStyle(): StyleSpecification {
         type: 'color-relief',
         source: 'shade',
         paint: {
-          'color-relief-color': [
-            'interpolate',
-            ['linear'],
-            ['elevation'],
-            -4000, '#0a2433',
-            -200, '#12374c',
-            -20, '#2a6378',
-            -1, '#4f8d99',
-            // Zoomed in, the elevation data often reads the sea as exactly 0 m: keep that water-coloured.
-            0, '#3f7f8f',
-            1, '#d5dbbd',
-            50, '#c3d0a4',
-            200, '#a9be8c',
-            450, '#93aa7c',
-            750, '#a6a682',
-            1000, '#b6ab92',
-            1300, '#c4bba9',
-            1700, '#d9d4cb',
-            2200, '#f2f0ec',
-          ],
+          'color-relief-color': RELIEF_CLASSIC as never,
           'color-relief-opacity': 1,
         },
       },
@@ -155,6 +205,44 @@ export function buildStyle(): StyleSpecification {
             0, 'rgba(63, 127, 143, 0.3)',
             1, 'rgba(0, 0, 0, 0)',
           ],
+        },
+      },
+      // ---- The "crisp" look (2026-11-17, see LOOKS): hidden in the classic look. ----
+      {
+        // The sea itself: a clean edge where land meets water, and a deep, saturated blue.
+        id: 'ocean-fill',
+        type: 'fill',
+        source: 'ocean',
+        layout: { visibility: 'none' },
+        paint: { 'fill-color': COLORS.sea, 'fill-opacity': 0.9, 'fill-antialias': true },
+      },
+      {
+        // Deeper water a touch darker, from the same elevation tiles (only past 60 m deep, away from the shore,
+        // where the tiles are too coarse and noisy to use).
+        id: 'ocean-depth',
+        type: 'color-relief',
+        source: 'shade',
+        layout: { visibility: 'none' },
+        paint: {
+          'color-relief-color': [
+            'interpolate', ['linear'], ['elevation'],
+            -4000, 'rgba(3, 22, 38, 0.65)',
+            -1000, 'rgba(5, 30, 50, 0.5)',
+            -200, 'rgba(8, 44, 70, 0.25)',
+            -60, 'rgba(0, 0, 0, 0)',
+          ],
+        },
+      },
+      {
+        // A fine, pale shoreline.
+        id: 'coastline',
+        type: 'line',
+        source: 'ocean',
+        layout: { visibility: 'none', 'line-join': 'round' },
+        paint: {
+          'line-color': COLORS.shore,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.5, 10, 0.9, 14, 1.4],
+          'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.35, 10, 0.6],
         },
       },
       {

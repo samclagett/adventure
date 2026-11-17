@@ -3,9 +3,9 @@ import type { LngLatBoundsLike, MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // MapLibre runs its tile work in a Web Worker; tell it where Vite put the worker file.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
-import { buildStyle } from './style';
+import { buildStyle, CLASSIC_LAYERS, CRISP_LAYERS, LOOK_PAINT, type Look } from './style';
 import type { Quality } from './quality';
-import { getRelief } from './quality';
+import { getLook, getRelief } from './quality';
 import { regionOf } from './regions';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -39,6 +39,8 @@ export interface AdventureMap {
   setQuality(q: Quality): void;
   /** How much to exaggerate height: 1 = real, 5 = dramatic. */
   setRelief(r: number): void;
+  /** Switch between the classic and crisp map looks (style.ts). */
+  setLook(l: Look): void;
   onRegionChange(cb: (region: Region | 'AUS') => void): void;
   /** The region picked with the region buttons (or by tapping a state). */
   getRegion(): Region | 'AUS';
@@ -68,6 +70,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   let current: Region | 'AUS' = 'AUS';
   let currentQuality = quality;
   let relief = getRelief();
+  let look = getLook();
   let tapToZoom = true;
   const listeners: ((r: Region | 'AUS') => void)[] = [];
 
@@ -100,6 +103,14 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
   function applyShading() {
     const base = currentQuality === 'light' ? 0.4 : 0.2;
     map.setPaintProperty('hillshade', 'hillshade-exaggeration', Math.min(0.8, base + 0.08 * relief));
+  }
+
+  /** Show the layers and paint for the current look (style.ts LOOKS). */
+  function applyLook() {
+    const crisp = look === 'crisp';
+    CRISP_LAYERS.forEach((id) => map.setLayoutProperty(id, 'visibility', crisp ? 'visible' : 'none'));
+    CLASSIC_LAYERS.forEach((id) => map.setLayoutProperty(id, 'visibility', crisp ? 'none' : 'visible'));
+    LOOK_PAINT.forEach(([id, prop, classic, crispValue]) => map.setPaintProperty(id, prop as never, (crisp ? crispValue : classic) as never));
   }
 
   /** Highlight the picked state; darken the other active states like the rest of Australia. */
@@ -149,6 +160,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
     // Keep the credits folded into the small (i) button so they don't sit under the bottom bar.
     container.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     applyQuality(currentQuality);
+    applyLook();
     setSelected(current);
   });
 
@@ -169,6 +181,10 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
       if (!map.isStyleLoaded()) return;
       if (currentQuality === 'full') map.setTerrain({ source: 'terrain', exaggeration: relief });
       applyShading();
+    },
+    setLook(l) {
+      look = l;
+      if (map.isStyleLoaded()) applyLook();
     },
     setQuality(q) {
       if (map.isStyleLoaded()) applyQuality(q);

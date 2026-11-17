@@ -1,5 +1,5 @@
 import type { AdventureMap, Region } from './map';
-import { getQuality, getRelief, saveQuality, saveRelief, RELIEF_MAX, RELIEF_MIN, type Quality } from './quality';
+import { getLook, getQuality, getRelief, saveLook, saveQuality, saveRelief, RELIEF_MAX, RELIEF_MIN, type Quality } from './quality';
 
 /**
  * The region picker (bottom bar), plus the map settings that live in the account menu:
@@ -39,6 +39,10 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap, settings: 
       <span>3D terrain<small>Turn off if the map feels slow</small></span>
       <input type="checkbox" class="switch" data-setting="3d" ${quality === 'full' ? 'checked' : ''} />
     </label>
+    <label class="setting">
+      <span>Crisp coastline<small>New map look: sharp coast, richer colours</small></span>
+      <input type="checkbox" class="switch" data-setting="look" ${getLook() === 'crisp' ? 'checked' : ''} />
+    </label>
     <label class="setting setting-range">
       <span>Mountain height <output></output></span>
       <input type="range" min="${RELIEF_MIN}" max="${RELIEF_MAX}" step="0.25" data-setting="relief" />
@@ -54,6 +58,12 @@ export function mountControls(parent: HTMLElement, adv: AdventureMap, settings: 
     out.textContent = label(r);
     adv.setRelief(r);
     saveRelief(r);
+  });
+  const lookSwitch = settings.querySelector<HTMLInputElement>('[data-setting="look"]')!;
+  lookSwitch.addEventListener('change', () => {
+    const l = lookSwitch.checked ? 'crisp' : 'classic';
+    saveLook(l);
+    adv.setLook(l);
   });
   const toggle = settings.querySelector<HTMLInputElement>('[data-setting="3d"]')!;
   toggle.addEventListener('change', () => {

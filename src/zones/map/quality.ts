@@ -2,6 +2,8 @@
  * Quality setting. "full" (the default everywhere, since iPhones handle it well) turns on 3D terrain,
  * sky and sharper rendering; "light" is a fast flat map for older phones.
  */
+import type { Look } from './style';
+
 export type Quality = 'light' | 'full';
 
 // v2: the default changed to 3D (Nov 2026), so earlier saved choices are ignored once.
@@ -44,6 +46,28 @@ export function getRelief(): number {
     // Storage blocked; use the default.
   }
   return RELIEF_DEFAULT;
+}
+
+// The map look (style.ts LOOKS): "classic" until Sam picks, then the default can change here.
+const LOOK_KEY = 'adventure.look.v1';
+export const LOOK_DEFAULT: Look = 'classic';
+
+export function getLook(): Look {
+  try {
+    const v = localStorage.getItem(LOOK_KEY);
+    if (v === 'classic' || v === 'crisp') return v;
+  } catch {
+    // Storage blocked; use the default.
+  }
+  return LOOK_DEFAULT;
+}
+
+export function saveLook(l: Look) {
+  try {
+    localStorage.setItem(LOOK_KEY, l);
+  } catch {
+    // Ignore.
+  }
 }
 
 export function saveRelief(r: number) {
