@@ -315,6 +315,21 @@
 .hl-peek + * { margin-top: 20px; }
 .hl-delete { display: block; margin: 20px auto 4px; padding: 8px 12px; border: none; background: none; color: var(--warn); font-size: 0.88rem; cursor: pointer; }
 
+/* Done list (done.ts): To do / Done switch at the top of the Hit list, visits on place cards, photos. */
+.hl-modes { margin: 4px 0 10px; }
+.hl-thumb { background: var(--raised) center / cover no-repeat; }
+.hl-done { margin-top: 14px; display: grid; gap: 8px; }
+.hl-done h3 { margin: 0; font-size: 1rem; }
+.hl-done .hl-wide .hl-icon { width: 18px; height: 18px; }
+.hl-done-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-m); background: none; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.hl-done-row > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.hl-done-row small { color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-done-thumb { width: 48px; height: 48px; flex: none; border-radius: var(--r-s); background-color: var(--paper); color: var(--ink); display: grid; place-items: center; }
+.hl-done-thumb.hl-thumb { background-color: var(--raised); }
+.hl-photo-pick { position: relative; display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 8px 12px; min-height: 44px; border: 1px dashed var(--border); border-radius: var(--r-s); color: var(--text); cursor: pointer; }
+.hl-photo-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.hl-photo-preview { width: 56px; height: 56px; flex: none; border-radius: var(--r-s); background: var(--raised) center / cover no-repeat; }
+.hl-photo-big { margin-top: 12px; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--r-m); background: var(--raised) center / cover no-repeat; }
 /* "Other states" divider between the NSW area groups and the by-category groups (areas.ts). */
 .hl-eyebrow { margin: 18px 0 -4px; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .hl-back { width: 36px; height: 36px; margin-left: -8px; font-size: 1.6rem; line-height: 1; color: var(--text); background: none; border: none; cursor: pointer; }
