@@ -62,3 +62,7 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   each symbol AM / PM / Night. "AM / PM" button on a place card opens a conditions table (`conditions/matrix.ts`):
   AM and PM columns per day for weather, temperature, rain, wind, wind at the beach, swell, period and tides.
   NSW hit list places group by area from Sydney (`hitlist/areas.ts`).
+- **Chunk 2** (icons and categories): icons now fit inside the circle (no clipped surfboard tip). Climbing is a simple
+  carabiner; skiing and kayaking redrawn with more detail; new Canyoning (its own conditions rule: rain means flood risk).
+  Main list: hiking, camping, surfing, climbing, skiing, snorkelling & diving, canyoning, other. "Other" opens a sub-list
+  (`group: 'other'` in categories.ts), starting with Kayaking & canoeing (id still `kayaking`, so saved places are untouched).

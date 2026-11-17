@@ -1,5 +1,8 @@
 """
-Traces Sam's hand-drawn icon sheet (source-icons.png, 8 icons in a row) into SVG paths.
+Traces Sam's hand-drawn icon sheet (source-icons.png, 8 icons in a row) into SVG paths, plus the
+redrawn icons in drawn/ (climbing, skiing, kayaking, canyoning; 2026-11-17, line drawings made to
+match Sam's set, from drawn/drawings.html screenshotted at 400 px). A drawn icon replaces the
+sheet's icon of the same name.
 
     pip install pillow numpy potracer
     python scripts/icons/trace_icons.py 5
@@ -7,6 +10,9 @@ Traces Sam's hand-drawn icon sheet (source-icons.png, 8 icons in a row) into SVG
 The number thickens the lines (5 = the weight used in the app, 0 = original). Writes paths<N>.json;
 copy each path into src/zones/hitlist/icons.ts. Icon order: hiking, camping, surfing, climbing,
 skiing, diving, kayaking, other. Skis and the mask touch, so they're split by hand-tuned rules below.
+
+Every icon is scaled to fit inside the circle of its square (2026-11-17), because the app shows them
+on round paper discs and pins: a long shape like the surfboard used to lose its tip in the corner.
 """
 from PIL import Image, ImageFilter
 import os, sys
@@ -32,14 +38,27 @@ names=['hiking','camping','surfing','climbing','skiing','diving','kayaking','oth
 assert len(groups)==8, groups
 out={}
 H=dark.shape[0]
+crops={}
 for name,(x0,x1) in zip(names,groups):
     crop=dark[:,x0:x1+1].copy()
     if name=='skiing': crop[:int(H*0.8), SKI_CUT-x0+1:]=False
     if name=='diving': crop[int(H*0.62):, :31]=False
-    if THICK: crop=np.array(Image.fromarray(crop.astype(np.uint8)*255).filter(ImageFilter.MaxFilter(THICK)))>0
+    crops[name]=(crop, THICK)
+# Redrawn icons (2026-11-17). Drawn at 400 px for a ~200 px object, thickened the same as the sheet.
+DRAWN=os.path.join(HERE,'drawn')
+for name in ['climbing','skiing','kayaking','canyoning']:
+    im2=np.array(Image.open(os.path.join(DRAWN,name+'.png')).convert('L').resize((240,240),Image.LANCZOS)).astype(float)
+    crops[name]=(im2<150, THICK)
+names=['hiking','camping','surfing','climbing','skiing','diving','canyoning','kayaking','other']
+for name in names:
+    crop,thick=crops[name]
+    if thick: crop=np.array(Image.fromarray(crop.astype(np.uint8)*255).filter(ImageFilter.MaxFilter(thick)))>0
     rows=np.where(crop.any(1))[0]; y0,y1=rows[0],rows[-1]
-    w=x1-x0+1; h=y1-y0+1; side=max(w,h); pad=int(side*0.04); side+=2*pad
-    # square canvas
+    cols=np.where(crop.any(0))[0]; crop=crop[:,cols[0]:cols[-1]+1]
+    w=crop.shape[1]; h=y1-y0+1
+    # Fit inside the circle: the farthest ink from the middle sets the size.
+    ys,xs=np.nonzero(crop[y0:y1+1]); r=np.sqrt((xs-(w-1)/2)**2+(ys-(h-1)/2)**2).max()
+    side=int(max(w,h,2*r/0.97))+2
     canvas=np.zeros((side,side),bool)
     ox=(side-w)//2; oy=(side-h)//2
     canvas[oy:oy+h,ox:ox+w]=crop[y0:y1+1]

@@ -3,7 +3,7 @@ import type { MapMouseEvent } from 'maplibre-gl';
 import { inRegion, type AdventureMap } from '../map';
 import { supabase } from '../shared/supabase';
 import type { HitListItem } from '../shared/types';
-import { CATEGORIES, categoryOf } from './categories';
+import { FLAT_CATEGORIES, MAIN_CATEGORIES, OTHER_CATEGORIES, categoryOf, mainOf } from './categories';
 import { ICONS } from './icons';
 import { Pins } from './pins';
 import * as store from './store';
@@ -113,7 +113,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   }
 
   function visibleItems() {
-    return regionItems().filter((i) => filter.size === 0 || filter.has(categoryOf(i.activity).id));
+    return regionItems().filter((i) => filter.size === 0 || filter.has(mainOf(i.activity).id));
   }
 
   function refresh() {
@@ -197,11 +197,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   /** Checkable category chips. None picked means everything shows. Counts are for the selected region. */
   function categoryFilter() {
     const counts = new Map<string, number>();
-    regionItems().forEach((i) => counts.set(categoryOf(i.activity).id, (counts.get(categoryOf(i.activity).id) ?? 0) + 1));
+    regionItems().forEach((i) => counts.set(mainOf(i.activity).id, (counts.get(mainOf(i.activity).id) ?? 0) + 1));
     return `<div class="hl-filter-head"><span>${filter.size ? `Showing ${filter.size} categor${filter.size === 1 ? 'y' : 'ies'}` : 'Tap categories to show only those'}</span>${
       filter.size ? '<button type="button" class="hl-link" data-act="clear">Clear all</button>' : ''
     }</div>
-      <div class="hl-filter-grid">${CATEGORIES.map((c) => {
+      <div class="hl-filter-grid">${MAIN_CATEGORIES.map((c) => {
         const n = counts.get(c.id) ?? 0;
         const on = filter.has(c.id);
         return `<button type="button" class="hl-chip ${on ? 'on' : ''} ${n ? '' : 'empty'}" data-cat="${c.id}" aria-pressed="${on}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span><small>${n}</small><span class="hl-check" aria-hidden="true">${on ? '✓' : ''}</span></button>`;
@@ -226,7 +226,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     // NSW places group by where they are from Sydney; everywhere else groups by category.
     const located = shown.filter((i) => i.lat != null);
     const areaOf = new Map(located.map((i) => [i.id, nswAreaOf(i.lat!, i.lng!)]));
-    const catOrder = (i: HitListItem) => CATEGORIES.indexOf(categoryOf(i.activity));
+    const catOrder = (i: HitListItem) => FLAT_CATEGORIES.indexOf(categoryOf(i.activity));
     for (const a of NSW_AREAS) {
       const inArea = located.filter((i) => areaOf.get(i.id) === a.id).sort((x, y) => catOrder(x) - catOrder(y) || x.name.localeCompare(y.name));
       if (inArea.length) html += `<h3>${ICONS.pin} ${esc(a.label)} (${inArea.length})</h3>${inArea.map(itemRow).join('')}`;
@@ -234,7 +234,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     const elsewhere = located.filter((i) => !areaOf.get(i.id));
     const anyNsw = located.length > elsewhere.length;
     if (anyNsw && elsewhere.length) html += '<p class="hl-eyebrow">Other states</p>';
-    for (const c of CATEGORIES) {
+    for (const c of FLAT_CATEGORIES) {
       const inCat = elsewhere.filter((i) => categoryOf(i.activity).id === c.id);
       if (inCat.length) html += `<h3>${c.icon} ${esc(c.label)} (${inCat.length})</h3>${inCat.map(itemRow).join('')}`;
     }
@@ -364,15 +364,23 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   }
 
   /** Step one of adding: pick a category. `at` is set when adding from a long press on the map. */
-  function openCategoryPicker(at?: { lat: number; lng: number }) {
+  /** Pick a category for a new adventure. "Other" opens a second list (kayaking and canoeing, more later). */
+  function openCategoryPicker(at?: { lat: number; lng: number }, sub = false) {
     if (needSignIn()) return;
     view = 'other';
-    openSheet(`
-      <h2>What kind of adventure?</h2>
-      <div class="hl-cat-grid">
-        ${CATEGORIES.map((c) => `<button type="button" data-cat="${c.id}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
-      </div>
-    `, 'picker');
+    const button = (c: { id: string; color: string; icon: string; label: string }, label = c.label) =>
+      `<button type="button" data-cat="${c.id}" style="--pin:${c.color}">${c.icon}<span>${esc(label)}</span></button>`;
+    const other = categoryOf('other');
+    openSheet(
+      sub
+        ? `<div class="hl-head"><button type="button" class="hl-back" data-act="back" aria-label="Back to all categories">‹</button><h2>Other</h2></div>
+      <div class="hl-cat-grid">${OTHER_CATEGORIES.map((c) => button(c)).join('')}${button(other, 'Something else')}</div>`
+        : `<h2>What kind of adventure?</h2>
+      <div class="hl-cat-grid">${MAIN_CATEGORIES.map((c) => (c.id === 'other' ? `<button type="button" data-act="other" style="--pin:${c.color}">${c.icon}<span>Other ›</span></button>` : button(c))).join('')}</div>`,
+      sub ? 'picker-other' : 'picker',
+    );
+    sheet.querySelector('[data-act="other"]')?.addEventListener('click', () => openCategoryPicker(at, true));
+    sheet.querySelector('[data-act="back"]')?.addEventListener('click', () => openCategoryPicker(at));
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((b) =>
       b.addEventListener('click', () => {
         locTab = 'search';
@@ -424,7 +432,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     openSheet(`
       <h2>${d.id ? 'Edit adventure' : 'New adventure'}</h2>
       <div class="hl-cat-row">
-        ${CATEGORIES.map((k) => `<button type="button" class="hl-chip ${k.id === c.id ? 'on' : ''}" data-cat="${k.id}" style="--pin:${k.color}">${k.icon} ${esc(k.label)}</button>`).join('')}
+        ${FLAT_CATEGORIES.map((k) => `<button type="button" class="hl-chip ${k.id === c.id ? 'on' : ''}" data-cat="${k.id}" style="--pin:${k.color}">${k.icon} ${esc(k.label)}</button>`).join('')}
       </div>
       <label class="hl-field">Name<input name="name" value="${esc(d.name)}" placeholder="e.g. Grand Canyon Track" autocomplete="off" /></label>
       <div class="hl-field">Location</div>
@@ -594,7 +602,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       const saved = d.id ? await store.updateItem(d.id, fields) : await store.addItem(fields);
       items = d.id ? items.map((i) => (i.id === saved.id ? saved : i)) : [...items, saved];
       // Make sure the new pin is visible even if its category was filtered out.
-      if (filter.size && !filter.has(categoryOf(saved.activity).id)) filter.add(categoryOf(saved.activity).id);
+      if (filter.size && !filter.has(mainOf(saved.activity).id)) filter.add(mainOf(saved.activity).id);
       closeSheet();
       refresh();
       if (saved.lat != null) openCard(saved);

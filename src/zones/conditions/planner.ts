@@ -1,6 +1,6 @@
 import { regionOf, type AdventureMap } from '../map';
 import type { HitListItem } from '../shared/types';
-import { CATEGORIES, categoryOf } from '../hitlist/categories';
+import { MAIN_CATEGORIES, OTHER_CATEGORIES, categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
 import { PRESETS, getHome, setHome, type Base } from './home';
 import { ensureDrives, onDriveChange, travelMinutes, travelText } from './drive';
@@ -62,6 +62,8 @@ export function mountPlanner(
   let makeHome = !from;
   let found: PlaceMatch[] = [];
   let searchMsg = '';
+  /** Whether Other's sub-list (kayaking and canoeing, more later) is open. */
+  let otherShown = false;
 
   const screen = document.createElement('section');
   screen.className = 'pl-screen';
@@ -221,6 +223,7 @@ export function mountPlanner(
     const scroll = screen.querySelector('.pl-body')?.scrollTop ?? 0;
     const actLabel = prefs.activity === 'any' ? 'Anything' : prefs.activity ? categoryOf(prefs.activity).label : '';
     const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
+    const otherOpen = otherShown || prefs.activity === 'other' || OTHER_CATEGORIES.some((c) => c.id === prefs.activity);
     const blocker = !prefs.activity ? 'Pick an activity' : !from || editingFrom ? 'Pick where you’re starting from' : '';
     if (step === 'results' && blocker) step = 'ask';
     if (step === 'results' && from) void ensureDrives(from, items);
@@ -230,7 +233,12 @@ export function mountPlanner(
       <div class="pl-top"><h2>Where to?</h2></div>
       <p class="pl-q">What do you feel like?</p>
       <div class="pl-acts">
-        ${CATEGORIES.filter((c) => c.id !== 'other').map((c) => `<button type="button" data-act-id="${c.id}" class="${prefs.activity === c.id ? 'on' : ''}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`).join('')}
+        ${MAIN_CATEGORIES.map((c) =>
+          c.id === 'other'
+            ? `<button type="button" data-act="other" class="${otherOpen ? 'on' : ''}" aria-expanded="${otherOpen}" style="--pin:${c.color}">${c.icon}<span>Other ${otherOpen ? '⌃' : '⌄'}</span></button>`
+            : `<button type="button" data-act-id="${c.id}" class="${prefs.activity === c.id ? 'on' : ''}" style="--pin:${c.color}">${c.icon}<span>${esc(c.label)}</span></button>`,
+        ).join('')}
+        ${otherOpen ? `<div class="pl-sub">${[...OTHER_CATEGORIES, categoryOf('other')].map((c) => `<button type="button" data-act-id="${c.id}" class="${prefs.activity === c.id ? 'on' : ''}">${c.icon}<span>${esc(c.id === 'other' ? 'Something else' : c.label)}</span></button>`).join('')}</div>` : ''}
         <button type="button" data-act-id="any" class="pl-any ${prefs.activity === 'any' ? 'on' : ''}"><span>Anything</span></button>
       </div>
       <p class="pl-q">When?</p>
@@ -260,6 +268,11 @@ export function mountPlanner(
       step = 'ask';
       render();
       screen.querySelector<HTMLElement>('.pl-body')!.scrollTop = 0;
+    });
+    screen.querySelector('[data-act="other"]')?.addEventListener('click', () => {
+      otherShown = !otherOpen;
+      if (!otherShown && (prefs.activity === 'other' || OTHER_CATEGORIES.some((c) => c.id === prefs.activity))) prefs.activity = '';
+      render();
     });
     screen.querySelectorAll<HTMLButtonElement>('[data-act-id]').forEach((b) =>
       b.addEventListener('click', () => {

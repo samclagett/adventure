@@ -522,6 +522,13 @@ function checksFor(category: string, d: Day): Check[] {
       return [windy(15, 25), { skip: rain >= 15, mar: rain >= 5, why: `${Math.round(rain)} mm rain` }, sea(1, 1.5)];
     case 'diving':
       return [windy(15, 25), sea(1, 1.5), { mar: rain >= 10, why: 'heavy rain (runoff)' }];
+    case 'canyoning':
+      // Rain is the big one: canyons flash-flood. Cold days make the water swims hard work.
+      return [
+        { skip: rain >= 10 || prob >= 70, mar: rain >= 2 || prob >= 40, why: rain >= 2 ? `${Math.round(rain)} mm rain (flood risk)` : `${prob}% chance of rain (flood risk)` },
+        { mar: (d.tmax ?? 25) < 18, why: `only ${Math.round(d.tmax ?? 0)}° (cold swims)` },
+        heat,
+      ];
     case 'skiing': {
       const snow = d.snow ?? 0;
       return [{ skip: snow < 1 && hot > 8, mar: snow < 5, why: snow >= 1 ? `only ${Math.round(snow)} cm new snow` : 'no new snow' }, windy(35, 55)];
