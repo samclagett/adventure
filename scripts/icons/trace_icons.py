@@ -2,7 +2,7 @@
 Traces Sam's hand-drawn icon sheet (source-icons.png, 8 icons in a row) into SVG paths, plus the
 redrawn icons in drawn/ (climbing, skiing, kayaking, canyoning; 2026-11-17: line drawings of the
 reference images Sam picked in refs/, made to match Sam's set, from drawn/drawings.html screenshotted
-at 400 px). A drawn icon replaces the
+at 400 px; climbing, canyoning and kayaking now come straight from refs/ via refs_to_drawn.py). A drawn icon replaces the
 sheet's icon of the same name.
 
     pip install pillow numpy potracer
@@ -49,7 +49,9 @@ for name,(x0,x1) in zip(names,groups):
 DRAWN=os.path.join(HERE,'drawn')
 for name in ['climbing','skiing','kayaking','canyoning']:
     im2=np.array(Image.open(os.path.join(DRAWN,name+'.png')).convert('L').resize((240,240),Image.LANCZOS)).astype(float)
-    crops[name]=(im2<150, THICK)
+    # Climbing, canyoning and kayaking come straight from Sam's examples (refs_to_drawn.py), already at
+    # the right weight, so only the hand-drawn snowflake is thickened.
+    crops[name]=(im2<150, THICK if name=='skiing' else 0)
 names=['hiking','camping','surfing','climbing','skiing','diving','canyoning','kayaking','other']
 for name in names:
     crop,thick=crops[name]
