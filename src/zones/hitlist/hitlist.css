@@ -314,3 +314,6 @@
 .hl-card-btn.hl-primary { flex: 1.3; }
 .hl-peek + * { margin-top: 20px; }
 .hl-delete { display: block; margin: 20px auto 4px; padding: 8px 12px; border: none; background: none; color: var(--warn); font-size: 0.88rem; cursor: pointer; }
+
+/* "Other states" divider between the NSW area groups and the by-category groups (areas.ts). */
+.hl-eyebrow { margin: 18px 0 -4px; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

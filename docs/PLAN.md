@@ -54,3 +54,11 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   for every place, saved on the phone). Shown on the Plan list, the best pick and the place card ("1 h 40 drive from
   Sydney"); Plan ranks nearer drives first within each rating. Straight-line km shows until a drive time is in, or
   where there's no road (New Zealand).
+
+### Fixes 17 to 27 (2026-11-17)
+
+- **Chunk 1** (plan filters and conditions): "Next week" dropped from the window picker. Plan screen drive radius slider
+  (1 to 8 h from the start point, or Australia-wide; road time when known, else an estimate). Map weather chips label
+  each symbol AM / PM / Night. "AM / PM" button on a place card opens a conditions table (`conditions/matrix.ts`):
+  AM and PM columns per day for weather, temperature, rain, wind, wind at the beach, swell, period and tides.
+  NSW hit list places group by area from Sydney (`hitlist/areas.ts`).

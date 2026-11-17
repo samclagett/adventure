@@ -155,13 +155,17 @@
 .cd-p-rain { color: #8fc1d8; }
 .cd-p-wind { display: inline-flex; align-items: center; gap: 1px; }
 .cd-p-wind .wx-arrow { width: 11px; height: 11px; color: var(--muted); }
-.wx-periods { display: inline-flex; gap: 1px; }
+.wx-periods { display: inline-flex; gap: 2px; }
+/* Each part of the day on a map chip: its symbol with a small AM / PM / Night label under it. */
+.wx-period { display: inline-grid; justify-items: center; gap: 0; }
+.wx-period small { margin-top: -1px; font-size: 0.5rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #5d6a71; }
 
 /* Zoomed out (layer.ts): chips show just the day's symbol and temperature. Wind and swell appear as you zoom in. */
 .wx-compact .wx-chip { gap: 0; padding: 2px 5px 2px 3px; font-size: 0.7rem; }
 .wx-compact .wx-chip .wx-wind, .wx-compact .wx-chip .wx-swell { display: none; }
 .wx-compact .wx-chip .wx-icon { width: 16px; height: 16px; }
-.wx-compact .wx-periods .wx-icon:not(:first-child) { display: none; }
+.wx-compact .wx-periods .wx-period:not(:first-child) { display: none; }
+.wx-compact .wx-period small { display: none; }
 
 /* Summary at the top of a place card (card.ts): a verdict pill and the next four days. */
 .cd-sum { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -194,3 +198,45 @@
 .pl-pill.pl-v-go { background: color-mix(in srgb, var(--cd-go) 24%, transparent); color: #c9dbae; }
 .pl-pill.pl-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
 .pl-hero .pl-pill { font-size: 0.85rem; padding: 5px 12px; }
+
+/* Conditions table (matrix.ts): a pop-up with AM / PM columns per day. */
+.cd-table-btn { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 9px; min-height: 32px; font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.cd-table-btn .hl-icon { width: 16px; height: 16px; }
+.cd-card-head { display: flex; align-items: center; gap: 8px; }
+.mx-pop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(4, 10, 14, 0.55); }
+.mx-box { width: min(100%, 560px); max-height: calc(100dvh - 32px); overflow: auto; padding: 12px 0 10px; border-radius: var(--r-l); background: var(--panel-solid); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.mx-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 6px 16px; }
+.mx-head h3 { margin: 0; font-size: 1.05rem; }
+.mx-close { width: 36px; height: 36px; font-size: 1.5rem; line-height: 1; color: var(--muted); background: none; border: none; cursor: pointer; }
+.mx-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mx-table { border-collapse: separate; border-spacing: 0; font-size: 0.78rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mx-table th, .mx-table td { padding: 5px 7px; text-align: center; vertical-align: middle; line-height: 1.2; }
+.mx-table tbody th, .mx-corner { position: sticky; left: 0; z-index: 1; background: var(--panel-solid); text-align: left; color: var(--muted); font-weight: 600; font-size: 0.72rem; padding-left: 16px; }
+.mx-table tbody tr:nth-child(odd) td { background: var(--field); }
+.mx-day { font-weight: 700; font-size: 0.82rem; border-top: 3px solid var(--cd-skip); border-left: 1px solid var(--border); }
+.mx-day small { display: block; font-weight: 500; font-size: 0.66rem; color: var(--muted); }
+.mx-day.cd-v-go { border-top-color: var(--cd-go); }
+.mx-day.cd-v-mar { border-top-color: var(--cd-mar); }
+.mx-part { color: var(--muted); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.05em; }
+.mx-first { border-left: 1px solid var(--border); }
+.mx-table td small { display: block; color: var(--muted); font-size: 0.66rem; }
+.mx-table .wx-icon { width: 24px; height: 24px; }
+.mx-wind, .mx-swell { display: inline-flex; align-items: center; gap: 1px; }
+.mx-swell { color: #8fc1d8; font-weight: 600; }
+.mx-table .wx-a-wind { color: var(--muted); }
+.mx-table .wx-a-swell { color: #8fc1d8; }
+.mx-rel { font-weight: 600; }
+.mx-offshore { color: #c9dbae; }
+.mx-cross-shore { color: #e6cf9c; }
+.mx-onshore { color: var(--muted); }
+.mx-foot { margin: 8px 16px 0; font-size: 0.74rem; }
+
+/* Plan screen: drive radius slider (1 to 8 hours, then Australia-wide). */
+.pl-radius { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
+.pl-radius input { width: 100%; accent-color: var(--accent); }
+.pl-radius output { min-width: 128px; text-align: right; font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pl-radius-scale { grid-column: 1; position: relative; height: 14px; color: var(--muted); font-size: 0.7rem; }
+.pl-radius-scale span { position: absolute; top: 0; transform: translateX(-50%); }
+.pl-radius-scale span:nth-child(1) { left: 8px; }
+.pl-radius-scale span:nth-child(2) { left: calc(8px + (100% - 16px) * 7 / 8); }
+.pl-radius-scale span:nth-child(3) { left: calc(100% - 8px); }
