@@ -1,7 +1,8 @@
 """
 Traces Sam's hand-drawn icon sheet (source-icons.png, 8 icons in a row) into SVG paths, plus the
-redrawn icons in drawn/ (climbing, skiing, kayaking, canyoning; 2026-11-17, line drawings made to
-match Sam's set, from drawn/drawings.html screenshotted at 400 px). A drawn icon replaces the
+redrawn icons in drawn/ (climbing, skiing, kayaking, canyoning; 2026-11-17: line drawings of the
+reference images Sam picked in refs/, made to match Sam's set, from drawn/drawings.html screenshotted
+at 400 px). A drawn icon replaces the
 sheet's icon of the same name.
 
     pip install pillow numpy potracer
