@@ -12,6 +12,8 @@ import { parseLocationText } from './gmaps';
 import { currentTab, onTab, setTabBadge, showTab } from '../shared/tabs';
 import { makeDraggable, type Snap } from '../shared/sheet';
 import { regionOf } from '../map';
+import * as done from './done';
+import type { DoneTrip } from './done';
 import { NSW_AREAS, nswAreaOf } from './areas';
 
 /** What the add/edit form is working on. `id` is set when editing an existing item. */
@@ -87,6 +89,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   const located = () => items.filter((i) => i.lat != null && i.lng != null);
   const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
   const cardSummaries: ((item: HitListItem, el: HTMLElement) => void)[] = [];
+  /** The Done list (done.ts): every visit, newest first. */
+  let trips: DoneTrip[] = [];
+  /** Which half of the Hit list sheet is showing. */
+  let listMode: 'todo' | 'done' = 'todo';
 
   // ---- Sheet and banner ----
   // The Hit list tab opens the list (category filters at its top, and the Add button).
@@ -217,7 +223,20 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     const toLocate = shown.filter((i) => i.lat == null);
     const filterNote = filter.size ? ` · showing ${[...filter].map((id) => categoryOf(id).label).join(', ')}` : '';
     const regionNote = region === 'AUS' ? '' : ` in ${region}`;
-    let html = `<div class="hl-head"><h2>Hit list</h2><button type="button" class="hl-add" data-act="add">${ICONS.plus}<span>Add</span></button></div><p class="hl-muted">${inArea} adventure${inArea === 1 ? '' : 's'}${regionNote}${esc(filterNote)}</p>`;
+    const modes = `<div class="hl-tabs hl-modes" role="tablist">
+        <button type="button" role="tab" data-mode="todo" class="${listMode === 'todo' ? 'on' : ''}" aria-selected="${listMode === 'todo'}">To do</button>
+        <button type="button" role="tab" data-mode="done" class="${listMode === 'done' ? 'on' : ''}" aria-selected="${listMode === 'done'}">Done${trips.length ? ` (${trips.length})` : ''}</button>
+      </div>`;
+    if (listMode === 'done') {
+      openSheet(`<div class="hl-head"><h2>Hit list</h2></div>${modes}${doneListHtml()}`, 'list');
+      bindModes();
+      sheet.querySelectorAll<HTMLButtonElement>('[data-trip]').forEach((row) =>
+        row.addEventListener('click', () => openTrip(trips.find((t) => t.id === row.dataset.trip)!)),
+      );
+      fillPhotos();
+      return;
+    }
+    let html = `<div class="hl-head"><h2>Hit list</h2><button type="button" class="hl-add" data-act="add">${ICONS.plus}<span>Add</span></button></div>${modes}<p class="hl-muted">${inArea} adventure${inArea === 1 ? '' : 's'}${regionNote}${esc(filterNote)}</p>`;
     html += categoryFilter();
     if (loadError) html += `<p class="hl-error">Couldn’t load the hit list: ${esc(loadError)}</p>`;
     if (toLocate.length) {
@@ -242,6 +261,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       html += `<p class="hl-muted">${items.length ? `Nothing${regionNote} in the selected categories.` : 'Nothing yet. Tap <b>Add</b>, or press and hold on the map, to add your first adventure.'}</p>`;
     }
     openSheet(html, 'list');
+    bindModes();
     sheet.querySelectorAll<HTMLButtonElement>('[data-cat]').forEach((btn) =>
       btn.addEventListener('click', () => {
         const id = btn.dataset.cat!;
@@ -262,6 +282,152 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
         else openCard(item);
       }),
     );
+  }
+
+  function bindModes() {
+    sheet.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) =>
+      b.addEventListener('click', () => {
+        listMode = b.dataset.mode as 'todo' | 'done';
+        openList();
+      }),
+    );
+  }
+
+  // ---- Done list ----
+
+  /** A photo (filled in by fillPhotos once its link arrives) or the category icon. */
+  function tripThumb(t: DoneTrip, cls = 'hl-row-icon') {
+    const c = categoryOf(t.activity);
+    return t.photo_path
+      ? `<span class="${cls} hl-thumb" data-photo="${esc(t.photo_path)}" role="img" aria-label="Photo"></span>`
+      : `<span class="${cls}">${c.icon}</span>`;
+  }
+
+  function doneListHtml(): string {
+    if (!trips.length) return '<p class="hl-muted">Nothing done yet. Open a place and tap <b>Mark as done</b> after you’ve been.</p>';
+    const rows = trips
+      .map((t) => {
+        const c = categoryOf(t.activity);
+        const sub = [done.doneDate(t.done_on), t.note?.split('\n')[0].slice(0, 80)].filter(Boolean).join(' · ');
+        return `<button type="button" class="hl-row" data-trip="${t.id}" style="--pin:${c.color}">${tripThumb(t)}<span>${esc(t.name)}<small>${esc(sub)}</small></span></button>`;
+      })
+      .join('');
+    const places = new Set(trips.map((t) => t.item_id ?? t.name)).size;
+    return `<p class="hl-muted">${trips.length} trip${trips.length === 1 ? '' : 's'} to ${places} place${places === 1 ? '' : 's'}</p>${rows}`;
+  }
+
+  /** Put photos into any `[data-photo]` spots in the sheet. */
+  async function fillPhotos() {
+    const spots = [...sheet.querySelectorAll<HTMLElement>('[data-photo]')];
+    if (!spots.length) return;
+    const links = await done.photoUrls(spots.map((s) => s.dataset.photo!));
+    spots.forEach((s) => {
+      const url = links.get(s.dataset.photo!);
+      if (url && s.isConnected) s.style.backgroundImage = `url("${url}")`;
+    });
+  }
+
+  /** The visits to one place, shown on its card, with the Mark as done button. */
+  function cardDoneHtml(item: HitListItem): string {
+    const mine = trips.filter((t) => t.item_id === item.id);
+    const list = mine
+      .map((t) => `<button type="button" class="hl-done-row" data-trip="${t.id}">${tripThumb(t, 'hl-done-thumb')}<span><b>${done.doneDate(t.done_on)}</b>${t.note ? `<small>${esc(t.note.split('\n')[0].slice(0, 80))}</small>` : ''}</span></button>`)
+      .join('');
+    return `<div class="hl-done">
+        ${mine.length ? `<h3>${ICONS.check} Been here${mine.length > 1 ? ` ${mine.length} times` : ''}</h3>${list}` : ''}
+        <button type="button" class="hl-wide" data-act="mark-done">${ICONS.check} ${mine.length ? 'Add another visit' : 'Mark as done'}</button>
+      </div>`;
+  }
+
+  /** Log a visit: date (today by default), an optional photo and note. */
+  function openDoneForm(item: HitListItem) {
+    view = 'other';
+    let photo: File | null = null;
+    openSheet(
+      `<h2>Done: ${esc(item.name)}</h2>
+      <label class="hl-field">When<input name="done_on" type="date" value="${done.todayIso()}" max="${done.todayIso()}" /></label>
+      <label class="hl-field"><span>Photo <small>(optional)</small></span>
+        <span class="hl-photo-pick"><span class="hl-photo-preview" hidden></span><span class="hl-photo-label">Choose a photo</span>
+        <input name="photo" type="file" accept="image/*" /></span></label>
+      <label class="hl-field"><span>Note <small>(optional)</small></span><textarea name="note" rows="3" placeholder="Who came, how it was, what to do next time…"></textarea></label>
+      <div class="hl-actions">
+        <button type="button" class="hl-primary" data-act="save-done">Save</button>
+        <button type="button" data-act="cancel">Cancel</button>
+      </div>
+      <p class="hl-error" hidden></p>`,
+      'done-form',
+      'full',
+      ['half', 'full'],
+    );
+    const input = sheet.querySelector<HTMLInputElement>('input[name="photo"]')!;
+    input.addEventListener('change', () => {
+      photo = input.files?.[0] ?? null;
+      const preview = sheet.querySelector<HTMLElement>('.hl-photo-preview')!;
+      preview.hidden = !photo;
+      if (photo) preview.style.backgroundImage = `url("${URL.createObjectURL(photo)}")`;
+      sheet.querySelector('.hl-photo-label')!.textContent = photo ? 'Change photo' : 'Choose a photo';
+    });
+    sheet.querySelector('[data-act="cancel"]')!.addEventListener('click', () => openCard(item));
+    sheet.querySelector('[data-act="save-done"]')!.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const date = sheet.querySelector<HTMLInputElement>('input[name="done_on"]')!.value || done.todayIso();
+      const note = sheet.querySelector<HTMLTextAreaElement>('textarea[name="note"]')!.value.trim();
+      btn.disabled = true;
+      btn.textContent = photo ? 'Uploading…' : 'Saving…';
+      try {
+        const t = await done.addDone({ item_id: item.id, name: item.name, activity: item.activity, done_on: date, note: note || null }, photo);
+        trips = [t, ...trips].sort((a, b) => b.done_on.localeCompare(a.done_on) || b.created_at.localeCompare(a.created_at));
+        refresh();
+        openCard(item);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        showError(err);
+      }
+    });
+  }
+
+  /** One visit: the photo large, the date and note, and a way back to the place. */
+  function openTrip(t: DoneTrip) {
+    view = 'other';
+    const item = t.item_id ? items.find((i) => i.id === t.item_id) : undefined;
+    const c = categoryOf(t.activity);
+    openSheet(
+      `<div class="hl-card-head" data-drag style="--pin:${c.color}"><span class="hl-card-icon">${c.icon}</span><div><h2>${esc(t.name)}</h2><small>${esc(c.label)} · ${done.doneDate(t.done_on)}</small></div></div>
+      ${t.photo_path ? `<div class="hl-photo-big" data-photo="${esc(t.photo_path)}" role="img" aria-label="Photo from ${esc(t.name)}"></div>` : ''}
+      ${t.note ? `<p class="hl-notes">${esc(t.note)}</p>` : ''}
+      <div class="hl-actions">
+        ${item ? '<button type="button" class="hl-primary" data-act="open-place">Open the place</button>' : ''}
+        <button type="button" data-act="back">Back to Done</button>
+      </div>
+      <button type="button" class="hl-delete" data-act="delete-trip">Delete this visit</button>
+      <p class="hl-error" hidden></p>`,
+      `trip:${t.id}`,
+      'full',
+      ['half', 'full'],
+    );
+    fillPhotos();
+    sheet.querySelector('[data-act="open-place"]')?.addEventListener('click', () => openCard(item!));
+    sheet.querySelector('[data-act="back"]')!.addEventListener('click', () => {
+      listMode = 'done';
+      if (currentTab() !== 'list') showTab('list');
+      else openList();
+    });
+    sheet.querySelector('[data-act="delete-trip"]')!.addEventListener('click', async () => {
+      if (!confirm(`Delete this visit to “${t.name}”?`)) return;
+      try {
+        await done.deleteDone(t);
+        trips = trips.filter((x) => x.id !== t.id);
+        refresh();
+        if (item) openCard(item);
+        else {
+          listMode = 'done';
+          openList();
+        }
+      } catch (err) {
+        showError(err);
+      }
+    });
   }
 
   // ---- Card ----
@@ -296,6 +462,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       ${item.link ? `<p><a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*/, ''))}</a></p>` : ''}
       ${item.faces != null && HAS_FACING.has(c.id) ? `<p class="hl-muted">Beach faces ${compass(item.faces)}</p>` : ''}
       ${located ? '' : '<p class="hl-muted">Not on the map yet.</p>'}
+      ${cardDoneHtml(item)}
       <div class="hl-card-extra"></div>
       <button type="button" class="hl-delete" data-act="delete">Delete from the hit list</button>
       <p class="hl-error" hidden></p>
@@ -319,6 +486,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     drag.open('peek', ['peek', 'half', 'full'], peek.offsetTop + peek.offsetHeight + 8);
 
     sheet.querySelector('[data-act="edit"]')!.addEventListener('click', () => openForm(draftFrom(item)));
+    sheet.querySelector('[data-act="mark-done"]')!.addEventListener('click', () => openDoneForm(item));
+    sheet.querySelectorAll<HTMLButtonElement>('.hl-done [data-trip]').forEach((b) =>
+      b.addEventListener('click', () => openTrip(trips.find((t) => t.id === b.dataset.trip)!)),
+    );
+    fillPhotos();
     sheet.querySelector('[data-act="share"]')!.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       const url = located ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : item.link ?? '';
@@ -652,7 +824,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
 
   async function load() {
     try {
-      items = await store.loadItems();
+      [items, trips] = await Promise.all([store.loadItems(), done.loadDone().catch(() => [] as DoneTrip[])]);
       loadError = '';
     } catch (err) {
       loadError = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
@@ -666,6 +838,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     if (now && !signedIn) setTimeout(load, 0); // Supabase advises not calling it from inside this callback.
     if (!now) {
       items = [];
+      trips = [];
       refresh();
     }
     signedIn = now;

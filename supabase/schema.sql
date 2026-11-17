@@ -72,3 +72,28 @@ as $$
 $$;
 revoke all on function public.conditions_areas() from public;
 grant execute on function public.conditions_areas() to anon, authenticated;
+
+-- Done list (added 2026-11-16, Round 3): each time you've been somewhere, with a date, a note and an optional photo.
+-- Keeps its own copy of the name and category, so a visit stays on the Done list if the place is deleted.
+create table if not exists public.done_trips (
+  id          uuid primary key default gen_random_uuid(),
+  item_id     uuid references public.hit_list(id) on delete set null,
+  name        text not null,
+  activity    text,
+  done_on     date not null default current_date,
+  note        text,
+  photo_path  text,             -- path in the private `done-photos` storage bucket
+  created_at  timestamptz not null default now()
+);
+alter table public.done_trips enable row level security;
+drop policy if exists "signed in can do everything" on public.done_trips;
+create policy "signed in can do everything" on public.done_trips
+  for all to authenticated using (true) with check (true);
+
+-- Photos for the Done list: a private bucket, readable and writable by the shared login only.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('done-photos', 'done-photos', false, 5242880, array['image/jpeg'])
+on conflict (id) do nothing;
+drop policy if exists "done photos: signed in" on storage.objects;
+create policy "done photos: signed in" on storage.objects
+  for all to authenticated using (bucket_id = 'done-photos') with check (bucket_id = 'done-photos');
