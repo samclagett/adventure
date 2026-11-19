@@ -17,10 +17,10 @@ A claim older than 7 days with no activity can be taken over after a message to 
 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
-| map | `src/zones/map/` | free | | |
+| map | `src/zones/map/` | Sam (Claude) | Victorian fire danger and park closures | 2026-11-20 |
 | hitlist | `src/zones/hitlist/` | free | | |
-| conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
+| conditions | `src/zones/conditions/`, `scripts/conditions/` | Sam (Claude) | Victorian fire danger and park closures | 2026-11-20 |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
-| infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
-| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |
+| infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | Victorian fire danger and park closures | 2026-11-20 |
+| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Sam (Claude) | Victorian fire danger and park closures | 2026-11-20 |
