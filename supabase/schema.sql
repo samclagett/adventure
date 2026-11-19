@@ -25,6 +25,9 @@ $$;
 
 -- Added 2026-11-16 (conditions). For databases made before then.
 alter table public.hit_list add column if not exists faces smallint check (faces between 0 and 359);
+-- Added 2026-11-19: a place's own rating settings, overriding its activity's defaults in
+-- src/zones/conditions/rules.ts, e.g. a dive site {"swellMax":1.2,"swellFrom":[45,150]}, a ski resort {"base":1365,"top":2037}.
+alter table public.hit_list add column if not exists settings jsonb;
 
 drop trigger if exists hit_list_touch on public.hit_list;
 create trigger hit_list_touch before update on public.hit_list

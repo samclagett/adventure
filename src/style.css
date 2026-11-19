@@ -21,6 +21,10 @@
   --on-accent: #082321;
   --warn: #e2b85c;
   --border: #24394a;
+  /* Condition ratings, muted: green Go, orange Marginal, red Skip. Used for rings, edges and pills only. */
+  --go: #8fa66b;
+  --mar: #d0a052;
+  --skip: #b86a5c;
   --paper: #efe9dc;
   --ink: #1b2830;
   --r-s: 10px;

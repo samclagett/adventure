@@ -15,6 +15,8 @@ const TZ = 'Australia/Sydney';
 export const FORECAST_DAYS = 14;
 /** The marine forecast's limit. */
 export const MARINE_DAYS = 8;
+/** Days before today, for rules that look back (rain on sandstone, a dive site's runoff, recent snow). */
+export const PAST_DAYS = 5;
 /** Places per request, to keep URLs short. */
 const BATCH = 50;
 
@@ -144,7 +146,7 @@ export async function fetchForecasts(places: Place[], coastal: boolean[]): Promi
   const coastIdx = places.map((_, i) => i).filter((i) => coastal[i]);
   const coastPlaces = coastIdx.map((i) => places[i]);
   const [weather, marine] = await Promise.all([
-    getAll(WEATHER_URL, places, { daily: DAILY_VARS.join(','), hourly: HOURLY_VARS.join(',') }),
+    getAll(WEATHER_URL, places, { daily: DAILY_VARS.join(','), hourly: HOURLY_VARS.join(','), past_days: String(PAST_DAYS) }),
     // Marine data is a bonus: if it fails, weather still shows.
     // The marine API only goes out 8 days (asking for more fails the whole request).
     coastPlaces.length

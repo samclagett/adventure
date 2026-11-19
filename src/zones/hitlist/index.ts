@@ -62,6 +62,8 @@ export interface HitListApi {
   isGrouped(id: string): boolean;
   /** Called whenever pins are grouped or ungrouped (after zooming). */
   onGroupsChange(cb: () => void): void;
+  /** Colour pin rings by rating (item id to go / mar / skip), or null to go back to category colours. */
+  setPinRatings(ratings: Map<string, string> | null): void;
   /** Add a section to every pin card. `fill` is called with the card's empty section element. */
   addCardSection(fill: (item: HitListItem, el: HTMLElement) => void): void;
   /** Fill the short summary at the top of each place card (shown while the card is pulled down). */
@@ -867,6 +869,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       if (item) openCard(item);
     },
     isGrouped: (id) => pins.isGrouped(id),
+    setPinRatings: (r) => pins.setRatings(r),
     onGroupsChange(cb) {
       groupListeners.push(cb);
     },

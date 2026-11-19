@@ -2,7 +2,7 @@
    Colours come from src/style.css and hitlist.css. */
 
 /* Verdict accents: muted, matching the pin colours. */
-:root { --cd-go: #8fa66b; --cd-mar: #c9a45c; --cd-skip: #8a9196; }
+:root { --cd-go: var(--go); --cd-mar: var(--mar); --cd-skip: var(--skip); }
 
 .cd-muted { color: var(--muted); font-size: 0.85rem; }
 .cd-warn { color: var(--warn); font-size: 0.88rem; }
@@ -57,7 +57,7 @@
 .pl-strip i { flex: 1; min-width: 6px; height: 5px; border-radius: 2px; background: var(--border); }
 .pl-strip i.pl-v-go { background: var(--cd-go); }
 .pl-strip i.pl-v-mar { background: var(--cd-mar); }
-.pl-strip i.pl-v-skip { background: var(--cd-skip); opacity: 0.5; }
+.pl-strip i.pl-v-skip { background: var(--cd-skip); opacity: 0.75; }
 .pl-more { width: 100%; margin-top: 8px; font: inherit; color: var(--accent); background: none; border: 1px dashed var(--border); border-radius: var(--r-m); padding: 10px; cursor: pointer; }
 .pl-foot { margin-top: 18px; }
 
@@ -103,11 +103,12 @@
   line-height: 1;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 1.5px var(--cd-skip), 0 3px 9px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 1.5px var(--muted), 0 3px 9px rgba(0, 0, 0, 0.4);
 }
 .wx-chip::after { content: ''; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; margin-left: -4px; background: var(--paper); transform: rotate(45deg); }
 .wx-chip.wx-v-go { box-shadow: 0 0 0 2px var(--cd-go), 0 3px 9px rgba(0, 0, 0, 0.4); }
 .wx-chip.wx-v-mar { box-shadow: 0 0 0 2px var(--cd-mar), 0 3px 9px rgba(0, 0, 0, 0.4); }
+.wx-chip.wx-v-skip { box-shadow: 0 0 0 2px var(--cd-skip), 0 3px 9px rgba(0, 0, 0, 0.4); }
 .wx-part { display: flex; align-items: center; gap: 2px; }
 .wx-part b { font-weight: 700; }
 .wx-chip .wx-icon { width: 18px; height: 18px; }
@@ -131,7 +132,7 @@
 .cd-verdict { font-weight: 600; }
 .cd-v-go .cd-verdict { color: #c9dbae; }
 .cd-v-mar .cd-verdict { color: #e6cf9c; }
-.cd-v-skip .cd-verdict { color: var(--muted); }
+.cd-v-skip .cd-verdict { color: #e3ada2; }
 
 /* Plan screen: where trips start from. */
 .pl-from { margin: 14px 0 0; font-size: 0.9rem; }
@@ -160,7 +161,26 @@
 .wx-period { display: inline-grid; justify-items: center; gap: 0; }
 .wx-period small { margin-top: -1px; font-size: 0.5rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #5d6a71; }
 
+/* Map tag as a small matrix (layer.ts): a column per part of the day (AM, PM, or Night for camping),
+   each with symbol and temperature, wind, and swell on the coast. Alert icons at the end. */
+.wx-chip { align-items: stretch; gap: 0; padding: 3px 4px; }
+.wx-col { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 5px; }
+.wx-col + .wx-col { border-left: 1px solid rgba(27, 40, 48, 0.18); }
+.wx-col > small { font-size: 0.5rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #5d6a71; }
+.wx-chip .al-icons { align-self: center; margin-left: 2px; }
+.al-icons { display: inline-flex; align-items: center; gap: 1px; }
+.al-icon { width: 16px; height: 16px; flex: none; }
+.wx-chip .al-icons span { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: var(--paper); }
+.wx-chip .al-icon { width: 13px; height: 13px; }
+.wx-chip .al-fire { background: var(--warn); color: var(--ink); }
+/* Alert lines on the place card and Plan list. */
+.al-lines { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.al-lines li { display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--warn); }
+.al-lines .al-icon { width: 18px; height: 18px; }
+
 /* Zoomed out (layer.ts): chips show just the day's symbol and temperature. Wind and swell appear as you zoom in. */
+.wx-compact .wx-col:not(:first-child), .wx-compact .wx-col > small { display: none; }
+.wx-compact .wx-chip .al-icons span:not(:first-child) { display: none; }
 .wx-compact .wx-chip { gap: 0; padding: 2px 5px 2px 3px; font-size: 0.7rem; }
 .wx-compact .wx-chip .wx-wind, .wx-compact .wx-chip .wx-swell { display: none; }
 .wx-compact .wx-chip .wx-icon { width: 16px; height: 16px; }
@@ -172,11 +192,12 @@
 .cd-pill { font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--field); color: var(--muted); }
 .cd-pill.cd-v-go { background: color-mix(in srgb, var(--cd-go) 24%, transparent); color: #c9dbae; }
 .cd-pill.cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.cd-pill.cd-v-skip { background: color-mix(in srgb, var(--cd-skip) 20%, transparent); color: #e3ada2; }
 .cd-sum-days { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; min-width: 160px; }
 .cd-sum-days span { text-align: center; font-size: 0.75rem; font-weight: 600; padding: 4px 0; border-radius: 7px; background: var(--field); color: var(--muted); }
 .cd-sum-days .cd-v-go { background: color-mix(in srgb, var(--cd-go) 28%, transparent); color: #d4e4bd; }
 .cd-sum-days .cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
-.cd-sum-days .cd-v-skip { opacity: 0.6; }
+.cd-sum-days .cd-v-skip { background: color-mix(in srgb, var(--cd-skip) 20%, transparent); color: #e3ada2; }
 .cd-sum-dist { display: block; margin-top: 6px; color: var(--muted); font-size: 0.8rem; }
 
 /* Plan results: the best pick leads as a larger card, then a compact list with a verdict pill on each row. */
@@ -193,10 +214,11 @@
 .pl-days span { text-align: center; font-size: 0.75rem; font-weight: 600; padding: 5px 0; border-radius: 7px; background: var(--field); color: var(--muted); }
 .pl-days .pl-v-go { background: color-mix(in srgb, var(--cd-go) 28%, transparent); color: #d4e4bd; }
 .pl-days .pl-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
-.pl-days .pl-v-skip { opacity: 0.6; }
+.pl-days .pl-v-skip { background: color-mix(in srgb, var(--cd-skip) 20%, transparent); color: #e3ada2; }
 .pl-pill { font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: var(--raised); color: var(--muted); }
 .pl-pill.pl-v-go { background: color-mix(in srgb, var(--cd-go) 24%, transparent); color: #c9dbae; }
 .pl-pill.pl-v-mar { background: color-mix(in srgb, var(--cd-mar) 22%, transparent); color: #e6cf9c; }
+.pl-pill.pl-v-skip { background: color-mix(in srgb, var(--cd-skip) 20%, transparent); color: #e3ada2; }
 .pl-hero .pl-pill { font-size: 0.85rem; padding: 5px 12px; }
 
 /* Conditions table (matrix.ts): a pop-up with AM / PM columns per day. */
@@ -246,3 +268,12 @@
 .pl-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border-radius: var(--r-m); background: var(--raised); }
 .pl-acts .pl-sub button { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; font-size: 0.85rem; border-radius: 999px; }
 .pl-acts .pl-sub button .hl-icon { width: 32px; height: 32px; padding: 3px; }
+
+/* Plan list rows (2026-11-19): alert icons and the pill sit at the end; Maybe rows say what's holding them back. */
+.pl-row-end { display: flex; align-items: center; gap: 6px; }
+.pl-row-end .al-icons { color: var(--warn); }
+.pl-row-end .al-icon { width: 18px; height: 18px; }
+.pl-count { margin-left: 4px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+.pl-row.pl-row-skip, .pl-row.pl-row-na { opacity: 0.8; }
+.pl-why { color: var(--muted); font-size: 0.85rem; }
+.pl-hero .al-lines { margin: 0; }

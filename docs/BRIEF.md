@@ -54,6 +54,16 @@ Look: no emoji or loud colours. Categories use Sam's hand-drawn line icon set (t
 - Hazards: fire danger, park closures, track and road closures.
 - Built (2026-11-16): Open-Meteo weather and marine forecasts, fetched from the browser, with per-category bubbles and day-by-day pin cards. Surf: model swell in metres (never shown as feet, which only Surfline's face height can give), onshore/offshore from each beach's facing, best window, tides, water temperature and a rough go/marginal/skip verdict.
 
+### Condition ratings (2026-11-19)
+
+Every activity is rated green (go), orange (marginal) or red (skip) from its own rules, over the hours that matter
+for it: hiking 6am–7pm, camping the night only, surfing 6am–7pm, climbing 6am–7pm, diving 7am–5pm, canyoning 9am–5pm.
+The numbers are Sam's defaults, kept in one file (`src/zones/conditions/rules.ts`) so they're easy to tune, and any
+place can override them (its `settings`: a dive site's swell limit and the swell directions that reach it, a surf
+beach's swell window, a crag's rock type, a resort's base and top). Skiing is a snow alert (fresh snow, snow in the
+last 5 days, none) with snow depth at base and top. Kayaking will be rated on river levels once the gauges are in.
+Fire danger, park closures, wet sandstone and catchment rain show as small alert icons and never change the colour.
+
 ## Hit list and locations
 
 - The list is added manually: paste in a list of any messiness.

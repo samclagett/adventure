@@ -28,6 +28,8 @@ function pinScale(zoom: number): number {
 const GROUP_MAX_ZOOM = 11.5;
 /** How close (in screen pixels) two pins can be before they are grouped. */
 const GROUP_RADIUS = 36;
+/** Activity icons shown on a group, before a "+". */
+const GROUP_ICONS = 4;
 
 /** Where a point sits on the flat world map, in pixels, at a zoom level (standard web-map maths). */
 function worldPx(lat: number, lng: number, zoom: number): [number, number] {
@@ -52,6 +54,8 @@ export class Pins {
   private groupMarkers: maplibregl.Marker[] = [];
   private grouped = new Set<string>();
   private groupStep = -1;
+  /** Today's rating per item (go / mar / skip), from the weather layer. Colours each pin's ring. */
+  private ratings = new Map<string, string>();
   /** Called whenever the set of grouped pins changes (the weather layer hides chips for grouped pins). */
   onGroupsChange: () => void = () => {};
 
@@ -80,7 +84,7 @@ export class Pins {
   }
 
   /** Fold pins that would pile up into numbered circles; tap one to zoom in on its pins. */
-  private regroup() {
+  private regroup(notify = true) {
     const zoom = this.map.getZoom();
     this.groupStep = Math.round(zoom * 2);
     this.groupMarkers.forEach((m) => m.remove());
@@ -108,11 +112,19 @@ export class Pins {
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'hl-group';
-      el.textContent = String(g.ids.length);
-      el.setAttribute('aria-label', `${g.ids.length} adventures here. Tap to zoom in.`);
+      // The count, then a small string of the activities inside, most common first (Sam, 2026-11-19).
+      const members = this.items.filter((i) => g.ids.includes(i.id));
+      const counts = new Map<string, number>();
+      members.forEach((i) => counts.set(categoryOf(i.activity).id, (counts.get(categoryOf(i.activity).id) ?? 0) + 1));
+      const cats = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => categoryOf(id));
+      const shown = cats.slice(0, GROUP_ICONS);
+      el.innerHTML = `<b>${g.ids.length}</b><span class="hl-group-icons">${shown.map((c) => c.icon).join('')}${cats.length > shown.length ? '<i>+</i>' : ''}</span>`;
+      // The ring takes the best rating inside, so a group with a good option stands out.
+      const best = ['go', 'mar', 'skip'].find((v) => g.ids.some((id) => this.ratings.get(id) === v));
+      if (best) el.dataset.v = best;
+      el.setAttribute('aria-label', `${g.ids.length} adventures here: ${cats.map((c) => c.label).join(', ')}. Tap to zoom in.`);
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        const members = this.items.filter((i) => g.ids.includes(i.id));
         const bounds = new maplibregl.LngLatBounds();
         members.forEach((i) => bounds.extend([i.lng!, i.lat!]));
         // Zoom to fit the group's pins. If they are so close that this barely zooms, step in on the group instead.
@@ -123,7 +135,19 @@ export class Pins {
       this.groupMarkers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([g.lng, g.lat]).addTo(this.map));
     }
     this.markers.forEach((m, id) => m.getElement().classList.toggle('hl-grouped', this.grouped.has(id)));
-    this.onGroupsChange();
+    if (notify) this.onGroupsChange();
+  }
+
+  /** Colour each pin's ring by its rating (null clears them, e.g. when the weather layer is off). */
+  setRatings(ratings: Map<string, string> | null) {
+    this.ratings = ratings ?? new Map();
+    this.markers.forEach((m, id) => {
+      const v = this.ratings.get(id);
+      if (v) m.getElement().dataset.v = v;
+      else delete m.getElement().dataset.v;
+    });
+    // Redraw the groups for their rings, without telling the weather layer (it called this).
+    this.regroup(false);
   }
 
   show(items: HitListItem[]) {
@@ -136,6 +160,8 @@ export class Pins {
       const el = pinElement(cat.icon, cat.color, '', item.name);
       el.setAttribute('aria-label', `${cat.label}: ${item.name}`);
       el.title = item.name;
+      const v = this.ratings.get(item.id);
+      if (v) el.dataset.v = v;
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onTap(item);

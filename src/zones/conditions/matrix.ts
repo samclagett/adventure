@@ -35,7 +35,7 @@ interface Row {
 
 export function matrixHtml(item: HitListItem, f: Forecast): string {
   const cat = categoryOf(item.activity).id;
-  const days = daysOf(f, daysFor('5days').slice(0, DAYS), cat, item.faces).filter((d) => d.periods.length);
+  const days = daysOf(f, daysFor('5days').slice(0, DAYS), cat, item.faces, item.settings).filter((d) => d.periods.length);
   if (!days.length) return '<p class="cd-muted">No hour-by-hour forecast for this place yet.</p>';
   const coastal = COASTAL.has(cat) && !!f.marine;
 
@@ -99,7 +99,7 @@ export function matrixHtml(item: HitListItem, f: Forecast): string {
     )
     .join('');
   return `<div class="mx-scroll"><table class="mx-table"><thead><tr><th class="mx-corner"></th>${head}</tr><tr><th class="mx-corner"></th>${sub}</tr></thead><tbody>${body}</tbody></table></div>
-    <p class="cd-muted mx-foot">AM is 6 to 11am, PM is midday to 8pm${days[0].periods.some((p) => p.id === 'night') ? ', Night is 9pm to 5am' : ''}. Wind in km/h, arrows point the way it blows.${coastal ? ' Swell is model open-ocean swell, its highest in that part of the day.' : ''}</p>`;
+    <p class="cd-muted mx-foot">${days[0].periods.some((p) => p.id === 'night') ? 'Night is 9pm to 6am' : 'AM is 6 to 11am, PM is midday to 8pm'}. Wind in km/h, arrows point the way it blows.${coastal ? ' Swell is model open-ocean swell, its highest in that part of the day.' : ''}</p>`;
 }
 
 /** Open the table as a pop-up over the app. Tap outside, the close button or Escape to close it. */
