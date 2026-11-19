@@ -35,7 +35,7 @@ interface Row {
 
 export function matrixHtml(item: HitListItem, f: Forecast): string {
   const cat = categoryOf(item.activity).id;
-  const days = daysOf(f, daysFor('5days').slice(0, DAYS), cat, item.faces, item.settings).filter((d) => d.periods.length);
+  const days = daysOf(f, daysFor('5days').slice(0, DAYS), cat, item).filter((d) => d.periods.length);
   if (!days.length) return '<p class="cd-muted">No hour-by-hour forecast for this place yet.</p>';
   const coastal = COASTAL.has(cat) && !!f.marine;
 

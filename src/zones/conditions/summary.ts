@@ -196,6 +196,10 @@ export interface Day {
   rules: Rules;
   /** Alerts from outside the forecast (fire danger, park closures), shown beside the rating. */
   alerts: Alert[];
+  /** The place's river gauge, for days close enough to now for it to count. */
+  river: RiverReading | null;
+  /** The same gauge on any day, to show (not rate). */
+  riverNote: RiverReading | null;
 }
 
 /** Wind coming from `from` at a beach facing `faces`: from the sea is onshore, from the land is offshore. */
@@ -418,14 +422,46 @@ function seaOf(m: HourlyMarine | undefined, date: string): SeaHour[] {
 /** How many days back the forecast's past days are read (rules use up to 5). */
 const PAST = 5;
 
+/** A river gauge's latest height (rivers.json, from BoM; scripts/conditions/rivers.py). */
+export interface RiverReading {
+  name: string;
+  level: number;
+  trend: string | null;
+  /** BoM's flood class, e.g. "Below Flood Level", "Minor". */
+  flood: string | null;
+  /** When it was read, ISO time. */
+  at: string | null;
+}
+
+/** What daysOf needs from a place: which way it faces and its own rating settings. */
+export interface PlaceLike {
+  id?: string;
+  faces: number | null;
+  settings?: Record<string, unknown> | null;
+}
+
+/** Things about a place from outside the forecast: alerts (fire danger, closures) and its river gauge. */
+export interface Extras {
+  alerts: Alert[];
+  river: RiverReading | null;
+}
+let extrasOf: (place: PlaceLike) => Extras = () => ({ alerts: [], river: null });
+/** data.ts registers where alerts and river heights come from. */
+export function setExtras(fn: (place: PlaceLike) => Extras) {
+  extrasOf = fn;
+}
+
 /**
  * Work out each requested day for one place. Days beyond the forecast are left out.
- * `settings` are the place's own rating settings (hit_list.settings), on top of the activity's rules.
+ * The place's own rating settings (hit_list.settings) go on top of the activity's rules (rules.ts).
  */
-export function daysOf(f: Forecast, dates: string[], category: string, faces: number | null, settings: Settings = null, alerts: Alert[] = []): Day[] {
+export function daysOf(f: Forecast, dates: string[], category: string, place: PlaceLike): Day[] {
   const d = f.daily;
   const marine = marineHasData(f.marine) ? f.marine : undefined;
-  const rules = rulesFor(category, settings);
+  const faces = place.faces;
+  const rules = rulesFor(category, (place.settings ?? null) as Settings);
+  const { alerts, river } = extrasOf(place);
+  const today = todayIso();
   return dates
     .map((date) => {
       const i = d.time?.indexOf(date) ?? -1;
@@ -452,7 +488,10 @@ export function daysOf(f: Forecast, dates: string[], category: string, faces: nu
         prevSnow: back(d.snowfall_sum),
         faces,
         rules,
-        alerts,
+        alerts: alerts.filter((a) => !a.on || a.on.includes(date)),
+        // A river reading is now; it only stands for the next couple of days.
+        river: river && date <= addDays(today, 2) ? river : null,
+        riverNote: river,
       };
       return day;
     })

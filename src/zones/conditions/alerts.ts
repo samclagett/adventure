@@ -28,5 +28,7 @@ export function alertIcons(alerts: Alert[]): string {
 /** Icon and words, one alert per line (place cards). */
 export function alertLines(alerts: Alert[]): string {
   if (!alerts.length) return '';
-  return `<ul class="al-lines">${alerts.map((a) => `<li class="al-${a.kind}">${ALERT_ICONS[a.kind]}<span>${esc(a.text)}</span></li>`).join('')}</ul>`;
+  return `<ul class="al-lines">${alerts
+    .map((a) => `<li class="al-${a.kind}">${ALERT_ICONS[a.kind]}${a.link ? `<a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.text)}</a>` : `<span>${esc(a.text)}</span>`}</li>`)
+    .join('')}</ul>`;
 }
