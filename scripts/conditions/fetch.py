@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -73,8 +74,18 @@ def request(base: str, places: list[dict], params: dict) -> list[dict]:
         "forecast_days": str(FORECAST_DAYS),
         **params,
     }
-    body = get_json(f"{base}?{urllib.parse.urlencode(q)}")
-    return body if isinstance(body, list) else [body]
+    url = f"{base}?{urllib.parse.urlencode(q)}"
+    # Open-Meteo answers 429 when its free limit is busy (GitHub's runners share addresses): wait and try again.
+    for wait in (30, 90, 180, None):
+        try:
+            body = get_json(url)
+            return body if isinstance(body, list) else [body]
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or wait is None:
+                raise
+            print(f"Open-Meteo busy (429), waiting {wait} s", file=sys.stderr)
+            time.sleep(wait)
+    raise RuntimeError("unreachable")
 
 
 def main() -> int:
