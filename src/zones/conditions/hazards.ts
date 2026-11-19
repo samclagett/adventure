@@ -4,25 +4,29 @@ import { todayIso } from './summary';
 
 /**
  * Hazards that sit beside a rating as small alert icons and never change its colour (Sam, 2026-11-19):
- * - Fire danger: the NSW RFS ratings for today and tomorrow, by fire weather district
- *   (https://www.rfs.nsw.gov.au/feeds/fdrToban.xml, read live). Places are matched to a district with
- *   public/data/fire-districts.geojson (built by scripts/map/fire_districts.py). Shown from High up,
- *   and for total fire bans. NSW only for now.
- * - Park closures and bushfires: NSW National Parks alerts near a place (parks.json, saved every 3 hours by
- *   scripts/conditions/parks.py), on the dates they cover.
+ * - Fire danger by fire weather district, shown from High up and for total fire bans. NSW: the RFS ratings for
+ *   today and tomorrow (https://www.rfs.nsw.gov.au/feeds/fdrToban.xml, read live). VIC (2026-11-20): the CFA's
+ *   four-day forecast (fire-vic.json, saved every 3 hours by scripts/conditions/firevic.py, since the CFA feed
+ *   can't be read from the browser). Places are matched to a district with public/data/fire-districts.geojson
+ *   (built by scripts/map/fire_districts.py).
+ * - Park closures and bushfires near a place, on the dates they cover (parks.json, saved every 3 hours by
+ *   scripts/conditions/parks.py): NSW National Parks alerts, Parks Victoria closures and VicEmergency bushfires.
  */
 
 const FIRE_URL = 'https://www.rfs.nsw.gov.au/feeds/fdrToban.xml';
 const DISTRICTS_URL = `${import.meta.env.BASE_URL}data/fire-districts.geojson`;
-const PARKS_URL = 'https://raw.githubusercontent.com/samclagett/adventure/conditions-data/parks.json';
+const DATA = 'https://raw.githubusercontent.com/samclagett/adventure/conditions-data';
+const PARKS_URL = `${DATA}/parks.json`;
+const FIRE_VIC_URL = `${DATA}/fire-vic.json`;
 /** Ratings that bring up an alert. Moderate (most days in summer) doesn't. */
 const SHOW_FIRE = ['HIGH', 'EXTREME', 'CATASTROPHIC'];
-/** A park alert within this many km of a place counts for it. */
+/** A park alert within this many km of a place counts for it, unless the alert sets its own `km`. */
 const NEAR_KM = 5;
 
 type Ring = [number, number][];
 interface District {
   name: string;
+  state: string;
   polys: Ring[][];
 }
 interface Danger {
@@ -40,11 +44,19 @@ interface ParkAlert {
   start: string | null;
   end: string | null;
   points: [number, number][];
+  /** Victorian parks: places this close (km) to the park's centre count. */
+  km?: number;
+}
+interface VicDay {
+  date: string;
+  ratings: Record<string, string>;
+  bans: Record<string, boolean>;
 }
 
 let districts: District[] = [];
 let danger = new Map<string, Danger>();
 let parks: ParkAlert[] = [];
+let vic: VicDay[] = [];
 
 /** Ray casting: is the point inside the ring? Coordinates are [lng, lat]. */
 function inRing(lng: number, lat: number, ring: Ring): boolean {
@@ -57,11 +69,11 @@ function inRing(lng: number, lat: number, ring: Ring): boolean {
   return inside;
 }
 
-function districtAt(lat: number, lng: number): string | null {
+function districtAt(lat: number, lng: number): District | null {
   // Dive sites and beaches can sit just off the simplified coastline: try a few nearby points too.
   for (const [dy, dx] of [[0, 0], [0, -0.03], [0.03, 0], [-0.03, 0], [0, -0.08], [0.08, -0.05], [-0.08, -0.05]]) {
     const d = districts.find((x) => x.polys.some((p) => inRing(lng + dx, lat + dy, p[0]) && !p.slice(1).some((h) => inRing(lng + dx, lat + dy, h))));
-    if (d) return d.name;
+    if (d) return d;
   }
   return null;
 }
@@ -102,18 +114,23 @@ export function hazardsFor(items: HitListItem[]): Map<string, Alert[]> {
   for (const item of items) {
     if (item.lat == null || item.lng == null) continue;
     const list: Alert[] = [];
-    const name = districts.length && danger.size ? districtAt(item.lat, item.lng) : null;
-    const dz = name ? danger.get(name) : null;
-    if (dz) {
-      for (const [date, level, ban] of [
-        [today, dz.today, dz.banToday],
-        [tomorrow, dz.tomorrow, dz.banTomorrow],
-      ] as [string, string, boolean][]) {
-        if (SHOW_FIRE.includes(level) || ban)
-          list.push({ kind: 'fire', text: `${SHOW_FIRE.includes(level) ? `${word(level)} fire danger` : 'Fire danger'}${ban ? ', total fire ban' : ''} (${name})`, on: [date], link: 'https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans' });
-      }
+    const district = districts.length ? districtAt(item.lat, item.lng) : null;
+    const days: [string, string, boolean][] = [];
+    let link = '';
+    if (district?.state === 'VIC') {
+      for (const v of vic) days.push([v.date, v.ratings[district.name] ?? '', v.bans[district.name] ?? false]);
+      link = 'https://www.cfa.vic.gov.au/warnings-restrictions/total-fire-bans-and-ratings';
+    } else if (district) {
+      const dz = danger.get(district.name);
+      if (dz) days.push([today, dz.today, dz.banToday], [tomorrow, dz.tomorrow, dz.banTomorrow]);
+      link = 'https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans';
     }
-    const near = parks.filter((p) => p.points.some(([la, ln]) => km(item.lat!, item.lng!, la, ln) <= NEAR_KM));
+    for (const [date, level, ban] of days) {
+      if (date < today) continue;
+      if (SHOW_FIRE.includes(level) || ban)
+        list.push({ kind: 'fire', text: `${SHOW_FIRE.includes(level) ? `${word(level)} fire danger` : 'Fire danger'}${ban ? ', total fire ban' : ''} (${district!.name})`, on: [date], link });
+    }
+    const near = parks.filter((p) => p.points.some(([la, ln]) => km(item.lat!, item.lng!, la, ln) <= (p.km ?? NEAR_KM)));
     for (const p of near.slice(0, 3)) {
       list.push({
         kind: p.type === 'Bushfire' ? 'fire' : 'closure',
@@ -127,13 +144,13 @@ export function hazardsFor(items: HitListItem[]): Map<string, Alert[]> {
   return out;
 }
 
-/** Load the fire districts, today's fire danger and the park alerts. Call `done` when they're in. */
+/** Load the fire districts, the fire danger and the park alerts. Call `done` when they're in. */
 export async function loadHazards(done: () => void) {
   const tasks = [
     fetch(DISTRICTS_URL)
       .then((r) => r.json())
-      .then((g: { features: { properties: { name: string }; geometry: { coordinates: Ring[][] } }[] }) => {
-        districts = g.features.map((f) => ({ name: f.properties.name, polys: f.geometry.coordinates }));
+      .then((g: { features: { properties: { name: string; state?: string }; geometry: { coordinates: Ring[][] } }[] }) => {
+        districts = g.features.map((f) => ({ name: f.properties.name, state: f.properties.state ?? 'NSW', polys: f.geometry.coordinates }));
       }),
     fetch(FIRE_URL)
       .then((r) => r.text())
@@ -145,6 +162,11 @@ export async function loadHazards(done: () => void) {
           map.set(get('Name'), { today: get('DangerLevelToday').toUpperCase(), tomorrow: get('DangerLevelTomorrow').toUpperCase(), banToday: get('FireBanToday') === 'Yes', banTomorrow: get('FireBanTomorrow') === 'Yes' });
         });
         danger = map;
+      }),
+    fetch(`${FIRE_VIC_URL}?t=${Math.floor(Date.now() / 300000)}`)
+      .then((r) => (r.ok ? r.json() : { days: [] }))
+      .then((v: { days: VicDay[] }) => {
+        vic = v.days ?? [];
       }),
     fetch(`${PARKS_URL}?t=${Math.floor(Date.now() / 300000)}`)
       .then((r) => (r.ok ? r.json() : { alerts: [] }))

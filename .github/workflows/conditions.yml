@@ -44,13 +44,18 @@ jobs:
         run: python scripts/conditions/parks.py
         env:
           OUT: ${{ runner.temp }}/parks.json
+      - name: Read Victorian fire danger
+        continue-on-error: true
+        run: python scripts/conditions/firevic.py
+        env:
+          OUT: ${{ runner.temp }}/fire-vic.json
       - name: Publish to the conditions-data branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd "$RUNNER_TEMP"
           mkdir publish && cp conditions.json publish/
-          for f in rivers.json parks.json; do if [ -f "$f" ]; then cp "$f" publish/; fi; done
+          for f in rivers.json parks.json fire-vic.json; do if [ -f "$f" ]; then cp "$f" publish/; fi; done
           cd publish
           git init -q -b conditions-data
           git config user.name "github-actions[bot]"
