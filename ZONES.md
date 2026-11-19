@@ -17,10 +17,10 @@ A claim older than 7 days with no activity can be taken over after a message to 
 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
-| map | `src/zones/map/` | free | | |
-| hitlist | `src/zones/hitlist/` | Sam (Claude) | Round 3 (drive times, Done list) | 2026-11-17 |
-| conditions | `src/zones/conditions/`, `scripts/conditions/` | Sam (Claude) | Round 3 (drive times, Done list) | 2026-11-17 |
+| map | `src/zones/map/` | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
+| hitlist | `src/zones/hitlist/` | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
+| conditions | `src/zones/conditions/`, `scripts/conditions/` | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
-| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | Sam (Claude) | Round 3 (drive times, Done list) | 2026-11-17 |
-| infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | Round 3: drive times, Go alerts | 2026-11-16 |
-| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Sam (Claude) | Round 3 (drive times, Done list) | 2026-11-17 |
+| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
+| infra | `.github/`, `supabase/`, `package.json`, config files | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
+| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Sam (Claude) | Condition ratings, hit list additions, canyons | 2026-11-19 |
