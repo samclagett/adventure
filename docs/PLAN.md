@@ -89,8 +89,11 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   bulletins for NSW and Victoria, about 1,200 gauges, saved as rivers.json on the `conditions-data` branch. A place
   links to a gauge with `settings.gauge`; kayaking is rated on it once `levelGreen` / `levelOrange` are set (Sam to
   give the levels), otherwise the height shows as an alert line and the rating is rain and wind.
-- **Fire danger** (`conditions/hazards.ts`): RFS ratings for today and tomorrow, read live, matched to places with
-  NSW fire weather district shapes (`public/data/fire-districts.geojson`, built by `scripts/map/fire_districts.py`
-  from Overture council boundaries). Alerts from High up, or a total fire ban. Victoria not yet (CFA).
-- **Park closures** (`scripts/conditions/parks.py`): NSW National Parks closures and bushfire alerts within 5 km of a
-  place, on the dates they cover, saved as parks.json. Victoria not yet.
+- **Fire danger** (`conditions/hazards.ts`): NSW RFS ratings for today and tomorrow, read live; Victoria's CFA
+  four-day forecast saved as fire-vic.json by `scripts/conditions/firevic.py` (no CORS). Matched to places with
+  NSW and VIC fire weather district shapes (`public/data/fire-districts.geojson`, built by
+  `scripts/map/fire_districts.py` from Overture council boundaries). Alerts from High up, or a total fire ban.
+- **Park closures** (`scripts/conditions/parks.py`, saved as parks.json): NSW National Parks closures and bushfire
+  alerts within 5 km of a place, on the dates they cover; Parks Victoria closures read from each park's page in
+  `VIC_PARKS` (each with its own radius; add a park there when a Victorian place is added); VicEmergency bushfires
+  that aren't yet safe, within 10 km.

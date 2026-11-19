@@ -63,8 +63,8 @@ place can override them (its `settings`: a dive site's swell limit and the swell
 beach's swell window, a crag's rock type, a resort's base and top). Skiing is a snow alert (fresh snow, snow in the
 last 5 days, none) with snow depth at base and top. Kayaking will be rated on river levels once the gauges are in.
 Fire danger, park closures, wet sandstone and catchment rain show as small alert icons and never change the colour.
-River heights come from BoM's river height bulletins; fire danger from the NSW RFS; park closures from NSW National
-Parks alerts (NSW only for now).
+River heights come from BoM's river height bulletins; fire danger from the NSW RFS and Victoria's CFA; park closures from NSW National
+Parks alerts and Parks Victoria park pages, and bushfires from NSW National Parks and VicEmergency.
 
 ## Hit list and locations
 
