@@ -176,7 +176,8 @@
 /* Alert lines on the place card and Plan list. */
 .al-lines { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
 .al-lines li { display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--warn); }
-.al-lines .al-icon { width: 18px; height: 18px; }
+.al-lines .al-icon { width: 18px; height: 18px; flex: none; }
+.al-lines a { color: inherit; }
 
 /* Zoomed out (layer.ts): chips show just the day's symbol and temperature. Wind and swell appear as you zoom in. */
 .wx-compact .wx-col:not(:first-child), .wx-compact .wx-col > small { display: none; }

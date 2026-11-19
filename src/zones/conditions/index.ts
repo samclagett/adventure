@@ -10,6 +10,7 @@ import { mountCardSection } from './card';
 import { showTab } from '../shared/tabs';
 import { getHome } from './home';
 import { ensureDrives } from './drive';
+import { hazardsFor, loadHazards } from './hazards';
 
 /**
  * Conditions, in three parts:
@@ -30,8 +31,17 @@ export function mountConditions(parent: HTMLElement, adv: AdventureMap, hl: HitL
   });
   mountCardSection(hl, data, () => visible);
 
+  // Fire danger and park closures: loaded once, then matched to places whenever the list changes.
+  let hazardsIn = false;
+  const applyHazards = () => hazardsIn && data.setHazards(hazardsFor(all));
+  void loadHazards(() => {
+    hazardsIn = true;
+    applyHazards();
+  });
+
   hl.onItemsChange((items) => {
     all = items;
+    applyHazards();
     planner.setItems(all);
     // Fetch for every place up front, so the planner and the layer are ready together.
     if (all.length) data.ensure(all);

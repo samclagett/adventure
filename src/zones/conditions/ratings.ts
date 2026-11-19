@@ -13,6 +13,10 @@ export interface Alert {
   kind: AlertKind;
   /** Short words, e.g. "Wet sandstone: 14 mm yesterday". */
   text: string;
+  /** Dates (YYYY-MM-DD) it applies to. Unset = every day. */
+  on?: string[];
+  /** Where to read more. */
+  link?: string;
 }
 
 export interface Rated {
@@ -165,6 +169,11 @@ export function inRange(dir: number, [from, to]: [number, number]): boolean {
   return a <= b ? d >= a && d <= b : d >= a || d <= b;
 }
 
+/** A river's height as an alert line: "Colo River at Upper Colo 0.79 m, steady". */
+function riverAlert(r: { name: string; level: number; trend: string | null }): Alert {
+  return { kind: 'river', text: `${r.name} ${r.level.toFixed(2)} m${r.trend ? `, ${r.trend}` : ''}` };
+}
+
 function strikesFor(category: string, d: Day, r: Rules, alerts: Alert[]): Strike[] {
   const s = statsOf(d, r.hours);
   switch (category) {
@@ -200,6 +209,7 @@ function strikesFor(category: string, d: Day, r: Rules, alerts: Alert[]): Strike
       else if (s.rainy.length) out.push({ skip: false, why: `showers ${spansText(s.rainy)}` });
       else if (s.rain === 'chance') out.push({ skip: false, why: `${s.prob}% chance of showers` });
       out.push(...tempStrikes(s.tmax, r), ...stormStrikes(s));
+      if (d.riverNote) alerts.push(riverAlert(d.riverNote));
       const before = pastSum(d.prevRain, r.catchmentDays ?? 3);
       if (before != null && before >= (r.catchmentAlertMm ?? 25))
         alerts.push({ kind: 'rain', text: `${r0(before)} mm in the catchment over the ${r.catchmentDays ?? 3} days before: check water levels` });
@@ -223,11 +233,20 @@ function strikesFor(category: string, d: Day, r: Rules, alerts: Alert[]): Strike
       return out;
     }
     case 'kayaking': {
-      // Until the river gauges are in, rain and wind.
+      // Mainly the river height, against the levels set for this river. Rain and wind count too.
       const out: Strike[] = [];
+      const river = d.river;
+      if (river && r.levelGreen) {
+        const [gLo, gHi] = r.levelGreen;
+        const [oLo, oHi] = r.levelOrange ?? r.levelGreen;
+        const v = river.level;
+        if (v < gLo || v > gHi) out.push({ skip: v < oLo || v > oHi, why: `river ${v < gLo ? 'low' : 'high'} (${v.toFixed(2)} m)` });
+      }
+      if (river && /minor|moderate|major/i.test(river.flood ?? '')) out.push({ skip: true, why: `river in flood (${river.flood})` });
       if (s.rain === 'allday') out.push({ skip: true, why: rainWords(s) });
       else if (s.rain === 'some' && s.mm >= 2) out.push({ skip: false, why: rainWords(s) });
       out.push(...windStrikes(s.wind, r), ...stormStrikes(s));
+      if (d.riverNote) alerts.push(riverAlert(d.riverNote));
       return out;
     }
     default: {

@@ -71,6 +71,13 @@ export interface Rules {
   base?: number;
   top?: number;
 
+  // Rivers (kayaking, and water levels for canyons).
+  /** The BoM gauge for this place, e.g. "IDN60233.563033" (an id from rivers.json; scripts/conditions/rivers.py). */
+  gauge?: string;
+  /** River height (m on the gauge) that's green, and orange; outside orange is red. Unset = show the height only. */
+  levelGreen?: [number, number];
+  levelOrange?: [number, number];
+
   // Canyoning.
   /** Most rain in the window (mm) that still counts as "showers or slight drizzle" (orange). More is red. */
   showersMaxMm?: number;
@@ -152,7 +159,7 @@ export const RULES: Record<string, Rules> = {
     catchmentDays: 3,
   },
   kayaking: {
-    // Rated on river level once the river gauges are in; until then, rain and wind.
+    // Rated on the river height when the place has a gauge and good levels set (settings), else on rain and wind.
     hours: [7, 17],
     windGreen: 20,
     windOrange: 30,

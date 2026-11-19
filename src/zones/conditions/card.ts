@@ -47,7 +47,7 @@ function summaryHtml(item: HitListItem, data: ConditionsData): string {
   if (!f) return `<div class="cd-sum"><span class="cd-muted">${data.loading ? 'Getting the forecast…' : 'No forecast yet'}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
   const cat = categoryOf(item.activity).id;
   const dates = daysFor('5days').slice(0, 4);
-  const rated = daysOf(f, dates, cat, item.faces, item.settings).map((d) => rateDay(cat, d));
+  const rated = daysOf(f, dates, cat, item).map((d) => rateDay(cat, d));
   const verdicts: Verdict[] = rated.map((r) => r.verdict);
   // Alerts over the next four days, one of each kind (they don't change the rating colour).
   const alerts: Alert[] = [];
@@ -112,7 +112,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
         el.innerHTML = `<h3>Conditions</h3><p class="cd-muted">${data.loading ? 'Getting the forecast…' : esc(data.error) || 'No forecast yet.'}</p>`;
         return;
       }
-      const days = daysOf(f, daysFor(windowId), cat, item.faces, item.settings);
+      const days = daysOf(f, daysFor(windowId), cat, item);
       const rows = rowsFor(cat, days);
       const water = days.map((d) => d.water).filter((w): w is number => w != null);
       const notes: string[] = [];

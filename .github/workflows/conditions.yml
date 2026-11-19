@@ -1,5 +1,7 @@
 name: Refresh conditions
 
+# Also reads BoM river heights (scripts/conditions/rivers.py) into rivers.json and NSW park closures
+# (scripts/conditions/parks.py) into parks.json, on the same branch.
 # Fetches Open-Meteo forecasts for every hit list area (scripts/conditions/fetch.py) and publishes them as
 # conditions.json on the `conditions-data` branch, where the app reads them so it opens with conditions
 # already loaded. Runs every 3 hours, and can be run by hand from the Actions tab ("Run workflow").
@@ -31,16 +33,29 @@ jobs:
           SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           OUT: ${{ runner.temp }}/conditions.json
+      - name: Read river heights
+        # A failure here shouldn't stop the forecasts being published.
+        continue-on-error: true
+        run: python scripts/conditions/rivers.py
+        env:
+          OUT: ${{ runner.temp }}/rivers.json
+      - name: Read park closures
+        continue-on-error: true
+        run: python scripts/conditions/parks.py
+        env:
+          OUT: ${{ runner.temp }}/parks.json
       - name: Publish to the conditions-data branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd "$RUNNER_TEMP"
-          mkdir publish && cp conditions.json publish/ && cd publish
+          mkdir publish && cp conditions.json publish/
+          for f in rivers.json parks.json; do if [ -f "$f" ]; then cp "$f" publish/; fi; done
+          cd publish
           git init -q -b conditions-data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add conditions.json
+          git add -A
           git commit -qm "Conditions $(date -u +%FT%TZ)"
           # One commit, replaced each run, so the branch never grows.
           git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" conditions-data

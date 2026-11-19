@@ -100,7 +100,7 @@ export function mountPlanner(
         const cat = categoryOf(item.activity).id;
         let option: Option | null = null;
         try {
-          if (f) option = rateWindow(cat, daysOf(f, dates, cat, item.faces, item.settings));
+          if (f) option = rateWindow(cat, daysOf(f, dates, cat, item));
         } catch (err) {
           console.error('Conditions for', item.name, err); // one odd forecast shouldn't break the whole list
         }

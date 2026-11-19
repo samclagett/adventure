@@ -85,4 +85,12 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   and swell; pin rings take the same rating colour as their tag; numbered groups show the activities inside.
 - **Plan list**: best pick, then More that look good, Maybe (with what's holding it back), and poor options folded away.
 - **Hit list**: 31 new places (dive sites with swell limits, rivers, hiking areas, climbing areas).
-- Next: fire danger and park closures, river levels, canyons from ozultimate.com.
+- **River levels** (`scripts/conditions/rivers.py`, every 3 hours with the forecasts): BoM "Latest River Heights"
+  bulletins for NSW and Victoria, about 1,200 gauges, saved as rivers.json on the `conditions-data` branch. A place
+  links to a gauge with `settings.gauge`; kayaking is rated on it once `levelGreen` / `levelOrange` are set (Sam to
+  give the levels), otherwise the height shows as an alert line and the rating is rain and wind.
+- **Fire danger** (`conditions/hazards.ts`): RFS ratings for today and tomorrow, read live, matched to places with
+  NSW fire weather district shapes (`public/data/fire-districts.geojson`, built by `scripts/map/fire_districts.py`
+  from Overture council boundaries). Alerts from High up, or a total fire ban. Victoria not yet (CFA).
+- **Park closures** (`scripts/conditions/parks.py`): NSW National Parks closures and bushfire alerts within 5 km of a
+  place, on the dates they cover, saved as parks.json. Victoria not yet.

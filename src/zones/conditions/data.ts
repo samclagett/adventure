@@ -1,6 +1,8 @@
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import { fetchForecasts, type Forecast } from './openmeteo';
+import { setExtras, type RiverReading, type PlaceLike } from './summary';
+import type { Alert } from './ratings';
 
 /**
  * Forecasts by AREA, not by pin: one per 0.25° grid square (about 25 km) that has hit list places.
@@ -21,6 +23,8 @@ const CELL = 0.25;
 const STALE_MS = 4 * 60 * 60 * 1000;
 const CACHE_KEY = 'adventure.conditions.areas.v1';
 const REMOTE_URL = 'https://raw.githubusercontent.com/samclagett/adventure/conditions-data/conditions.json';
+/** River heights from BoM, saved by the same job (scripts/conditions/rivers.py). */
+const RIVERS_URL = 'https://raw.githubusercontent.com/samclagett/adventure/conditions-data/rivers.json';
 
 export function areaId(lat: number, lng: number): string {
   return `${Math.floor(lat / CELL)}_${Math.floor(lng / CELL)}`;
@@ -45,15 +49,44 @@ export class ConditionsData {
   private listeners: (() => void)[] = [];
   private queued: { items: HitListItem[]; force: boolean } | null = null;
   private remoteTried = false;
+  /** River gauges by id (rivers.json). */
+  private rivers: Record<string, RiverReading> = {};
+  /** Alerts from outside the forecast, by place id (fire danger, closures: hazards.ts). */
+  private hazards = new Map<string, Alert[]>();
   loading = false;
   error = '';
 
   constructor() {
+    setExtras((p) => this.extras(p));
+    void this.loadRivers();
     try {
       const saved = JSON.parse(localStorage.getItem(CACHE_KEY) ?? '{}') as Record<string, Entry>;
       for (const [id, e] of Object.entries(saved)) if (Date.now() - e.at < 24 * 60 * 60 * 1000) this.entries.set(id, e);
     } catch {
       /* nothing saved, or private mode */
+    }
+  }
+
+  /** Alerts and river heights for a place, used by every rating (summary.ts daysOf). */
+  private extras(place: PlaceLike) {
+    const gauge = typeof place.settings?.gauge === 'string' ? place.settings.gauge : null;
+    return { alerts: (place.id && this.hazards.get(place.id)) || [], river: (gauge && this.rivers[gauge]) || null };
+  }
+
+  /** Set the outside alerts for each place (hazards.ts), then redraw. */
+  setHazards(byPlace: Map<string, Alert[]>) {
+    this.hazards = byPlace;
+    this.changed();
+  }
+
+  private async loadRivers() {
+    try {
+      const r = await fetch(`${RIVERS_URL}?t=${Math.floor(Date.now() / 300000)}`);
+      if (!r.ok) return;
+      this.rivers = ((await r.json()) as { gauges: Record<string, RiverReading> }).gauges ?? {};
+      this.changed();
+    } catch {
+      /* not there yet, or offline */
     }
   }
 

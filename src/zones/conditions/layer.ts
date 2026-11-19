@@ -35,7 +35,7 @@ function addDays(iso: string, n: number): string {
  */
 export function chipFor(item: HitListItem, f: Forecast, date: string): { html: string; rank: number; label: string; verdict: string } | null {
   const cat = categoryOf(item.activity).id;
-  const day = daysOf(f, [date], cat, item.faces, item.settings)[0];
+  const day = daysOf(f, [date], cat, item)[0];
   if (!day) return null;
   const rated = rateDay(cat, day);
   const coastal = COASTAL.has(cat) && !!day.surf;
