@@ -4,7 +4,9 @@ import type { HitListApi } from '../hitlist';
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import { COASTAL, type ConditionsData } from './data';
-import { daysOf, rateDay, todayIso, dayLabel, compass, VERDICT_WORD } from './summary';
+import type { Forecast } from './openmeteo';
+import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, VERDICT_WORD } from './summary';
+import { alertIcons } from './alerts';
 import { WEATHER_ICONS, KIND_WORD, weatherKind, windArrow as arrow } from './weather-icons';
 
 /**
@@ -24,6 +26,50 @@ function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);
   const x = new Date(Date.UTC(y, m - 1, d + n));
   return x.toISOString().slice(0, 10);
+}
+
+/**
+ * A small matrix beside the pin: a column for each part of the day that counts (AM and PM, or just the
+ * night for camping), each with its weather symbol and temperature, wind, and swell on the coast.
+ * Alerts (fire danger, wet rock…) sit at the end as small icons. The ring is the day's rating.
+ */
+export function chipFor(item: HitListItem, f: Forecast, date: string): { html: string; rank: number; label: string; verdict: string } | null {
+  const cat = categoryOf(item.activity).id;
+  const day = daysOf(f, [date], cat, item.faces, item.settings)[0];
+  if (!day) return null;
+  const rated = rateDay(cat, day);
+  const coastal = COASTAL.has(cat) && !!day.surf;
+  let body: string;
+  if (day.periods.length) {
+    body = day.periods
+      .map((p) => {
+        const sea = coastal ? seaFor(f, day.date, p.id) : null;
+        return `<span class="wx-col"><small>${p.label}</small><span class="wx-part">${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : ''}</span>${
+          p.wind != null ? `<span class="wx-part wx-wind">${p.windDir != null ? arrow(p.windDir, 'wx-a-wind') : ''}${Math.round(p.wind)}</span>` : ''
+        }${sea?.swell != null ? `<span class="wx-part wx-swell">${sea.swellDir != null ? arrow(sea.swellDir, 'wx-a-swell') : ''}${sea.swell.toFixed(1)}m</span>` : ''}</span>`;
+      })
+      .join('');
+  } else {
+    // Older saved forecasts with no hour-by-hour weather: one column for the day.
+    body = `<span class="wx-col"><span class="wx-part">${WEATHER_ICONS[weatherKind(day.code)]}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>${
+      day.wind != null ? `<span class="wx-part wx-wind">${day.windDir != null ? arrow(day.windDir, 'wx-a-wind') : ''}${Math.round(day.wind)}</span>` : ''
+    }${coastal ? `<span class="wx-part wx-swell">${day.surf!.swellDir != null ? arrow(day.surf!.swellDir, 'wx-a-swell') : ''}${day.surf!.swellMax.toFixed(1)}m</span>` : ''}</span>`;
+  }
+  const label = [
+    item.name,
+    VERDICT_WORD[rated.verdict],
+    ...rated.why.slice(0, 2),
+    ...day.periods.map((p) => `${p.label} ${KIND_WORD[p.kind]}${p.temp != null ? ` ${Math.round(p.temp)} degrees` : ''}${p.wind != null ? `, wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h` : ''}`),
+    ...rated.alerts.map((a) => a.text),
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return {
+    html: `<span class="wx-chip wx-v-${rated.verdict}">${body}${alertIcons(rated.alerts)}</span>`,
+    rank: ['go', 'mar', 'skip', 'na'].indexOf(rated.verdict),
+    label,
+    verdict: rated.verdict,
+  };
 }
 
 export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListApi, data: ConditionsData) {
@@ -74,53 +120,27 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
     );
   }
 
-  function chip(item: HitListItem): { html: string; rank: number; label: string } | null {
-    const f = data.get(item);
-    if (!f) return null;
-    const cat = categoryOf(item.activity).id;
-    const day = daysOf(f, [date()], cat, item.faces)[0];
-    if (!day) return null;
-    const rated = rateDay(cat, day);
-    const parts: string[] = [];
-    // Morning and afternoon (and night for camping) symbols, else one for the day.
-    const icons = day.periods.length
-      ? `<span class="wx-periods">${day.periods.map((p) => `<span class="wx-period">${WEATHER_ICONS[p.kind]}<small>${p.label}</small></span>`).join('')}</span>`
-      : WEATHER_ICONS[weatherKind(day.code)];
-    parts.push(`<span class="wx-part">${icons}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>`);
-    if (day.wind != null) {
-      parts.push(`<span class="wx-part wx-wind">${day.windDir != null ? arrow(day.windDir, 'wx-a-wind') : ''}${Math.round(day.wind)}</span>`);
-    }
-    if (COASTAL.has(cat) && day.surf) {
-      parts.push(`<span class="wx-part wx-swell">${day.surf.swellDir != null ? arrow(day.surf.swellDir, 'wx-a-swell') : ''}${day.surf.swellMax.toFixed(1)}m</span>`);
-    }
-    const label = [
-      item.name,
-      `${VERDICT_WORD[rated.verdict]}`,
-      ...day.periods.map((p) => `${p.label} ${KIND_WORD[p.kind]}`),
-      day.tmax != null ? `${Math.round(day.tmax)} degrees` : '',
-      day.wind != null ? `wind ${day.windDir != null ? compass(day.windDir) + ' ' : ''}${Math.round(day.wind)} km/h` : '',
-      day.surf ? `swell ${day.surf.swellMax.toFixed(1)} m` : '',
-    ]
-      .filter(Boolean)
-      .join(', ');
-    return { html: `<span class="wx-chip wx-v-${rated.verdict}">${parts.join('')}</span>`, rank: ['go', 'mar', 'skip', 'na'].indexOf(rated.verdict), label };
-  }
-
   function render() {
     renderBar();
     markers.forEach((m) => m.remove());
     markers.clear();
-    if (!on) return;
+    if (!on) {
+      setRatings(null);
+      return;
+    }
+    const ratings = new Map<string, string>();
     for (const item of items) {
-      // No chip for pins folded into a numbered group; it appears once you zoom in.
-      if (hl.isGrouped(item.id)) continue;
-      let c: ReturnType<typeof chip> = null;
+      let c: ReturnType<typeof chipFor> = null;
       try {
-        c = chip(item);
+        const f = data.get(item);
+        if (f) c = chipFor(item, f, date());
       } catch (err) {
         console.error('Weather chip for', item.name, err);
       }
       if (!c) continue;
+      if (c.verdict !== 'na') ratings.set(item.id, c.verdict);
+      // No chip for pins folded into a numbered group; it appears once you zoom in.
+      if (hl.isGrouped(item.id)) continue;
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'wx-marker';
@@ -134,6 +154,16 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
       markers.set(item.id, new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([item.lng!, item.lat!]).addTo(map));
     }
     declutter();
+    setRatings(ratings);
+  }
+
+  /** Pin rings take the same rating colour as their tag. Only passed on when it changes (it redraws the groups). */
+  let lastRatings = '';
+  function setRatings(r: Map<string, string> | null) {
+    const key = r ? [...r.entries()].sort().join() : '';
+    if (key === lastRatings) return;
+    lastRatings = key;
+    hl.setPinRatings(r);
   }
 
   /** Hide chips that would overlap another; better-rated places win, then north to south. */

@@ -1,5 +1,9 @@
 import type { Forecast, HourlyMarine, HourlyWeather, HourlyWind } from './openmeteo';
-import { periodKind, type WeatherKind } from './weather-icons';
+import { periodKind, KIND_WORD, type WeatherKind } from './weather-icons';
+import { rulesFor, type Rules, type Settings } from './rules';
+import { rateDay as rateOneDay, angDist, inRange, type Alert, type Rated } from './ratings';
+
+export type { Alert, Rated };
 
 /**
  * Turns raw forecasts into what each category cares about: a short summary for the map bubble,
@@ -115,6 +119,8 @@ export interface SurfDay {
   /** What the wind does at the beach in the best window (or the morning). */
   windRel: 'offshore' | 'cross-shore' | 'onshore' | null;
   tides: Tide[];
+  /** What holds it back, when it isn't a go. */
+  why: string[];
 }
 
 /** Part of a day: AM 6–11am, PM 12–8pm, and for camping the night (9pm to 5am next morning). */
@@ -141,6 +147,25 @@ export const PERIODS: { id: Period['id']; label: string; from: number; to: numbe
   { id: 'night', label: 'Night', from: 21, to: 29 },
 ];
 
+/** One hour of weather. `h` is the hour from midnight; 24 to 30 are the next morning. */
+export interface Hour {
+  h: number;
+  code: number | null;
+  temp: number | null;
+  rain: number | null;
+  prob: number | null;
+  wind: number | null;
+  dir: number | null;
+}
+
+/** One hour of swell (coastal places). */
+export interface SeaHour {
+  h: number;
+  swell: number | null;
+  period: number | null;
+  dir: number | null;
+}
+
 export interface Day {
   date: string;
   code: number | null;
@@ -158,11 +183,19 @@ export interface Day {
   surf: SurfDay | null;
   /** AM and PM (and Night for camping). Empty when the forecast has no hourly weather. */
   periods: Period[];
-}
-
-/** Angle between two compass bearings, 0–180. */
-function angDist(a: number, b: number): number {
-  return Math.abs((((a - b) % 360) + 540) % 360 - 180);
+  /** Hour by hour, midnight to 6am the next morning. Empty for old saved forecasts. */
+  hrs: Hour[];
+  /** Swell hour by hour, for coastal places. */
+  sea: SeaHour[];
+  /** Rain (mm) and snow (cm) on the days before: index 0 is the day before. Nulls when not in the forecast. */
+  prevRain: (number | null)[];
+  prevSnow: (number | null)[];
+  /** Which way the place faces (surf beaches, dive sites), degrees. */
+  faces: number | null;
+  /** The rating numbers for this place: its activity's, with its own settings on top (rules.ts). */
+  rules: Rules;
+  /** Alerts from outside the forecast (fire danger, park closures), shown beside the rating. */
+  alerts: Alert[];
 }
 
 /** Wind coming from `from` at a beach facing `faces`: from the sea is onshore, from the land is offshore. */
@@ -215,19 +248,17 @@ export function tidesOn(marine: HourlyMarine, date: string): Tide[] {
   return out;
 }
 
-/** Daylight hours we judge surf over. */
-const FIRST_LIGHT = 5;
-const LAST_LIGHT = 19;
-
 /**
- * Read one day for a surf spot. A simple first pass at "good conditions", built on what Sam's surf report
- * weighed up: enough swell, light or offshore wind, and the best window in the day.
+ * Read one day for a surf spot, hour by hour over the surfing hours (rules.ts): swell size, period and
+ * direction, and the wind at the beach. Each hour is green, orange or red; the day is a go with two green
+ * hours in a row, marginal with any orange hour, and a skip otherwise.
  */
-function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined, date: string, faces: number | null): SurfDay | null {
+function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined, date: string, faces: number | null, r: Rules): SurfDay | null {
   if (!marine) return null;
+  const [first, last] = r.hours;
   const swellH = hoursOf(marine.time, marine.swell_wave_height, date);
   const waveH = hoursOf(marine.time, marine.wave_height, date);
-  const heights = new Map((swellH.length ? swellH : waveH).filter(([h]) => h >= FIRST_LIGHT && h <= LAST_LIGHT));
+  const heights = new Map((swellH.length ? swellH : waveH).filter(([h]) => h >= first && h < last));
   if (!heights.size) return null;
   const periods = new Map(hoursOf(marine.time, marine.swell_wave_period, date));
   const dirs = new Map(hoursOf(marine.time, marine.swell_wave_direction, date));
@@ -239,29 +270,49 @@ function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined,
   const period = periods.get(peakHour) ?? null;
   const swellDir = dirs.get(peakHour) ?? null;
 
-  // Score each daylight hour: 2 = good, 1 = surfable, 0 = no.
+  const [gLo, gHi] = r.swellGreen ?? [1.2, 2.2];
+  const [oLo, oHi] = r.swellOrange ?? [0.8, 2.6];
+  // Score each hour: 2 = green, 1 = orange, 0 = red. Remember what pulled each hour down.
   const score = new Map<number, number>();
+  const limits = new Map<string, number>();
+  const limit = (why: string) => limits.set(why, (limits.get(why) ?? 0) + 1);
   for (const [hour, height] of heights) {
-    const p = periods.get(hour) ?? 0;
-    const size = height < 0.4 ? 0 : height < 0.7 && p < 8 ? 1 : height > 3 ? 1 : 2;
-    const s = speeds.get(hour);
-    const d = wdirs.get(hour);
-    let w = 1;
-    if (s != null) {
-      const rel = faces != null && d != null ? windRelation(d, faces) : null;
-      if (s < 10 || (rel === 'offshore' && s < 30)) w = 2;
-      else if (s < 18 && rel !== 'onshore') w = 1;
-      else if (s < 14) w = 1;
-      else w = 0;
+    let sc = 2;
+    const size = height >= gLo && height <= gHi ? 2 : height >= oLo && height <= oHi ? 1 : 0;
+    if (size < 2) limit(height < gLo ? 'small' : 'big');
+    sc = Math.min(sc, size);
+    const p = periods.get(hour);
+    if (p != null && p < (r.periodOrangeBelow ?? 8)) {
+      sc = Math.min(sc, 1);
+      limit('short period');
     }
-    score.set(hour, Math.min(size, w));
+    const d = dirs.get(hour);
+    // A beach only gets swell from the directions that reach it: set per beach, else anything not behind it.
+    if (d != null && ((r.swellFrom && !inRange(d, r.swellFrom)) || (!r.swellFrom && faces != null && angDist(d, faces) > 100))) {
+      sc = 0;
+      limit('wrong swell direction');
+    }
+    const s = speeds.get(hour);
+    const wd = wdirs.get(hour);
+    if (s != null) {
+      const rel = faces != null && wd != null ? windRelation(wd, faces) : 'cross-shore';
+      const w =
+        rel === 'offshore'
+          ? 2
+          : rel === 'onshore'
+            ? s <= (r.onshoreGreen ?? 10) ? 2 : s <= (r.onshoreOrange ?? 25) ? 1 : 0
+            : s <= (r.crossGreen ?? 10) ? 2 : s <= (r.crossOrange ?? 35) ? 1 : 0;
+      if (w < 2) limit(`${rel} wind`);
+      sc = Math.min(sc, w);
+    }
+    score.set(hour, sc);
   }
 
-  // Best window: the longest run of good hours, else of surfable ones.
+  // Best window: the longest run of green hours, else of orange ones.
   const runOf = (min: number): [number, number] | null => {
     let best: [number, number] | null = null;
     let start: number | null = null;
-    for (let h = FIRST_LIGHT; h <= LAST_LIGHT + 1; h++) {
+    for (let h = first; h <= last; h++) {
       const ok = (score.get(h) ?? -1) >= min;
       if (ok && start == null) start = h;
       if (!ok && start != null) {
@@ -273,17 +324,17 @@ function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined,
   };
   const good = runOf(2);
   const fair = runOf(1);
-  let verdict: Verdict = good && good[1] - good[0] >= 2 ? 'go' : fair ? 'mar' : 'skip';
-  // A beach facing away from the swell won't get much of it.
-  if (faces != null && swellDir != null && angDist(swellDir, faces) > 100) verdict = verdict === 'go' ? 'mar' : 'skip';
+  const verdict: Verdict = good && good[1] - good[0] >= 2 ? 'go' : fair ? 'mar' : 'skip';
   const best = verdict === 'skip' ? null : good ?? fair;
 
   const am = wind ? windOver(wind, date, 6, 9) : null;
   const pm = wind ? windOver(wind, date, 13, 16) : null;
   const relAt = best && wind ? windOver(wind, date, best[0], best[1]) : am;
   const windRel = faces != null && relAt ? windRelation(relAt[1], faces) : null;
+  const sizeWord = (w: string) => (w === 'small' ? `small (${m1(Math.max(...hs))} m)` : w === 'big' ? `big (${m1(Math.max(...hs))} m)` : w);
+  const why = verdict === 'go' ? [] : [...limits.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => sizeWord(w));
 
-  return { verdict, swellMin: Math.min(...hs), swellMax: Math.max(...hs), period, swellDir, best, am, pm, windRel, tides: tidesOn(marine, date) };
+  return { verdict, swellMin: Math.min(...hs), swellMax: Math.max(...hs), period, swellDir, best, am, pm, windRel, tides: tidesOn(marine, date), why };
 }
 
 /** Indexes into the hourly lists for `date` from hour `from` to hour `to` (inclusive; past 23 runs into the next day). */
@@ -297,7 +348,8 @@ function hourIndexes(time: string[], date: string, from: number, to: number): nu
 
 function periodsOf(h: HourlyWeather | undefined, date: string, category: string): Period[] {
   if (!h?.weather_code) return [];
-  return PERIODS.filter((p) => p.id !== 'night' || category === 'camping')
+  // Camping is about the night only (Sam, 2026-11-19); everything else the day.
+  return PERIODS.filter((p) => (category === 'camping' ? p.id === 'night' : p.id !== 'night'))
     .map((p) => {
       const idx = hourIndexes(h.time, date, p.from, p.to);
       const nums = (list: (number | null)[]) => idx.map((i) => list[i]).filter((v): v is number => v != null);
@@ -329,14 +381,56 @@ function marineHasData(m: HourlyMarine | undefined): boolean {
   return !!m && (m.wave_height ?? []).some((v) => v != null);
 }
 
-/** Work out each requested day for one place. Days beyond the forecast are left out. */
-export function daysOf(f: Forecast, dates: string[], category: string, faces: number | null): Day[] {
+/** Hour by hour weather for one date, midnight to 6am the next morning. */
+function hrsOf(h: HourlyWeather | undefined, date: string): Hour[] {
+  if (!h?.time) return [];
+  const start = h.time.indexOf(`${date}T00:00`);
+  if (start < 0) return [];
+  const out: Hour[] = [];
+  for (let n = 0; n <= 30 && start + n < h.time.length; n++) {
+    const i = start + n;
+    out.push({
+      h: n,
+      code: h.weather_code?.[i] ?? null,
+      temp: h.temperature_2m?.[i] ?? null,
+      rain: h.precipitation?.[i] ?? null,
+      prob: h.precipitation_probability?.[i] ?? null,
+      wind: h.wind_speed_10m?.[i] ?? null,
+      dir: h.wind_direction_10m?.[i] ?? null,
+    });
+  }
+  return out;
+}
+
+function seaOf(m: HourlyMarine | undefined, date: string): SeaHour[] {
+  if (!m) return [];
+  const start = m.time.indexOf(`${date}T00:00`);
+  if (start < 0) return [];
+  const swell = m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m.wave_height;
+  const out: SeaHour[] = [];
+  for (let n = 0; n < 24 && start + n < m.time.length; n++) {
+    const i = start + n;
+    out.push({ h: n, swell: swell[i] ?? null, period: m.swell_wave_period[i] ?? null, dir: m.swell_wave_direction[i] ?? null });
+  }
+  return out;
+}
+
+/** How many days back the forecast's past days are read (rules use up to 5). */
+const PAST = 5;
+
+/**
+ * Work out each requested day for one place. Days beyond the forecast are left out.
+ * `settings` are the place's own rating settings (hit_list.settings), on top of the activity's rules.
+ */
+export function daysOf(f: Forecast, dates: string[], category: string, faces: number | null, settings: Settings = null, alerts: Alert[] = []): Day[] {
   const d = f.daily;
   const marine = marineHasData(f.marine) ? f.marine : undefined;
+  const rules = rulesFor(category, settings);
   return dates
     .map((date) => {
       const i = d.time?.indexOf(date) ?? -1;
       if (i < 0) return null;
+      const back = (list: (number | null)[]) => Array.from({ length: PAST }, (_, n) => (i - 1 - n >= 0 ? list[i - 1 - n] ?? null : null));
       const water = marine ? avg(hoursOf(marine.time, marine.sea_surface_temperature, date).map(([, v]) => v)) : null;
       const day: Day = {
         date,
@@ -350,8 +444,15 @@ export function daysOf(f: Forecast, dates: string[], category: string, faces: nu
         windDir: d.wind_direction_10m_dominant[i],
         snow: d.snowfall_sum[i],
         water,
-        surf: marine ? surfDay(marine, f.hourly ?? f.hourlyWind, date, category === 'surfing' ? faces : null) : null,
+        surf: marine ? surfDay(marine, f.hourly ?? f.hourlyWind, date, category === 'surfing' ? faces : null, category === 'surfing' ? rules : rulesFor('surfing', null)) : null,
         periods: periodsOf(f.hourly, date, category),
+        hrs: hrsOf(f.hourly, date),
+        sea: seaOf(marine, date),
+        prevRain: back(d.precipitation_sum),
+        prevSnow: back(d.snowfall_sum),
+        faces,
+        rules,
+        alerts,
       };
       return day;
     })
@@ -488,76 +589,10 @@ export function rowsFor(category: string, days: Day[]): Row[] {
   });
 }
 
-// ---- Ratings for every category ----
-
-/**
- * A first, simple idea of "good conditions" per activity (agreed starting point, 2026-11-16; tune later).
- * Each rule that isn't met adds a reason and lowers the verdict: one strike makes a day marginal,
- * a hard limit makes it a skip. Surf uses its own hour-by-hour read (surfDay).
- */
-interface Check {
-  /** True when the condition is bad enough to skip. */
-  skip?: boolean;
-  /** True when it makes the day marginal. */
-  mar?: boolean;
-  why: string;
-}
-
-function checksFor(category: string, d: Day): Check[] {
-  const rain = d.rain ?? 0;
-  const prob = d.rainProb ?? 0;
-  const wind = d.wind ?? 0;
-  const hot = d.tmax ?? 0;
-  const swell = d.surf?.swellMax ?? null;
-  const wet: Check = { skip: rain >= 5 || prob >= 80, mar: rain >= 1 || prob >= 50, why: rain >= 1 ? `${Math.round(rain)} mm rain` : `${prob}% chance of rain` };
-  const windy = (mar: number, skip: number): Check => ({ skip: wind >= skip, mar: wind >= mar, why: `wind ${Math.round(wind)} km/h` });
-  const heat: Check = { skip: hot >= 38, mar: hot >= 32, why: `${Math.round(hot)}°` };
-  const sea = (mar: number, skip: number): Check => ({ skip: swell != null && swell >= skip, mar: swell != null && swell >= mar, why: `swell ${swell?.toFixed(1)} m` });
-  switch (category) {
-    case 'climbing':
-      return [{ skip: rain >= 1 || prob >= 60, mar: prob >= 30, why: rain >= 1 ? 'wet rock' : `${prob}% chance of rain` }, windy(30, 45), { skip: hot >= 36, mar: hot >= 30, why: `${Math.round(hot)}°` }];
-    case 'camping':
-      return [wet, windy(30, 45), { skip: (d.tmin ?? 10) < 0, mar: (d.tmin ?? 10) < 5, why: `night ${Math.round(d.tmin ?? 0)}°` }, heat];
-    case 'kayaking':
-      return [windy(15, 25), { skip: rain >= 15, mar: rain >= 5, why: `${Math.round(rain)} mm rain` }, sea(1, 1.5)];
-    case 'diving':
-      return [windy(15, 25), sea(1, 1.5), { mar: rain >= 10, why: 'heavy rain (runoff)' }];
-    case 'canyoning':
-      // Rain is the big one: canyons flash-flood. Cold days make the water swims hard work.
-      return [
-        { skip: rain >= 10 || prob >= 70, mar: rain >= 2 || prob >= 40, why: rain >= 2 ? `${Math.round(rain)} mm rain (flood risk)` : `${prob}% chance of rain (flood risk)` },
-        { mar: (d.tmax ?? 25) < 18, why: `only ${Math.round(d.tmax ?? 0)}° (cold swims)` },
-        heat,
-      ];
-    case 'skiing': {
-      const snow = d.snow ?? 0;
-      return [{ skip: snow < 1 && hot > 8, mar: snow < 5, why: snow >= 1 ? `only ${Math.round(snow)} cm new snow` : 'no new snow' }, windy(35, 55)];
-    }
-    default:
-      return [wet, windy(30, 45), heat];
-  }
-}
-
-export interface Rated {
-  verdict: Verdict;
-  /** Why it isn't a go, shortest first. */
-  why: string[];
-}
+// ---- Ratings for every category (the rules are in rules.ts, the logic in ratings.ts) ----
 
 export function rateDay(category: string, d: Day): Rated {
-  if (category === 'surfing') {
-    if (!d.surf) return { verdict: 'na', why: ['no swell data'] };
-    return { verdict: d.surf.verdict, why: [] };
-  }
-  if (d.tmax == null && d.wind == null) return { verdict: 'na', why: ['no forecast'] };
-  const checks = checksFor(category, d);
-  // Storms are a worry for everything outdoors; any rain makes rock slippery.
-  const code = d.code ?? 0;
-  if (code >= 95) checks.push({ mar: true, why: 'storms' });
-  if (category === 'climbing' && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))) checks.push({ mar: true, why: 'showers' });
-  const skips = checks.filter((c) => c.skip).map((c) => c.why);
-  const mars = checks.filter((c) => !c.skip && c.mar).map((c) => c.why);
-  return { verdict: skips.length ? 'skip' : mars.length ? 'mar' : 'go', why: [...skips, ...mars] };
+  return rateOneDay(category, d);
 }
 
 export interface Option {
@@ -572,6 +607,10 @@ export interface Option {
   detail: string;
   /** One verdict per day, for the strip. */
   strip: { date: string; verdict: Verdict }[];
+  /** Why the best day isn't a go (empty when it is). */
+  why: string[];
+  /** Alerts over the window (wet rock, catchment rain, fire danger…), one of each kind. */
+  alerts: Alert[];
 }
 
 /** Rate a place over a window: its best day, how many days are good, and a short summary. */
@@ -591,7 +630,10 @@ export function rateWindow(category: string, days: Day[]): Option | null {
     headline = `Poor all window${best.r.why[0] ? ` (${best.r.why[0]})` : ''}`;
   } else {
     const d = best.d;
-    const bits = [weatherWord(d.code).toLowerCase(), d.tmax != null ? `${Math.round(d.tmax)}°` : '', d.wind != null ? `wind ${Math.round(d.wind)} km/h` : ''];
+    // The weather in the hours that count (AM / PM, or the night for camping), else the day's.
+    const kinds = [...new Set(d.periods.map((p) => KIND_WORD[p.kind].toLowerCase()))];
+    const sky = kinds.length ? kinds.join(', then ') : weatherWord(d.code).toLowerCase();
+    const bits = [sky, d.tmax != null && category !== 'camping' ? `${Math.round(d.tmax)}°` : '', d.wind != null ? `wind ${Math.round(d.wind)} km/h` : ''];
     if (category === 'skiing' && (d.snow ?? 0) >= 1) bits.unshift(`${Math.round(d.snow!)} cm new snow`);
     if (category === 'camping' && d.tmin != null) bits.push(`night ${Math.round(d.tmin)}°`);
     headline = `${VERDICT_WORD[v]} ${when} · ${bits.filter(Boolean).join(', ')}`;
@@ -606,7 +648,9 @@ export function rateWindow(category: string, days: Day[]): Option | null {
     if (bad.length) parts.push(`${bad[0].r.why[0]} ${dayShort(bad[0].d.date)}`);
     detail = parts.join('; ');
   }
-  return { verdict: v, bestDate: v === 'skip' || v === 'na' ? null : best.d.date, goDays, headline, detail, strip };
+  const alerts: Alert[] = [];
+  for (const x of rated) for (const a of x.r.alerts) if (!alerts.some((b) => b.kind === a.kind)) alerts.push(a);
+  return { verdict: v, bestDate: v === 'skip' || v === 'na' ? null : best.d.date, goDays, headline, detail, strip, why: best.r.why, alerts };
 }
 
 export const verdictRank = (v: Verdict) => RANK[v];

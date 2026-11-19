@@ -7,6 +7,9 @@ import { getHome } from './home';
 import { ensureDrives, onDriveChange, travelText } from './drive';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
 import { openMatrix, TABLE_ICON } from './matrix';
+import { alertIcons, alertLines } from './alerts';
+import type { Alert } from './ratings';
+import { snowHtml, onSnowChange } from './snow';
 
 /**
  * Conditions on each place card: a short summary at the top (best of the next four days, a day strip and
@@ -44,7 +47,11 @@ function summaryHtml(item: HitListItem, data: ConditionsData): string {
   if (!f) return `<div class="cd-sum"><span class="cd-muted">${data.loading ? 'Getting the forecast…' : 'No forecast yet'}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
   const cat = categoryOf(item.activity).id;
   const dates = daysFor('5days').slice(0, 4);
-  const verdicts: Verdict[] = daysOf(f, dates, cat, item.faces).map((d) => rateDay(cat, d).verdict);
+  const rated = daysOf(f, dates, cat, item.faces, item.settings).map((d) => rateDay(cat, d));
+  const verdicts: Verdict[] = rated.map((r) => r.verdict);
+  // Alerts over the next four days, one of each kind (they don't change the rating colour).
+  const alerts: Alert[] = [];
+  for (const r of rated) for (const a of r.alerts) if (!alerts.some((b) => b.kind === a.kind)) alerts.push(a);
   const name = (iso: string) => (iso === todayIso() ? 'today' : dayShort(iso));
   const firstGo = verdicts.indexOf('go');
   const firstMar = verdicts.indexOf('mar');
@@ -56,13 +63,14 @@ function summaryHtml(item: HitListItem, data: ConditionsData): string {
         : `<span class="cd-pill cd-v-skip">Not in the next 4 days</span>`;
   const strip = dates.map((d, n) => `<span class="cd-v-${verdicts[n]}" title="${dayShort(d)}: ${VERDICT_WORD[verdicts[n]]}">${dayShort(d)}</span>`).join('');
   const table = `<button type="button" class="cd-table-btn" data-act="matrix" aria-label="Morning and afternoon conditions table">${TABLE_ICON}<span>AM / PM</span></button>`;
-  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span>${table}</div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span>${table}</div>${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
 }
 
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
   let refillSummary: (() => void) | null = null;
   data.onChange(() => refillSummary?.());
   onDriveChange(() => refillSummary?.());
+  onSnowChange(() => refillSummary?.());
   hl.addCardSummary((item, el) => {
     if (item.lat == null || item.lng == null) return;
     const fill = () => {
@@ -104,7 +112,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
         el.innerHTML = `<h3>Conditions</h3><p class="cd-muted">${data.loading ? 'Getting the forecast…' : esc(data.error) || 'No forecast yet.'}</p>`;
         return;
       }
-      const days = daysOf(f, daysFor(windowId), cat, item.faces);
+      const days = daysOf(f, daysFor(windowId), cat, item.faces, item.settings);
       const rows = rowsFor(cat, days);
       const water = days.map((d) => d.water).filter((w): w is number => w != null);
       const notes: string[] = [];
@@ -119,11 +127,11 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
         ${rows.length ? `<div class="cd-days">${rows
           .map((r, n) => {
             const rated = rateDay(cat, days[n]);
-            const why = rated.verdict !== 'go' && rated.why.length && !r.verdict ? `<small>${esc(rated.why.join(', '))}</small>` : '';
+            const why = rated.verdict !== 'go' && rated.why.length ? `<small>${esc(rated.why.join(', '))}</small>` : '';
             return `<div class="cd-day cd-v-${rated.verdict}">${r.cells
               .filter(Boolean)
               .map((c, i) => `<span class="${i === 0 ? 'cd-day-name' : r.verdict && i === 1 ? 'cd-verdict' : ''}">${esc(c)}</span>`)
-              .join('')}${days[n].periods.length ? `<span class="cd-periods">${days[n].periods.map(periodHtml).join('')}</span>` : ''}${r.extra ? `<small>${esc(r.extra)}</small>` : ''}${why}</div>`;
+              .join('')}${alertIcons(rated.alerts)}${days[n].periods.length ? `<span class="cd-periods">${days[n].periods.map(periodHtml).join('')}</span>` : ''}${r.extra ? `<small>${esc(r.extra)}</small>` : ''}${why}</div>`;
           })
           .join('')}</div>` : '<p class="cd-muted">No forecast for these days yet.</p>'}
         ${notes.map((n) => `<p class="cd-muted">${esc(n)}</p>`).join('')}`;

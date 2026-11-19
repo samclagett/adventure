@@ -5,6 +5,7 @@ import type { ConditionsData } from './data';
 import { PRESETS, getHome, setHome, type Base } from './home';
 import { ensureDrives, onDriveChange, travelMinutes, travelText } from './drive';
 import { searchPlaces, type PlaceMatch } from '../hitlist/geocode';
+import { alertIcons, alertLines } from './alerts';
 import { onTab, showTab } from '../shared/tabs';
 import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, dayShort, type Option, type WindowId } from './summary';
 
@@ -16,8 +17,6 @@ import { WINDOWS, daysFor, daysOf, rateWindow, verdictRank, VERDICT_WORD, daySho
  */
 
 const PREFS_KEY = 'adventure.planner';
-/** How many places to list before "Show all". */
-const SHORT_LIST = 12;
 
 function esc(s: string | null | undefined): string {
   return (s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -101,7 +100,7 @@ export function mountPlanner(
         const cat = categoryOf(item.activity).id;
         let option: Option | null = null;
         try {
-          if (f) option = rateWindow(cat, daysOf(f, dates, cat, item.faces));
+          if (f) option = rateWindow(cat, daysOf(f, dates, cat, item.faces, item.settings));
         } catch (err) {
           console.error('Conditions for', item.name, err); // one odd forecast shouldn't break the whole list
         }
@@ -129,7 +128,6 @@ export function mountPlanner(
         ? `<p class="pl-warn">Couldn’t get all forecasts: ${esc(data.error)}. <button type="button" class="pl-link" data-act="retry">Try again</button></p>`
         : `<p class="pl-muted pl-updated">${data.fetchedAt(items) ? `Forecasts from ${new Date(data.fetchedAt(items)!).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''} <button type="button" class="pl-link" data-act="update">Update now</button></p>`;
     const win = WINDOWS.find((w) => w.id === prefs.windowId)!;
-    const goCount = list.filter((x) => x.option?.verdict === 'go').length;
     const km = (i: HitListItem) => (from ? travelText(from, { lat: i.lat!, lng: i.lng! }) : '');
     /** "Go Sat" for the pill, and the rest ("6–9am · 1.1 m 8 s SSE · offshore") for the line under the name. */
     const split = (o: Option) => {
@@ -161,35 +159,44 @@ export function mountPlanner(
         <button type="button" class="pl-hero pl-row-btn" data-id="${item.id}" style="--pin:${c.color}">
           <span class="pl-hero-head"><span class="pl-row-icon">${c.icon}</span>
           <span class="pl-row-main"><b>${esc(item.name)}</b><small>${esc([regionOf(item.lat!, item.lng!), km(item) && `${km(item)} from ${from!.name}`].filter(Boolean).join(' · '))}</small></span></span>
-          <span class="pl-pill pl-v-${o.verdict}">${esc(pill)}</span>
+          <span class="pl-row-end">${alertIcons(o.alerts)}<span class="pl-pill pl-v-${o.verdict}">${esc(pill)}</span></span>
           ${line ? `<span class="pl-hero-line">${esc(line)}</span>` : ''}
+          ${o.verdict === 'mar' && o.why.length ? `<span class="pl-hero-line pl-why">${esc(o.why.slice(0, 2).join(', '))}</span>` : ''}
+          ${o.alerts.length ? `<span class="pl-hero-line">${alertLines(o.alerts)}</span>` : ''}
           ${days}
         </button>`;
     }
+    // The rest, in three groups: more good ones, maybe (orange, with what's holding it back), and the
+    // poor ones folded away behind a button (Sam, 2026-11-19: keep it a list, make it work better).
     const rest = hasBest ? list.slice(1) : list;
-    const shown = showAll ? rest : rest.slice(0, SHORT_LIST);
-    const moreGood = goCount - (top?.option?.verdict === 'go' ? 1 : 0);
-    const heading = hasBest
-      ? `<p class="pl-eyebrow pl-rest-head">${moreGood > 0 ? `${moreGood} more ${moreGood === 1 ? 'looks' : 'look'} good` : 'The rest'}</p>`
-      : `<p class="pl-summary">Nothing looks good ${esc(win.short)}.</p>`;
-    const rows = shown
-      .map(({ item, option }) => {
-        const c = categoryOf(item.activity);
-        const s = option ? split(option) : null;
-        const sub = [km(item), s?.line || (option ? '' : data.loading ? 'Loading…' : 'No forecast')].filter(Boolean).join(' · ');
-        return `<button type="button" class="pl-row pl-row-btn" data-id="${item.id}" style="--pin:${c.color}">
+    const row = ({ item, option }: { item: HitListItem; option: Option | null }) => {
+      const c = categoryOf(item.activity);
+      const s = option ? split(option) : null;
+      const reason = option && option.verdict !== 'go' && option.why.length ? option.why.slice(0, 2).join(', ') : '';
+      const sub = [km(item), reason || s?.line || (option ? '' : data.loading ? 'Loading…' : 'No forecast')].filter(Boolean).join(' · ');
+      return `<button type="button" class="pl-row pl-row-btn pl-row-${option?.verdict ?? 'na'}" data-id="${item.id}" style="--pin:${c.color}">
           <span class="pl-row-icon">${c.icon}</span>
           <span class="pl-row-main"><b>${esc(item.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${strip(option)}</span>
-          ${option ? `<span class="pl-pill pl-v-${option.verdict}">${VERDICT_WORD[option.verdict]}</span>` : ''}
+          <span class="pl-row-end">${option ? alertIcons(option.alerts) : ''}${option ? `<span class="pl-pill pl-v-${option.verdict}">${esc(s?.pill ?? VERDICT_WORD[option.verdict])}</span>` : ''}</span>
         </button>`;
-      })
-      .join('');
-    const more = !showAll && rest.length > SHORT_LIST ? `<button type="button" class="pl-more" data-act="all">Show all ${rest.length}</button>` : '';
+    };
+    const goRest = rest.filter((x) => x.option?.verdict === 'go');
+    const marRest = rest.filter((x) => x.option?.verdict === 'mar');
+    const poor = rest.filter((x) => !x.option || x.option.verdict === 'skip' || x.option.verdict === 'na');
+    const group = (title: string, rows: typeof rest) =>
+      rows.length ? `<p class="pl-eyebrow pl-rest-head">${title} <span class="pl-count">${rows.length}</span></p><div class="pl-results">${rows.map(row).join('')}</div>` : '';
+    const heading = hasBest ? '' : `<p class="pl-summary">Nothing looks good ${esc(win.short)}.</p>`;
+    const poorBlock = poor.length
+      ? showAll
+        ? group('Not this time', poor)
+        : `<button type="button" class="pl-more" data-act="all">Show ${poor.length} poor option${poor.length === 1 ? '' : 's'}</button>`
+      : '';
+    const rows = group(hasBest ? 'More that look good' : 'Good', goRest) + group('Maybe', marRest) + poorBlock;
     // While loading (or after an error) the status leads; otherwise it sits quietly under the list.
     const busy = data.loading || !!data.error;
     const outsideNote = outside > 0 ? `<p class="pl-muted">${outside} more place${outside === 1 ? ' is' : 's are'} over ${prefs.radius} h away. <button type="button" class="pl-link" data-act="no-radius">Show Australia-wide</button></p>` : '';
-    return `${busy ? status : ''}${hero}${rest.length ? heading : ''}<div class="pl-results">${rows}</div>${more}${outsideNote}${busy ? '' : status}
-      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings are a first rough pass.</p>`;
+    return `${busy ? status : ''}${hero}${heading}${rows}${outsideNote}${busy ? '' : status}
+      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings follow your rules per activity (green go, orange maybe, red skip), still being tuned. Alerts (wet rock, catchment rain, fire danger) show as small icons and don’t change the colour.</p>`;
   }
 
   function fromHtml(): string {

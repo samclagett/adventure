@@ -23,6 +23,7 @@ MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 TZ = "Australia/Sydney"
 FORECAST_DAYS = 14
 MARINE_DAYS = 8  # the marine API's limit
+PAST_DAYS = 5  # days before today, for rules that look back (wet sandstone, dive runoff, recent snow)
 BATCH = 50
 DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitation_sum",
          "precipitation_probability_max", "wind_speed_10m_max", "wind_gusts_10m_max",
@@ -80,7 +81,7 @@ def main() -> int:
     places = areas()
     coastal = [p for p in places if p["coastal"]]
     print(f"{len(places)} areas, {len(coastal)} coastal")
-    weather = fetch(WEATHER_URL, places, {"daily": ",".join(DAILY), "hourly": ",".join(HOURLY)})
+    weather = fetch(WEATHER_URL, places, {"daily": ",".join(DAILY), "hourly": ",".join(HOURLY), "past_days": str(PAST_DAYS)})
     marine = fetch(MARINE_URL, coastal, {"hourly": ",".join(MARINE), "forecast_days": str(MARINE_DAYS)})
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")

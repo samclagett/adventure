@@ -74,3 +74,15 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   Crisp draws the sea from a vector coastline (`public/data/ocean.geojson`, built by `scripts/map/ocean.py` from Overture
   land and water, about 13 m detail, harbours and estuaries included) for a clean edge with no shoreline blob, a fine
   pale shoreline, deeper water darker past 60 m, and richer land (greener height tint, stronger and more saturated satellite).
+
+### Condition ratings and hit list additions (2026-11-19)
+
+- **Ratings** (`conditions/rules.ts` numbers, `conditions/ratings.ts` logic): Sam's green / orange / red rules per
+  activity, each over its own hours. Per-place overrides in `hit_list.settings` (JSON). Forecasts now include the 5 days
+  before today (`past_days`) for wet sandstone, dive-site runoff, catchment rain and recent snow. Red is now a muted red.
+- **Alerts** (`conditions/alerts.ts`): small icons beside a rating that don't change its colour.
+- **Map**: weather tags are a small matrix (AM and PM columns, or Night for camping) with weather, temperature, wind
+  and swell; pin rings take the same rating colour as their tag; numbered groups show the activities inside.
+- **Plan list**: best pick, then More that look good, Maybe (with what's holding it back), and poor options folded away.
+- **Hit list**: 31 new places (dive sites with swell limits, rivers, hiking areas, climbing areas).
+- Next: fire danger and park closures, river levels, canyons from ozultimate.com.

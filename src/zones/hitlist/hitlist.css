@@ -101,11 +101,14 @@
 /* Zoomed out, pins that would pile up fold into one numbered circle (pins.ts). Tap it to zoom in. */
 .hl-pin.hl-grouped { display: none; }
 .hl-group {
-  width: 34px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 34px;
   height: 34px;
-  padding: 0;
+  padding: 0 6px 0 9px;
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--paper);
   color: var(--ink);
   font: inherit;
@@ -115,6 +118,19 @@
   box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px rgba(241, 235, 223, 0.35), 0 3px 8px rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
+/* The activities inside a group, as small ink icons after the count. */
+.hl-group b { font-weight: 700; margin-right: 1px; }
+.hl-group-icons { display: flex; align-items: center; }
+.hl-group-icons .hl-icon { width: 20px; height: 20px; margin-left: -2px; }
+.hl-group-icons i { font-style: normal; font-size: 0.75rem; margin-left: 1px; opacity: 0.7; }
+/* With the weather layer on, rings show the day's rating instead of the category colour (layer.ts). */
+.hl-pin[data-v='go'] .hl-pin-shape { --pin: var(--go); }
+.hl-pin[data-v='mar'] .hl-pin-shape { --pin: var(--mar); }
+.hl-pin[data-v='skip'] .hl-pin-shape { --pin: var(--skip); }
+.hl-pin[data-v] .hl-pin-shape { box-shadow: 0 0 0 calc(1.5px + 1.5px * var(--s)) var(--pin), 0 3px 8px rgba(0, 0, 0, 0.45); }
+.hl-group[data-v='go'] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px var(--go), 0 3px 8px rgba(0, 0, 0, 0.45); }
+.hl-group[data-v='mar'] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px var(--mar), 0 3px 8px rgba(0, 0, 0, 0.45); }
+
 /* The pin being placed stays full size so it's easy to drag. */
 .hl-pin-draft { --s: 1; }
 .hl-pin-draft .hl-pin-shape { width: 50px; height: 50px; box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--paper), 0 3px 10px rgba(0, 0, 0, 0.5); animation: hl-bob 1.2s ease-in-out infinite alternate; }

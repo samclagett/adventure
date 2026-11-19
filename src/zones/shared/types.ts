@@ -13,6 +13,11 @@ export interface HitListItem {
   link: string | null;
   /** Compass bearing (degrees) a beach faces out to sea, used for onshore/offshore wind. Null = not set. */
   faces: number | null;
+  /**
+   * The place's own rating settings, overriding its activity's defaults (src/zones/conditions/rules.ts),
+   * e.g. a dive site's swell limit. Null = defaults.
+   */
+  settings: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
