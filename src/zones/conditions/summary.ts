@@ -135,7 +135,7 @@ export interface Period {
   rain: number | null;
   /** Highest chance of rain, %. */
   rainProb: number | null;
-  /** The strongest hour's wind, km/h, and where it comes from then (Sam, 2026-11-20: an average read too low). */
+  /** Average wind, km/h, and where it comes from; shown as a range up to `gust` (Sam, 2026-11-20). */
   wind: number | null;
   windDir: number | null;
   /** Strongest gust in the period, km/h. */
@@ -216,6 +216,13 @@ export function windRelation(from: number, faces: number): 'offshore' | 'cross-s
  * The wind arrow's class. At a surf spot that knows which way it faces, the arrow is coloured green offshore,
  * orange cross-shore and red onshore (Sam, 2026-11-20); elsewhere it stays grey.
  */
+/** Wind as a range, average to strongest gust: "7–30" (Sam, 2026-11-20). Just the average when there's no gust figure. */
+export function windRange(p: { wind: number | null; gust: number | null }): string {
+  if (p.wind == null) return '';
+  const w = Math.round(p.wind);
+  return p.gust != null && Math.round(p.gust) > w ? `${w}–${Math.round(p.gust)}` : String(w);
+}
+
 export function windArrowClass(category: string, faces: number | null | undefined, from: number): string {
   return category === 'surfing' && faces != null ? `wx-a-wind wx-a-${windRelation(from, faces)}` : 'wx-a-wind';
 }
@@ -373,9 +380,10 @@ function periodsOf(h: HourlyWeather | undefined, date: string, category: string)
       const rain = nums(h.precipitation);
       const probs = nums(h.precipitation_probability);
       const gusts = h.wind_gusts_10m ? nums(h.wind_gusts_10m) : [];
-      // The strongest hour, and its direction (an afternoon sea breeze, not the morning's average).
-      let peak: number | null = null;
-      for (const i of idx) if (h.wind_speed_10m[i] != null && (peak == null || h.wind_speed_10m[i]! > h.wind_speed_10m[peak]!)) peak = i;
+      const speeds = nums(h.wind_speed_10m);
+      const dirs = nums(h.wind_direction_10m);
+      const x = avg(dirs.map((d) => Math.sin((d * Math.PI) / 180)));
+      const y = avg(dirs.map((d) => Math.cos((d * Math.PI) / 180)));
       const period: Period = {
         id: p.id,
         label: p.label,
@@ -383,8 +391,8 @@ function periodsOf(h: HourlyWeather | undefined, date: string, category: string)
         temp: temps.length ? (p.id === 'night' ? Math.min(...temps) : Math.max(...temps)) : null,
         rain: rain.length ? rain.reduce((a, b) => a + b, 0) : null,
         rainProb: probs.length ? Math.max(...probs) : null,
-        wind: peak != null ? h.wind_speed_10m[peak] : null,
-        windDir: peak != null ? h.wind_direction_10m[peak] : null,
+        wind: avg(speeds),
+        windDir: x != null && y != null ? ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360 : null,
         gust: gusts.length ? Math.max(...gusts) : null,
       };
       return period;

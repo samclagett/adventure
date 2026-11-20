@@ -2,7 +2,7 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { Forecast } from './openmeteo';
 import { COASTAL } from './data';
-import { daysFor, daysOf, rateDay, dayShort, compass, seaFor, windRelation, windArrowClass, VERDICT_WORD, type Day, type Period, type Tide } from './summary';
+import { daysFor, daysOf, rateDay, dayShort, compass, seaFor, windRelation, windArrowClass, windRange, VERDICT_WORD, type Day, type Period, type Tide } from './summary';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
 
 /**
@@ -52,7 +52,7 @@ export function matrixHtml(item: HitListItem, f: Forecast): string {
     },
     {
       label: 'Wind km/h',
-      cell: (_d, p) => (p.wind != null ? `<span class="mx-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${Math.round(p.wind)}</span><small>${[p.windDir != null ? compass(p.windDir) : '', p.gust != null ? `gusts ${Math.round(p.gust)}` : ''].filter(Boolean).join('<br>')}</small>` : '–'),
+      cell: (_d, p) => (p.wind != null ? `<span class="mx-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${windRange(p)}</span><small>${p.windDir != null ? compass(p.windDir) : ''}</small>` : '–'),
     },
   ];
   if (cat === 'surfing' && item.faces != null) {
@@ -99,7 +99,7 @@ export function matrixHtml(item: HitListItem, f: Forecast): string {
     )
     .join('');
   return `<div class="mx-scroll"><table class="mx-table"><thead><tr><th class="mx-corner"></th>${head}</tr><tr><th class="mx-corner"></th>${sub}</tr></thead><tbody>${body}</tbody></table></div>
-    <p class="cd-muted mx-foot">${days[0].periods.some((p) => p.id === 'night') ? 'Night is 9pm to 6am' : 'AM is 6 to 11am, PM is midday to 8pm'}. Wind is the strongest hour in km/h, arrows point the way it blows${cat === 'surfing' && item.faces != null ? ': green offshore, orange cross-shore, red onshore at this beach' : ''}.${coastal ? ' Swell is model open-ocean swell, its highest in that part of the day.' : ''}</p>`;
+    <p class="cd-muted mx-foot">${days[0].periods.some((p) => p.id === 'night') ? 'Night is 9pm to 6am' : 'AM is 6 to 11am, PM is midday to 8pm'}. Wind in km/h, average to strongest gust; arrows point the way it blows${cat === 'surfing' && item.faces != null ? ': green offshore, orange cross-shore, red onshore at this beach' : ''}.${coastal ? ' Swell is model open-ocean swell, its highest in that part of the day.' : ''}</p>`;
 }
 
 /** Open the table as a pop-up over the app. Tap outside, the close button or Escape to close it. */
