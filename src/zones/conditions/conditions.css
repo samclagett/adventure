@@ -119,6 +119,7 @@
 .wx-a-wind.wx-a-cross-shore { color: color-mix(in srgb, var(--cd-mar) 80%, #000); }
 .wx-a-wind.wx-a-onshore { color: color-mix(in srgb, var(--cd-skip) 85%, #000); }
 .wx-a-swell { color: #2f7d99; }
+.wx-unit { font-size: 0.72em; font-weight: 500; opacity: 0.75; margin-left: 1px; }
 .wx-swell { color: #2f7d99; font-weight: 600; }
 
 /* Section on the pin card. */
