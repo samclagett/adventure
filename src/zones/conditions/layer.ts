@@ -7,6 +7,7 @@ import { COASTAL, type ConditionsData } from './data';
 import type { Forecast } from './openmeteo';
 import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, windArrowClass, windRange, VERDICT_WORD } from './summary';
 import { alertIcons } from './alerts';
+import { setPickedDay } from './daychart';
 import { WEATHER_ICONS, KIND_WORD, weatherKind, windArrow as arrow } from './weather-icons';
 
 /**
@@ -122,6 +123,7 @@ export function mountLayer(parent: HTMLElement, adv: AdventureMap, hl: HitListAp
 
   function render() {
     renderBar();
+    setPickedDay(date());
     markers.forEach((m) => m.remove());
     markers.clear();
     if (!on) {

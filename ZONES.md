@@ -19,7 +19,7 @@ A claim older than 7 days with no activity can be taken over after a message to 
 |---|---|---|---|---|
 | map | `src/zones/map/` | free | | |
 | hitlist | `src/zones/hitlist/` | free | | |
-| conditions | `src/zones/conditions/`, `scripts/conditions/` | Sam (Claude) | Hour-by-hour day charts | 2026-11-20 |
+| conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
 | infra | `.github/`, `supabase/`, `package.json`, config files | free | | |

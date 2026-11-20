@@ -10,6 +10,8 @@ import { openMatrix, TABLE_ICON } from './matrix';
 import { alertIcons, alertLines } from './alerts';
 import type { Alert } from './ratings';
 import { snowHtml, onSnowChange } from './snow';
+import { dayChart, pickedDay } from './daychart';
+import { MARINE_DAYS } from './openmeteo';
 
 /**
  * Conditions on each place card: a short summary at the top (best of the next four days, a day strip and
@@ -39,31 +41,51 @@ function periodHtml(p: Period, cat: string, faces: number | null): string {
   return `<span class="cd-p cd-p-${p.id}" role="img" aria-label="${esc(said)}" title="${esc(said)}"><span class="cd-p-label">${p.label}</span>${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : '<b></b>'}<span class="cd-p-meta">${wind}${rain}</span></span>`;
 }
 
-/** The summary at the top of a place card, shown even when the card is pulled down. */
-function summaryHtml(item: HitListItem, data: ConditionsData): string {
+/**
+ * The days in the summary strip: the next four, stretched to reach the day picked on the map
+ * (up to the marine forecast's eight days).
+ */
+function stripDates(): string[] {
+  const all = daysFor('2weeks').slice(0, MARINE_DAYS);
+  const p = pickedDay();
+  const n = p ? all.indexOf(p) : -1;
+  return all.slice(0, Math.max(4, n + 1));
+}
+
+/**
+ * The summary at the top of a place card, shown even when the card is pulled down: the best day, a strip of
+ * days (tap one to chart it) and the hour-by-hour chart for the chosen day (daychart.ts).
+ */
+function summaryHtml(item: HitListItem, data: ConditionsData, chosen: string): string {
   const home = getHome();
   const dist = home && item.lat != null ? `${travelText(home, { lat: item.lat, lng: item.lng! })} from ${home.name}` : '';
   const f = data.get(item);
   if (!f) return `<div class="cd-sum"><span class="cd-muted">${data.loading ? 'Getting the forecast…' : 'No forecast yet'}</span></div>${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
   const cat = categoryOf(item.activity).id;
-  const dates = daysFor('5days').slice(0, 4);
-  const rated = daysOf(f, dates, cat, item).map((d) => rateDay(cat, d));
-  const verdicts: Verdict[] = rated.map((r) => r.verdict);
+  const dates = stripDates();
+  const rated = daysOf(f, dates, cat, item).map((d) => ({ date: d.date, ...rateDay(cat, d) }));
+  const verdictOn = (iso: string): Verdict => rated.find((r) => r.date === iso)?.verdict ?? 'na';
   // Alerts over the next four days, one of each kind (they don't change the rating colour).
   const alerts: Alert[] = [];
-  for (const r of rated) for (const a of r.alerts) if (!alerts.some((b) => b.kind === a.kind)) alerts.push(a);
+  for (const r of rated.slice(0, 4)) for (const a of r.alerts) if (!alerts.some((b) => b.kind === a.kind)) alerts.push(a);
   const name = (iso: string) => (iso === todayIso() ? 'today' : dayShort(iso));
-  const firstGo = verdicts.indexOf('go');
-  const firstMar = verdicts.indexOf('mar');
-  const pill =
-    firstGo >= 0
-      ? `<span class="cd-pill cd-v-go">Go ${name(dates[firstGo])}</span>`
-      : firstMar >= 0
-        ? `<span class="cd-pill cd-v-mar">${VERDICT_WORD.mar} ${name(dates[firstMar])}</span>`
-        : `<span class="cd-pill cd-v-skip">Not in the next 4 days</span>`;
-  const strip = dates.map((d, n) => `<span class="cd-v-${verdicts[n]}" title="${dayShort(d)}: ${VERDICT_WORD[verdicts[n]]}">${dayShort(d)}</span>`).join('');
+  const next4 = dates.slice(0, 4);
+  const firstGo = next4.find((d) => verdictOn(d) === 'go');
+  const firstMar = next4.find((d) => verdictOn(d) === 'mar');
+  const pill = firstGo
+    ? `<span class="cd-pill cd-v-go">Go ${name(firstGo)}</span>`
+    : firstMar
+      ? `<span class="cd-pill cd-v-mar">${VERDICT_WORD.mar} ${name(firstMar)}</span>`
+      : `<span class="cd-pill cd-v-skip">Not in the next 4 days</span>`;
+  const strip = dates
+    .map((d) => {
+      const v = verdictOn(d);
+      return `<button type="button" data-day="${d}" class="cd-v-${v}${d === chosen ? ' on' : ''}" aria-pressed="${d === chosen}" aria-label="${dayShort(d)}: ${VERDICT_WORD[v]}. Show hour by hour">${dayShort(d)}</button>`;
+    })
+    .join('');
   const table = `<button type="button" class="cd-table-btn" data-act="matrix" aria-label="Morning and afternoon conditions table">${TABLE_ICON}<span>AM / PM</span></button>`;
-  return `<div class="cd-sum">${pill}<span class="cd-sum-days">${strip}</span>${table}</div>${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  const chart = dayChart(item, f, chosen);
+  return `<div class="cd-sum">${pill}${table}</div><div class="cd-sum-days" style="grid-template-columns:repeat(${dates.length},1fr)">${strip}</div>${chart ? chart.html : ''}${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
 }
 
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
@@ -73,14 +95,31 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
   onSnowChange(() => refillSummary?.());
   hl.addCardSummary((item, el) => {
     if (item.lat == null || item.lng == null) return;
+    // The card opens on the day picked on the map (or today), and a tap on the day strip changes it.
+    const dates = stripDates();
+    const p = pickedDay();
+    let chosen = p && dates.includes(p) ? p : dates[0];
     const fill = () => {
       if (!el.isConnected) return;
-      el.innerHTML = summaryHtml(item, data);
+      const keep = el.querySelector<HTMLElement>('.dc-scroll')?.scrollLeft;
+      el.innerHTML = summaryHtml(item, data, chosen);
+      const scroller = el.querySelector<HTMLElement>('.dc-scroll');
+      // Keep the scroll when the forecast refreshes; a new day starts at its morning (or now, today).
+      if (scroller) scroller.scrollLeft = keep ?? Number(scroller.dataset.start ?? 0);
       el.querySelector('[data-act="matrix"]')?.addEventListener('click', (e) => {
         e.stopPropagation();
         const f = data.get(item);
         if (f) openMatrix(item, f);
       });
+      el.querySelectorAll<HTMLButtonElement>('[data-day]').forEach((b) =>
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (b.dataset.day === chosen) return;
+          chosen = b.dataset.day!;
+          el.querySelector('.dc-scroll')?.remove();
+          fill();
+        }),
+      );
     };
     refillSummary = fill;
     fill();
