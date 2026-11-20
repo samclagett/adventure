@@ -51,6 +51,8 @@ export interface HourlyWeather extends HourlyWind {
   temperature_2m: (number | null)[];
   precipitation: (number | null)[];
   precipitation_probability: (number | null)[];
+  /** Missing from forecasts saved before 2026-11-20. */
+  wind_gusts_10m?: (number | null)[];
 }
 
 export interface HourlyMarine {
@@ -84,7 +86,7 @@ const DAILY_VARS = [
   'wind_direction_10m_dominant',
   'snowfall_sum',
 ];
-const HOURLY_VARS = ['weather_code', 'temperature_2m', 'precipitation', 'precipitation_probability', 'wind_speed_10m', 'wind_direction_10m'];
+const HOURLY_VARS = ['weather_code', 'temperature_2m', 'precipitation', 'precipitation_probability', 'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m'];
 const MARINE_VARS = ['wave_height', 'swell_wave_height', 'swell_wave_period', 'swell_wave_direction', 'sea_level_height_msl', 'sea_surface_temperature'];
 
 function chunks<T>(list: T[], size: number): T[][] {

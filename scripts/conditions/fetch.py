@@ -30,7 +30,7 @@ DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitat
          "precipitation_probability_max", "wind_speed_10m_max", "wind_gusts_10m_max",
          "wind_direction_10m_dominant", "snowfall_sum"]
 HOURLY = ["weather_code", "temperature_2m", "precipitation", "precipitation_probability",
-          "wind_speed_10m", "wind_direction_10m"]
+          "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"]
 MARINE = ["wave_height", "swell_wave_height", "swell_wave_period", "swell_wave_direction",
           "sea_level_height_msl", "sea_surface_temperature"]
 
