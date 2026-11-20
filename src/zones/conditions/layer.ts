@@ -5,7 +5,7 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import { COASTAL, type ConditionsData } from './data';
 import type { Forecast } from './openmeteo';
-import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, VERDICT_WORD } from './summary';
+import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, windArrowClass, VERDICT_WORD } from './summary';
 import { alertIcons } from './alerts';
 import { WEATHER_ICONS, KIND_WORD, weatherKind, windArrow as arrow } from './weather-icons';
 
@@ -45,14 +45,14 @@ export function chipFor(item: HitListItem, f: Forecast, date: string): { html: s
       .map((p) => {
         const sea = coastal ? seaFor(f, day.date, p.id) : null;
         return `<span class="wx-col"><small>${p.label}</small><span class="wx-part">${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : ''}</span>${
-          p.wind != null ? `<span class="wx-part wx-wind">${p.windDir != null ? arrow(p.windDir, 'wx-a-wind') : ''}${Math.round(p.wind)}</span>` : ''
+          p.wind != null ? `<span class="wx-part wx-wind">${p.windDir != null ? arrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${Math.round(p.wind)}</span>` : ''
         }${sea?.swell != null ? `<span class="wx-part wx-swell">${sea.swellDir != null ? arrow(sea.swellDir, 'wx-a-swell') : ''}${sea.swell.toFixed(1)}m</span>` : ''}</span>`;
       })
       .join('');
   } else {
     // Older saved forecasts with no hour-by-hour weather: one column for the day.
     body = `<span class="wx-col"><span class="wx-part">${WEATHER_ICONS[weatherKind(day.code)]}${day.tmax != null ? `<b>${Math.round(day.tmax)}°</b>` : ''}</span>${
-      day.wind != null ? `<span class="wx-part wx-wind">${day.windDir != null ? arrow(day.windDir, 'wx-a-wind') : ''}${Math.round(day.wind)}</span>` : ''
+      day.wind != null ? `<span class="wx-part wx-wind">${day.windDir != null ? arrow(day.windDir, windArrowClass(cat, item.faces, day.windDir)) : ''}${Math.round(day.wind)}</span>` : ''
     }${coastal ? `<span class="wx-part wx-swell">${day.surf!.swellDir != null ? arrow(day.surf!.swellDir, 'wx-a-swell') : ''}${day.surf!.swellMax.toFixed(1)}m</span>` : ''}</span>`;
   }
   const label = [

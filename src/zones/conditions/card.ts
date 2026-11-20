@@ -2,7 +2,7 @@ import type { HitListApi } from '../hitlist';
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
-import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
+import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, windArrowClass, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
 import { getHome } from './home';
 import { ensureDrives, onDriveChange, travelText } from './drive';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
@@ -22,13 +22,13 @@ function esc(s: string | null | undefined): string {
   return (s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-/** One part of a day: label, weather symbol, temperature, rain if any, and wind. */
-function periodHtml(p: Period): string {
+/** One part of a day: label, weather symbol, temperature, rain if any, and wind (coloured at surf spots). */
+function periodHtml(p: Period, cat: string, faces: number | null): string {
   const wet = (p.rain ?? 0) >= 0.2 || (p.rainProb ?? 0) >= 30;
   const rain = wet
     ? `<span class="cd-p-rain">${[(p.rain ?? 0) >= 0.5 ? `${Math.round(p.rain!)} mm` : '', p.rainProb != null ? `${p.rainProb}%` : ''].filter(Boolean).join(' ')}</span>`
     : '';
-  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, 'wx-a-wind') : ''}${Math.round(p.wind)} km/h</span>` : '';
+  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, faces, p.windDir)) : ''}${Math.round(p.wind)} km/h</span>` : '';
   const said = [
     p.label === 'Night' ? 'Night' : p.label,
     KIND_WORD[p.kind],
@@ -131,7 +131,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
             return `<div class="cd-day cd-v-${rated.verdict}">${r.cells
               .filter(Boolean)
               .map((c, i) => `<span class="${i === 0 ? 'cd-day-name' : r.verdict && i === 1 ? 'cd-verdict' : ''}">${esc(c)}</span>`)
-              .join('')}${alertIcons(rated.alerts)}${days[n].periods.length ? `<span class="cd-periods">${days[n].periods.map(periodHtml).join('')}</span>` : ''}${r.extra ? `<small>${esc(r.extra)}</small>` : ''}${why}</div>`;
+              .join('')}${alertIcons(rated.alerts)}${days[n].periods.length ? `<span class="cd-periods">${days[n].periods.map((p) => periodHtml(p, cat, item.faces)).join('')}</span>` : ''}${r.extra ? `<small>${esc(r.extra)}</small>` : ''}${why}</div>`;
           })
           .join('')}</div>` : '<p class="cd-muted">No forecast for these days yet.</p>'}
         ${notes.map((n) => `<p class="cd-muted">${esc(n)}</p>`).join('')}`;

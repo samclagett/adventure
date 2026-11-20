@@ -210,6 +210,14 @@ export function windRelation(from: number, faces: number): 'offshore' | 'cross-s
   return 'cross-shore';
 }
 
+/**
+ * The wind arrow's class. At a surf spot that knows which way it faces, the arrow is coloured green offshore,
+ * orange cross-shore and red onshore (Sam, 2026-11-20); elsewhere it stays grey.
+ */
+export function windArrowClass(category: string, faces: number | null | undefined, from: number): string {
+  return category === 'surfing' && faces != null ? `wx-a-wind wx-a-${windRelation(from, faces)}` : 'wx-a-wind';
+}
+
 /** Hourly values for one date, as [hour, value] pairs. */
 function hoursOf(time: string[], values: (number | null)[], date: string): [number, number][] {
   const out: [number, number][] = [];
