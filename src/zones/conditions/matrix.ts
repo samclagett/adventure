@@ -51,7 +51,7 @@ export function matrixHtml(item: HitListItem, f: Forecast): string {
       },
     },
     {
-      label: 'Wind',
+      label: 'Wind km/h',
       cell: (_d, p) => (p.wind != null ? `<span class="mx-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${Math.round(p.wind)}</span><small>${p.windDir != null ? compass(p.windDir) : ''}</small>` : '–'),
     },
   ];
