@@ -2,7 +2,7 @@ import type { HitListApi } from '../hitlist';
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { ConditionsData } from './data';
-import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, windArrowClass, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
+import { WINDOWS, daysFor, daysOf, rowsFor, rateDay, compass, dayShort, todayIso, windArrowClass, windRange, VERDICT_WORD, type Period, type Verdict, type WindowId } from './summary';
 import { getHome } from './home';
 import { ensureDrives, onDriveChange, travelText } from './drive';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
@@ -28,13 +28,13 @@ function periodHtml(p: Period, cat: string, faces: number | null): string {
   const rain = wet
     ? `<span class="cd-p-rain">${[(p.rain ?? 0) >= 0.5 ? `${Math.round(p.rain!)} mm` : '', p.rainProb != null ? `${p.rainProb}%` : ''].filter(Boolean).join(' ')}</span>`
     : '';
-  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, faces, p.windDir)) : ''}${Math.round(p.wind)} km/h${p.gust != null && p.gust > p.wind + 5 ? `, gusts ${Math.round(p.gust)}` : ''}</span>` : '';
+  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, faces, p.windDir)) : ''}${windRange(p)} km/h</span>` : '';
   const said = [
     p.label === 'Night' ? 'Night' : p.label,
     KIND_WORD[p.kind],
     p.temp != null ? `${p.id === 'night' ? 'low' : 'high'} ${Math.round(p.temp)} degrees` : '',
     wet ? `${p.rainProb ?? 0}% chance of rain` : '',
-    p.wind != null ? `wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h${p.gust != null ? `, gusts ${Math.round(p.gust)}` : ''}` : '',
+    p.wind != null ? `wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h${p.gust != null ? `, gusts to ${Math.round(p.gust)}` : ''}` : '',
   ].filter(Boolean).join(', ');
   return `<span class="cd-p cd-p-${p.id}" role="img" aria-label="${esc(said)}" title="${esc(said)}"><span class="cd-p-label">${p.label}</span>${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : '<b></b>'}<span class="cd-p-meta">${wind}${rain}</span></span>`;
 }

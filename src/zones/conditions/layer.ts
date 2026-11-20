@@ -5,7 +5,7 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import { COASTAL, type ConditionsData } from './data';
 import type { Forecast } from './openmeteo';
-import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, windArrowClass, VERDICT_WORD } from './summary';
+import { daysOf, rateDay, seaFor, todayIso, dayLabel, compass, windArrowClass, windRange, VERDICT_WORD } from './summary';
 import { alertIcons } from './alerts';
 import { WEATHER_ICONS, KIND_WORD, weatherKind, windArrow as arrow } from './weather-icons';
 
@@ -45,7 +45,7 @@ export function chipFor(item: HitListItem, f: Forecast, date: string): { html: s
       .map((p) => {
         const sea = coastal ? seaFor(f, day.date, p.id) : null;
         return `<span class="wx-col"><small>${p.label}</small><span class="wx-part">${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : ''}</span>${
-          p.wind != null ? `<span class="wx-part wx-wind">${p.windDir != null ? arrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${Math.round(p.wind)}<small class="wx-unit">${p.gust != null && p.gust > p.wind + 5 ? `g${Math.round(p.gust)} ` : ''}km/h</small></span>` : ''
+          p.wind != null ? `<span class="wx-part wx-wind">${p.windDir != null ? arrow(p.windDir, windArrowClass(cat, item.faces, p.windDir)) : ''}${windRange(p)}<small class="wx-unit">km/h</small></span>` : ''
         }${sea?.swell != null ? `<span class="wx-part wx-swell">${sea.swellDir != null ? arrow(sea.swellDir, 'wx-a-swell') : ''}${sea.swell.toFixed(1)}m</span>` : ''}</span>`;
       })
       .join('');
@@ -59,7 +59,7 @@ export function chipFor(item: HitListItem, f: Forecast, date: string): { html: s
     item.name,
     VERDICT_WORD[rated.verdict],
     ...rated.why.slice(0, 2),
-    ...day.periods.map((p) => `${p.label} ${KIND_WORD[p.kind]}${p.temp != null ? ` ${Math.round(p.temp)} degrees` : ''}${p.wind != null ? `, wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h${p.gust != null ? `, gusts ${Math.round(p.gust)}` : ''}` : ''}`),
+    ...day.periods.map((p) => `${p.label} ${KIND_WORD[p.kind]}${p.temp != null ? ` ${Math.round(p.temp)} degrees` : ''}${p.wind != null ? `, wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h${p.gust != null ? `, gusts to ${Math.round(p.gust)}` : ''}` : ''}`),
     ...rated.alerts.map((a) => a.text),
   ]
     .filter(Boolean)
