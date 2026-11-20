@@ -114,6 +114,10 @@
 .wx-chip .wx-icon { width: 18px; height: 18px; }
 .wx-arrow { width: 13px; height: 13px; flex: none; }
 .wx-a-wind { color: #4c5a62; }
+/* Surf spots: offshore, cross-shore and onshore wind, darkened a little so a small arrow still reads. */
+.wx-a-wind.wx-a-offshore { color: color-mix(in srgb, var(--cd-go) 75%, #000); }
+.wx-a-wind.wx-a-cross-shore { color: color-mix(in srgb, var(--cd-mar) 80%, #000); }
+.wx-a-wind.wx-a-onshore { color: color-mix(in srgb, var(--cd-skip) 85%, #000); }
 .wx-a-swell { color: #2f7d99; }
 .wx-swell { color: #2f7d99; font-weight: 600; }
 
