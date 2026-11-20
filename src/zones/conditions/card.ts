@@ -28,13 +28,13 @@ function periodHtml(p: Period, cat: string, faces: number | null): string {
   const rain = wet
     ? `<span class="cd-p-rain">${[(p.rain ?? 0) >= 0.5 ? `${Math.round(p.rain!)} mm` : '', p.rainProb != null ? `${p.rainProb}%` : ''].filter(Boolean).join(' ')}</span>`
     : '';
-  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, faces, p.windDir)) : ''}${Math.round(p.wind)} km/h</span>` : '';
+  const wind = p.wind != null ? `<span class="cd-p-wind">${p.windDir != null ? windArrow(p.windDir, windArrowClass(cat, faces, p.windDir)) : ''}${Math.round(p.wind)} km/h${p.gust != null && p.gust > p.wind + 5 ? `, gusts ${Math.round(p.gust)}` : ''}</span>` : '';
   const said = [
     p.label === 'Night' ? 'Night' : p.label,
     KIND_WORD[p.kind],
     p.temp != null ? `${p.id === 'night' ? 'low' : 'high'} ${Math.round(p.temp)} degrees` : '',
     wet ? `${p.rainProb ?? 0}% chance of rain` : '',
-    p.wind != null ? `wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h` : '',
+    p.wind != null ? `wind ${p.windDir != null ? compass(p.windDir) + ' ' : ''}${Math.round(p.wind)} km/h${p.gust != null ? `, gusts ${Math.round(p.gust)}` : ''}` : '',
   ].filter(Boolean).join(', ');
   return `<span class="cd-p cd-p-${p.id}" role="img" aria-label="${esc(said)}" title="${esc(said)}"><span class="cd-p-label">${p.label}</span>${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : '<b></b>'}<span class="cd-p-meta">${wind}${rain}</span></span>`;
 }

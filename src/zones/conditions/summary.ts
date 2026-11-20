@@ -135,9 +135,11 @@ export interface Period {
   rain: number | null;
   /** Highest chance of rain, %. */
   rainProb: number | null;
-  /** Average wind, km/h, and where it comes from. */
+  /** The strongest hour's wind, km/h, and where it comes from then (Sam, 2026-11-20: an average read too low). */
   wind: number | null;
   windDir: number | null;
+  /** Strongest gust in the period, km/h. */
+  gust: number | null;
 }
 
 export const PERIODS: { id: Period['id']; label: string; from: number; to: number }[] = [
@@ -370,10 +372,10 @@ function periodsOf(h: HourlyWeather | undefined, date: string, category: string)
       const temps = nums(h.temperature_2m);
       const rain = nums(h.precipitation);
       const probs = nums(h.precipitation_probability);
-      const speeds = nums(h.wind_speed_10m);
-      const dirs = nums(h.wind_direction_10m);
-      const x = avg(dirs.map((d) => Math.sin((d * Math.PI) / 180)));
-      const y = avg(dirs.map((d) => Math.cos((d * Math.PI) / 180)));
+      const gusts = h.wind_gusts_10m ? nums(h.wind_gusts_10m) : [];
+      // The strongest hour, and its direction (an afternoon sea breeze, not the morning's average).
+      let peak: number | null = null;
+      for (const i of idx) if (h.wind_speed_10m[i] != null && (peak == null || h.wind_speed_10m[i]! > h.wind_speed_10m[peak]!)) peak = i;
       const period: Period = {
         id: p.id,
         label: p.label,
@@ -381,8 +383,9 @@ function periodsOf(h: HourlyWeather | undefined, date: string, category: string)
         temp: temps.length ? (p.id === 'night' ? Math.min(...temps) : Math.max(...temps)) : null,
         rain: rain.length ? rain.reduce((a, b) => a + b, 0) : null,
         rainProb: probs.length ? Math.max(...probs) : null,
-        wind: avg(speeds),
-        windDir: x != null && y != null ? ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360 : null,
+        wind: peak != null ? h.wind_speed_10m[peak] : null,
+        windDir: peak != null ? h.wind_direction_10m[peak] : null,
+        gust: gusts.length ? Math.max(...gusts) : null,
       };
       return period;
     })
