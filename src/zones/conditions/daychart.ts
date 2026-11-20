@@ -1,28 +1,30 @@
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { Forecast } from './openmeteo';
-import { clock, daysOf, tidesOn, todayIso, windRelation, type Tide } from './summary';
-import { WEATHER_ICONS, weatherKind, type WeatherKind } from './weather-icons';
+import { clock, dayShort, tidesOn, todayIso, windRelation, daysOf, type Tide } from './summary';
+import { WEATHER_ICONS, periodKind } from './weather-icons';
 
 /**
- * The hour-by-hour chart on a place card, for one day. It scrolls sideways, an hour per column.
+ * The hour-by-hour chart on a place card. One day fills the width of the card, and it scrolls sideways
+ * straight on into the following days (Sam, 2026-11-20).
  *
- * - Surf spots and dive sites (Sam, 2026-11-20, "like WillyWeather"): swell as paper bars with their height,
- *   the tide as a line over them with high and low times, swell direction and period underneath, and the
- *   wind along the top (coloured offshore / cross-shore / onshore at a surf beach that knows its facing).
- * - Everything else ("like Apple Weather"): a weather symbol each hour, temperature as a line, rain as bars
- *   with millimetres and the chance of rain, and the wind. Camping runs from midday to 10am the next morning,
- *   so the night is in one view; kayaking on the coast adds the tide.
- * Night hours are shaded (sunrise and sunset worked out here), and today has a line at the current hour.
- * Times are Sydney time, like the forecast.
+ * - Surf spots and dive sites ("like WillyWeather"): swell as paper bars, the tide as a line over them with
+ *   high and low times, swell direction and period underneath.
+ * - Everything else ("like Apple Weather"): a weather symbol every three hours (yellow sun, dark blue rain),
+ *   temperature as a line, rain as bars, the chance of rain. Kayaking on the coast adds the tide.
+ * - All of them: wind as two curves, average and gusts, with arrows along the average line (coloured
+ *   offshore / cross-shore / onshore at a surf beach that knows which way it faces).
+ * Each day is headed with its name and total rain. Night hours are shaded (sunrise and sunset worked out
+ * here), and today has a line at the current hour. Times are Sydney time, like the forecast.
  */
 
-const HOUR_W = 44;
 const SEA_CHART = new Set(['surfing', 'diving']);
+/** Labels, symbols and arrows go every this many hours, so a day fits one screen. */
+const STEP = 3;
 
 interface ChartHour {
-  /** Hours from midnight of the chosen day; 24 and up are the next morning. */
-  h: number;
+  /** Hours from midnight of the first day. */
+  t: number;
   code: number | null;
   temp: number | null;
   rain: number | null;
@@ -40,22 +42,21 @@ function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-const r1 = (n: number) => Math.round(n * 10) / 10;
+const f1 = (n: number) => n.toFixed(1);
 
-/** The hours [from, to) of one day, read straight from the forecast. */
-function hoursOf(f: Forecast, date: string, from: number, to: number): ChartHour[] {
+/** Every hour from midnight of `dates[0]` to the end of the last date, read straight from the forecast. */
+function hoursOf(f: Forecast, dates: string[]): ChartHour[] {
   const w = f.hourly;
   const m = f.marine;
-  const wi = w?.time?.indexOf(`${date}T00:00`) ?? -1;
-  const mi = m?.time?.indexOf(`${date}T00:00`) ?? -1;
+  const wi = w?.time?.indexOf(`${dates[0]}T00:00`) ?? -1;
+  const mi = m?.time?.indexOf(`${dates[0]}T00:00`) ?? -1;
   const swellList = m && m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m?.wave_height;
   const out: ChartHour[] = [];
-  for (let h = from; h < to; h++) {
-    const i = wi >= 0 && wi + h < (w?.time.length ?? 0) ? wi + h : -1;
-    const j = mi >= 0 && mi + h < (m?.time.length ?? 0) ? mi + h : -1;
-    if (i < 0 && j < 0) break;
+  for (let t = 0; t < dates.length * 24; t++) {
+    const i = wi >= 0 && wi + t < (w?.time.length ?? 0) ? wi + t : -1;
+    const j = mi >= 0 && mi + t < (m?.time.length ?? 0) ? mi + t : -1;
     out.push({
-      h,
+      t,
       code: i >= 0 ? w!.weather_code[i] : null,
       temp: i >= 0 ? w!.temperature_2m[i] : null,
       rain: i >= 0 ? w!.precipitation[i] : null,
@@ -75,8 +76,7 @@ function hoursOf(f: Forecast, date: string, from: number, to: number): ChartHour
 /** Sunrise and sunset in Sydney time (hours from midnight), from the standard NOAA approximation. */
 export function sunTimes(date: string, lat: number, lng: number): [number, number] | null {
   const [y, mo, d] = date.split('-').map(Number);
-  const start = Date.UTC(y, 0, 1);
-  const n = Math.round((Date.UTC(y, mo - 1, d) - start) / 86400000) + 1;
+  const n = Math.round((Date.UTC(y, mo - 1, d) - Date.UTC(y, 0, 1)) / 86400000) + 1;
   const g = ((2 * Math.PI) / 365) * (n - 1);
   const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
   const decl =
@@ -88,10 +88,8 @@ export function sunTimes(date: string, lat: number, lng: number): [number, numbe
   // Sydney's offset from UTC on that day (10, or 11 in daylight saving).
   const noon = new Date(Date.UTC(y, mo - 1, d, 12));
   const sydHour = Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', hour: 'numeric', hourCycle: 'h23' }).format(noon));
-  const offset = ((sydHour - 12 + 24) % 24) || 10;
-  const rise = (720 - 4 * (lng + ha) - eq) / 60 + offset;
-  const set = (720 - 4 * (lng - ha) - eq) / 60 + offset;
-  return [rise, set];
+  const offset = (sydHour - 12 + 24) % 24 || 10;
+  return [(720 - 4 * (lng + ha) - eq) / 60 + offset, (720 - 4 * (lng - ha) - eq) / 60 + offset];
 }
 
 /** The current hour in Sydney, with minutes as a fraction. */
@@ -104,14 +102,12 @@ function nowHour(): number {
 /** A smooth line through points (Catmull-Rom turned into curves). */
 function smooth(pts: [number, number][]): string {
   if (!pts.length) return '';
-  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  let d = `M${f1(pts[0][0])},${f1(pts[0][1])}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i - 1] ?? pts[i];
     const [p1, p2] = [pts[i], pts[i + 1]];
     const p3 = pts[i + 2] ?? p2;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    d += ` C${f1(p1[0] + (p2[0] - p0[0]) / 6)},${f1(p1[1] + (p2[1] - p0[1]) / 6)} ${f1(p2[0] - (p3[0] - p1[0]) / 6)},${f1(p2[1] - (p3[1] - p1[1]) / 6)} ${f1(p2[0])},${f1(p2[1])}`;
   }
   return d;
 }
@@ -132,151 +128,186 @@ function runs<T>(list: T[], has: (x: T) => boolean): T[][] {
 }
 
 /** An arrow at (x, y) blowing away from `from` degrees (a north wind points down), like the map's arrows. */
-function arrow(x: number, y: number, from: number, cls: string, size = 7): string {
-  return `<g class="${cls}" transform="translate(${x.toFixed(1)} ${y}) rotate(${Math.round(from)})"><path d="M0 ${-size}V${size}M${-size * 0.62} ${size * 0.38}L0 ${size}L${size * 0.62} ${size * 0.38}" /></g>`;
+function arrow(x: number, y: number, from: number, cls: string, size = 6): string {
+  return `<g class="${cls}" transform="translate(${f1(x)} ${f1(y)}) rotate(${Math.round(from)})"><path d="M0 ${-size}V${size}M${-size * 0.62} ${size * 0.38}L0 ${size}L${size * 0.62} ${size * 0.38}" /></g>`;
 }
 
 function hourLabel(h: number): string {
-  const hh = h % 24;
-  if (hh === 0) return 'mid';
-  if (hh === 12) return 'noon';
-  return `${hh % 12}${hh < 12 ? 'am' : 'pm'}`;
+  if (h === 12) return 'noon';
+  return `${h % 12}${h < 12 ? 'am' : 'pm'}`;
 }
 
-const NIGHT_KIND: Partial<Record<WeatherKind, WeatherKind>> = { clear: 'moon', partly: 'moonpartly', sunrain: 'moonrain' };
+// ---- Coloured weather symbols for the chart: yellow sun, dark blue rain (Sam, 2026-11-20) ----
+// Built from the same Phosphor light pieces as weather-icons.ts, so they match the rest of the app.
 
-export interface DayChart {
-  html: string;
-  /** Where to scroll to first, in pixels. */
-  scrollTo: number;
+const dOf = (svg: string) => svg.match(/d="([^"]+)"/)?.[1] ?? '';
+const SUN = dOf(WEATHER_ICONS.clear);
+const CLOUD = dOf(WEATHER_ICONS.cloud);
+/** The cloud's outline filled in, laid under it so the sun behind doesn't show through. */
+const CLOUD_FILL = CLOUD.slice(0, CLOUD.indexOf('Z') + 1);
+
+const cloudAt = (tx: number, ty: number, s: number) =>
+  `<g transform="translate(${tx} ${ty}) scale(${s})"><path class="dc-sym-mask" d="${CLOUD_FILL}"/><path class="dc-sym-cloud" d="${CLOUD}"/></g>`;
+const sunAt = (tx: number, ty: number, s: number) => `<g transform="translate(${tx} ${ty}) scale(${s})"><path class="dc-sym-sun" d="${SUN}"/></g>`;
+const RAIN_LINES = `<path class="dc-sym-rain" d="M96,196l-14,34M140,196l-14,34M184,196l-14,34"/>`;
+
+/** A symbol for some hours, drawn into the chart at (x, y), `size` px square. */
+function symbol(codes: (number | null)[], night: boolean, x: number, y: number, size: number): string {
+  const k = periodKind(codes, false);
+  let inner: string;
+  if (k === 'clear') inner = night ? `<path class="dc-sym-cloud" d="${moonPath()}"/>` : `<path class="dc-sym-sun" d="${SUN}"/>`;
+  else if (k === 'partly') inner = night ? WEATHER_ICONS.moonpartly.replace(/^<svg[^>]*>|<\/svg>$/g, '') : sunAt(-4, -6, 0.64) + cloudAt(44, 36, 0.8);
+  else if (k === 'cloud') inner = `<path class="dc-sym-cloud" d="${CLOUD}"/>`;
+  else if (k === 'rain') inner = cloudAt(14, -20, 0.88) + RAIN_LINES;
+  else if (k === 'sunrain') inner = (night ? '' : sunAt(-4, -18, 0.58)) + cloudAt(38, 0, 0.74) + RAIN_LINES;
+  else inner = WEATHER_ICONS[k].replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  return `<svg class="dc-sym" x="${f1(x)}" y="${f1(y)}" width="${size}" height="${size}" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">${inner}</svg>`;
 }
 
-export function dayChart(item: HitListItem, f: Forecast, date: string): DayChart | null {
+function moonPath(): string {
+  return dOf(WEATHER_ICONS.moon);
+}
+
+export interface DayChartOptions {
+  /** The days to draw, in order. */
+  dates: string[];
+  /** Width of one day on screen, px (the card's width). */
+  dayWidth: number;
+}
+
+export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions): string | null {
   const cat = categoryOf(item.activity).id;
-  const camping = cat === 'camping';
-  const [from, to] = camping ? [12, 34] : [0, 24];
-  const hrs = hoursOf(f, date, from, to);
-  if (!hrs.length) return null;
-  const hasSea = hrs.some((h) => h.swell != null);
-  const sea = SEA_CHART.has(cat) && hasSea;
+  const { dates } = opts;
+  const all = hoursOf(f, dates);
+  // Drop days at the end with no forecast at all.
+  let last = all.length;
+  while (last > 0 && all[last - 1].temp == null && all[last - 1].swell == null) last--;
+  const days = dates.slice(0, Math.ceil(last / 24));
+  if (!days.length) return null;
+  const hrs = all.slice(0, days.length * 24);
+  const sea = SEA_CHART.has(cat) && hrs.some((h) => h.swell != null);
   const hasTide = hrs.filter((h) => h.tide != null).length > 3;
   const faces = cat === 'surfing' ? item.faces : null;
-  const W = hrs.length * HOUR_W;
-  const cx = (h: number) => (h - from + 0.5) * HOUR_W;
-  /** Where a time of day (fractional hours) falls: an hour's value is drawn at the middle of its column. */
-  const px = cx;
+  const hw = opts.dayWidth / 24;
+  const W = Math.round(days.length * opts.dayWidth);
+  /** Where a time falls (hours from the first midnight): an hour's value is drawn at the middle of its slot. */
+  const px = (t: number) => (t + 0.5) * hw;
   const parts: string[] = [];
-  let y = 0;
+  const back: string[] = [];
+  const steps = hrs.filter((x) => x.t % STEP === 0); // midnight, 3am, 6am…
 
+  // Day headers: name and total rain, kept in view while you scroll through that day (see card.ts).
+  const total = (date: string) => {
+    const i = f.daily.time.indexOf(date);
+    const mm = i >= 0 ? f.daily.precipitation_sum[i] : null;
+    return mm == null ? '' : mm < 0.2 ? 'dry' : `${mm < 10 ? f1(mm) : Math.round(mm)} mm`;
+  };
+  days.forEach((d, n) => {
+    const x0 = n * opts.dayWidth;
+    back.push(`<line class="dc-daysep" x1="${f1(x0)}" x2="${f1(x0)}" y1="0" y2="100%" />`);
+    parts.push(
+      `<text class="dc-dayname" x="${f1(x0 + 8)}" y="13" data-day="${d}">${d === todayIso() ? 'Today' : dayShort(d)}<tspan class="dc-daymm" dx="6">${total(d)}</tspan></text>`,
+    );
+  });
   // Night shading, behind everything.
-  const sun = item.lat != null && item.lng != null ? sunTimes(date, item.lat, item.lng) : null;
-  const shade: string[] = [];
-  if (sun) {
-    const [rise, set] = sun;
-    const dark: [number, number][] = [
-      [from, rise],
-      [set, rise + 24],
-      [set + 24, to],
-    ];
-    for (const [a, b] of dark) {
-      const s = Math.max(0, px(a));
-      const e = Math.min(W, px(b));
-      if (e > s) shade.push(`<rect class="dc-night" x="${s.toFixed(1)}" y="0" width="${(e - s).toFixed(1)}" height="100%" />`);
-    }
+  if (item.lat != null && item.lng != null) {
+    days.forEach((d, n) => {
+      const sun = sunTimes(d, item.lat!, item.lng!);
+      if (!sun) return;
+      for (const [a, b] of [
+        [0, sun[0]],
+        [sun[1], 24],
+      ]) {
+        const s = Math.max(n * opts.dayWidth, px(n * 24 + a) - hw / 2);
+        const e = Math.min((n + 1) * opts.dayWidth, px(n * 24 + b) - hw / 2);
+        if (e > s) back.unshift(`<rect class="dc-night" x="${f1(s)}" y="0" width="${f1(e - s)}" height="100%" />`);
+      }
+    });
   }
-  const isNight = (h: number) => !!sun && (h + 0.5 < sun[0] || (h + 0.5 > sun[1] && h + 0.5 < sun[0] + 24) || h + 0.5 > sun[1] + 24);
+  const isNight = (t: number) => {
+    const d = days[Math.floor(t / 24)];
+    const sun = d && item.lat != null ? sunTimes(d, item.lat, item.lng!) : null;
+    const h = (t % 24) + 0.5;
+    return !!sun && (h < sun[0] || h > sun[1]);
+  };
 
-  // Hours along the top. A sea chart also marks the day's best stretch for surfing under them.
-  const best = sea ? daysOf(f, [date], cat, item)[0]?.surf?.best ?? null : null;
+  // Hour labels every three hours (midnight is the day line).
+  let y = 18;
   parts.push(
-    hrs.map((x) => `<text class="dc-hour${x.h % 24 === 0 ? ' dc-hour-day' : ''}" x="${cx(x.h)}" y="12">${hourLabel(x.h)}</text>`).join(''),
-  );
-  y = 18;
-  if (best && cat === 'surfing') {
-    const [a, b] = best;
-    parts.push(`<rect class="dc-best" x="${((a - from) * HOUR_W + 3).toFixed(1)}" y="${y}" width="${((b - a) * HOUR_W - 6).toFixed(1)}" height="3" rx="1.5" />`);
-  }
-  y += 6;
-
-  // Wind: arrow and "average–gust" in each column.
-  const windRow = (top: number) =>
     hrs
-      .map((x) => {
-        if (x.wind == null) return '';
-        const cls = faces != null && x.dir != null ? `dc-arrow dc-${windRelation(x.dir, faces)}` : 'dc-arrow';
-        const w = Math.round(x.wind);
-        const g = x.gust != null && Math.round(x.gust) > w ? Math.round(x.gust) : null;
-        return `${x.dir != null ? arrow(cx(x.h), top + 9, x.dir, cls) : ''}<text class="dc-val" x="${cx(x.h)}" y="${top + 31}">${w}${g != null ? `<tspan class="dc-gust">–${g}</tspan>` : ''}</text>`;
-      })
-      .join('');
+      .filter((x) => x.t % STEP === 0 && x.t % 24 !== 0)
+      .map((x) => `<text class="dc-hour" x="${f1(px(x.t))}" y="${y + 13}">${hourLabel(x.t % 24)}</text>`)
+      .join(''),
+  );
+  y += 20;
+
+  // The best surfing stretch of each day, as a green mark under the hours.
+  if (cat === 'surfing' && sea) {
+    days.forEach((d, n) => {
+      const best = daysOf(f, [d], cat, item)[0]?.surf?.best;
+      if (best) parts.push(`<rect class="dc-best" x="${f1((n * 24 + best[0]) * hw + 1)}" y="${y - 3}" width="${f1((best[1] - best[0]) * hw - 2)}" height="3" rx="1.5" />`);
+    });
+  }
 
   if (sea) {
-    parts.push(windRow(y));
-    y += 40;
-    // Swell bars with the tide over them.
     const plotTop = y + 14;
-    const plotH = 96;
+    const plotH = 80;
     const base = plotTop + plotH;
     const maxSwell = Math.max(2, ...hrs.map((x) => x.swell ?? 0)) * 1.1;
-    const barW = HOUR_W - 12;
+    const barW = Math.max(3, hw - 3);
     parts.push(
       `<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />` +
-        hrs
-          .map((x) => {
-            if (x.swell == null) return '';
-            const bh = Math.max(2, (x.swell / maxSwell) * plotH);
-            return `<rect class="dc-swell" x="${(cx(x.h) - barW / 2).toFixed(1)}" y="${(base - bh).toFixed(1)}" width="${barW}" height="${bh.toFixed(1)}" rx="3" /><text class="dc-swell-val" x="${cx(x.h)}" y="${(base - bh - 4).toFixed(1)}">${r1(x.swell).toFixed(1)}</text>`;
-          })
-          .join(''),
+        hrs.map((x) => (x.swell == null ? '' : `<rect class="dc-swell" x="${f1(px(x.t) - barW / 2)}" y="${f1(base - Math.max(2, (x.swell / maxSwell) * plotH))}" width="${f1(barW)}" height="${f1(Math.max(2, (x.swell / maxSwell) * plotH))}" rx="1.5" />`)).join(''),
     );
-    if (hasTide) parts.push(tideLayer(f, hrs, date, from, to, cx, plotTop + 8, plotH * 0.42));
+    if (hasTide) parts.push(tideLayer(f, hrs, days, px, plotTop + 6, plotH * 0.4));
     y = base + 6;
-    // Swell direction and period under the bars.
+    // Swell height, direction and period under the bars, every three hours.
     parts.push(
-      hrs
+      steps
         .map((x) =>
           x.swell == null
             ? ''
-            : `${x.swellDir != null ? arrow(cx(x.h), y + 9, x.swellDir, 'dc-arrow dc-swell-arrow') : ''}${x.period != null ? `<text class="dc-val" x="${cx(x.h)}" y="${y + 31}">${Math.round(x.period)}s</text>` : ''}`,
+            : `<text class="dc-swell-val" x="${f1(px(x.t))}" y="${y + 11}">${f1(x.swell)}</text>${x.swellDir != null ? arrow(px(x.t), y + 24, x.swellDir, 'dc-arrow dc-swell-arrow', 5) : ''}${x.period != null ? `<text class="dc-val" x="${f1(px(x.t))}" y="${y + 44}">${Math.round(x.period)}s</text>` : ''}`,
         )
         .join(''),
     );
-    y += 38;
+    y += 50;
   } else {
-    // Weather symbol each hour (moon versions at night).
+    // A symbol for each three hours.
+    const size = Math.min(24, hw * STEP - 6);
     parts.push(
-      hrs
+      steps
         .map((x) => {
-          let k = weatherKind(x.code);
-          if (isNight(x.h)) k = NIGHT_KIND[k] ?? k;
-          return WEATHER_ICONS[k].replace('<svg class="wx-icon"', `<svg class="wx-icon dc-sky" x="${cx(x.h) - 11}" y="${y}" width="22" height="22"`);
+          const codes = hrs.slice(x.t - 1, x.t + 2).map((h) => h.code);
+          return codes.some((c) => c != null) ? symbol(codes, isNight(x.t), px(x.t) - size / 2, y, size) : '';
         })
         .join(''),
     );
-    y += 28;
-    // Temperature line in the upper part, rain bars from the bottom.
+    y += size + 6;
+    // Temperature line, with values every three hours.
     const tempTop = y + 14;
-    const tempH = 46;
+    const tempH = 40;
     const temps = hrs.map((x) => x.temp).filter((t): t is number => t != null);
-    const rainTop = tempTop + tempH + 8;
-    const rainH = 28;
-    const base = rainTop + rainH;
     if (temps.length) {
       const lo = Math.min(...temps);
       const hi = Math.max(...temps);
-      const span = Math.max(6, hi - lo);
-      const ty = (t: number) => tempTop + tempH - ((t - lo) / span) * tempH - (span > hi - lo ? ((span - (hi - lo)) / span) * tempH * 0.5 : 0);
-      // Skiing: a dashed line at freezing when it's in view.
-      if (cat === 'skiing' && lo <= 0 && hi >= 0) parts.push(`<line class="dc-zero" x1="0" x2="${W}" y1="${ty(0).toFixed(1)}" y2="${ty(0).toFixed(1)}" /><text class="dc-zero-label" x="4" y="${(ty(0) - 3).toFixed(1)}">0°</text>`);
-      for (const run of runs(hrs, (x) => x.temp != null)) parts.push(`<path class="dc-temp" d="${smooth(run.map((x) => [cx(x.h), ty(x.temp!)]))}" />`);
+      const span = Math.max(8, hi - lo);
+      const mid = (hi + lo) / 2;
+      const ty = (t: number) => tempTop + tempH / 2 - ((t - mid) / span) * tempH;
+      if (cat === 'skiing' && lo <= 0 && hi >= 0) parts.push(`<line class="dc-zero" x1="0" x2="${W}" y1="${f1(ty(0))}" y2="${f1(ty(0))}" />`);
+      for (const run of runs(hrs, (x) => x.temp != null)) parts.push(`<path class="dc-temp" d="${smooth(run.map((x) => [px(x.t), ty(x.temp!)]))}" />`);
       parts.push(
-        hrs
-          .map((x) => (x.temp == null ? '' : `<circle class="dc-temp-dot" cx="${cx(x.h)}" cy="${ty(x.temp).toFixed(1)}" r="2.2" /><text class="dc-temp-val" x="${cx(x.h)}" y="${(ty(x.temp) - 7).toFixed(1)}">${Math.round(x.temp)}°</text>`))
+        steps
+          .map((x) => (x.temp == null ? '' : `<circle class="dc-temp-dot" cx="${f1(px(x.t))}" cy="${f1(ty(x.temp))}" r="2.2" /><text class="dc-temp-val" x="${f1(px(x.t))}" y="${f1(ty(x.temp) - 6)}">${Math.round(x.temp)}°</text>`))
           .join(''),
       );
     }
+    // Rain bars each hour, chance of rain every three hours.
+    const rainTop = tempTop + tempH + 8;
+    const rainH = 24;
+    const base = rainTop + rainH;
     const maxRain = Math.max(3, ...hrs.map((x) => x.rain ?? 0));
-    const barW = HOUR_W - 14;
+    const barW = Math.max(3, hw - 3);
     parts.push(
       `<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />` +
         hrs
@@ -284,80 +315,88 @@ export function dayChart(item: HitListItem, f: Forecast, date: string): DayChart
             const mm = x.rain ?? 0;
             if (mm < 0.1) return '';
             const bh = Math.max(2, (Math.min(mm, maxRain) / maxRain) * rainH);
-            return `<rect class="dc-rain" x="${(cx(x.h) - barW / 2).toFixed(1)}" y="${(base - bh).toFixed(1)}" width="${barW}" height="${bh.toFixed(1)}" rx="2" /><text class="dc-rain-val" x="${cx(x.h)}" y="${(base - bh - 3).toFixed(1)}">${mm < 1 ? mm.toFixed(1) : Math.round(mm)}</text>`;
+            return `<rect class="dc-rain" x="${f1(px(x.t) - barW / 2)}" y="${f1(base - bh)}" width="${f1(barW)}" height="${f1(bh)}" rx="1.5" />`;
           })
           .join(''),
     );
-    y = base + 14;
-    // Chance of rain under the bars, only where it's worth noticing.
-    parts.push(hrs.map((x) => (x.prob != null && x.prob >= 10 ? `<text class="dc-prob${x.prob >= 50 ? ' dc-prob-hi' : ''}" x="${cx(x.h)}" y="${y}">${x.prob}%</text>` : '')).join(''));
-    y += 8;
+    y = base + 13;
+    parts.push(
+      steps
+        .map((x) => {
+          const probs = hrs.slice(x.t - 1, x.t + 2).map((h) => h.prob ?? 0);
+          const p = Math.max(...probs);
+          return p >= 10 ? `<text class="dc-prob${p >= 50 ? ' dc-prob-hi' : ''}" x="${f1(px(x.t))}" y="${y}">${p}%</text>` : '';
+        })
+        .join(''),
+    );
+    y += 6;
     if (hasTide && cat === 'kayaking') {
-      parts.push(tideLayer(f, hrs, date, from, to, cx, y + 14, 30));
-      y += 54;
-    }
-    parts.push(windRow(y));
-    y += 40;
-  }
-
-  // Now, on today's chart.
-  let scrollTo = ((sea ? 5 : 6) - from) * HOUR_W;
-  if (camping) scrollTo = 0;
-  const today = todayIso();
-  if (date === today) {
-    const n = nowHour();
-    if (n >= from && n < to - 0.5) {
-      const x = px(n);
-      parts.push(`<line class="dc-now" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="16" y2="${y}" />`);
-      scrollTo = Math.max(0, x - HOUR_W * 1.5);
+      parts.push(tideLayer(f, hrs, days, px, y + 18, 26));
+      y += 52;
     }
   }
 
-  const said = sea
-    ? `Hour by hour: swell ${r1(Math.min(...hrs.filter((h) => h.swell != null).map((h) => h.swell!)))} to ${r1(Math.max(...hrs.map((h) => h.swell ?? 0)))} metres, wind and tide.`
-    : `Hour by hour: weather, temperature, rain and wind.`;
+  // Wind: the average and the gusts as two curves, arrows along the average.
+  {
+    const top = y + 12;
+    const h = 40;
+    const base = top + h;
+    const maxW = Math.max(30, ...hrs.map((x) => x.gust ?? x.wind ?? 0));
+    const wy = (v: number) => base - (v / maxW) * h;
+    parts.push(`<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />`);
+    for (const run of runs(hrs, (x) => x.gust != null)) parts.push(`<path class="dc-gust-line" d="${smooth(run.map((x) => [px(x.t), wy(x.gust!)]))}" />`);
+    for (const run of runs(hrs, (x) => x.wind != null)) parts.push(`<path class="dc-wind-line" d="${smooth(run.map((x) => [px(x.t), wy(x.wind!)]))}" />`);
+    parts.push(
+      steps
+        .map((x) => {
+          if (x.wind == null) return '';
+          const cls = faces != null && x.dir != null ? `dc-warrow dc-${windRelation(x.dir, faces)}` : 'dc-warrow';
+          const g = x.gust != null && Math.round(x.gust) > Math.round(x.wind) ? `<tspan class="dc-gust">–${Math.round(x.gust)}</tspan>` : '';
+          return `${x.dir != null ? `<circle class="dc-warrow-bg" cx="${f1(px(x.t))}" cy="${f1(wy(x.wind))}" r="7.5" />${arrow(px(x.t), wy(x.wind), x.dir, cls, 5)}` : ''}<text class="dc-val" x="${f1(px(x.t))}" y="${base + 14}">${Math.round(x.wind)}${g}</text>`;
+        })
+        .join(''),
+    );
+    y = base + 20;
+  }
+
+  // Now, on today.
+  const ti = days.indexOf(todayIso());
+  if (ti >= 0) {
+    const x = px(ti * 24 + nowHour()) - hw / 2;
+    parts.push(`<line class="dc-now" x1="${f1(x)}" x2="${f1(x)}" y1="18" y2="${y}" />`);
+  }
+
+  const said = sea ? 'Hour by hour: swell, tide, swell period and wind for each day.' : 'Hour by hour: weather, temperature, rain and wind for each day.';
   const key = sea
-    ? `Bars are swell in metres with its direction and period below${hasTide ? '; the line is the tide' : ''}. Wind in km/h, average to gust${faces != null ? ': green offshore, orange cross-shore, red onshore' : ''}${best && cat === 'surfing' ? '. The green mark is the best time' : ''}.`
-    : `Temperature line, rain bars in mm with the chance of rain below${hasTide && cat === 'kayaking' ? ', the tide' : ''}, and wind in km/h, average to gust.`;
-  const html = `<div class="dc"><div class="dc-scroll" data-start="${Math.round(scrollTo)}"><svg class="dc-svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="${esc(said)}">${shade.join('')}${parts.join('')}</svg></div><p class="dc-key">${esc(key)}</p></div>`;
-  return { html, scrollTo };
+    ? `Bars are swell in metres, with its direction and period below${hasTide ? '; the teal line is the tide' : ''}. Wind in km/h: the solid line is the average, the dashed line the gusts${faces != null ? '; arrows green offshore, orange cross-shore, red onshore' : ''}${cat === 'surfing' ? '. The green mark is the best time' : ''}.`
+    : `Temperature line, rain bars with the chance of rain${hasTide && cat === 'kayaking' ? ', the tide' : ''}, and wind in km/h: the solid line is the average, the dashed line the gusts. Each day shows its total rain.`;
+  return `<div class="dc"><div class="dc-scroll" style="--day-w:${f1(opts.dayWidth)}px"><svg class="dc-svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="${esc(said)}">${back.join('')}${parts.join('')}</svg></div><p class="dc-key">${esc(key)}</p></div>`;
 }
 
-/** The tide as a line (with a soft fill under it) and its high and low times. */
-function tideLayer(f: Forecast, hrs: ChartHour[], date: string, from: number, to: number, cx: (h: number) => number, top: number, height: number): string {
+/** The tide as a line, with its high and low times. */
+function tideLayer(f: Forecast, hrs: ChartHour[], days: string[], px: (t: number) => number, top: number, height: number): string {
   const pts = hrs.filter((x) => x.tide != null);
+  if (!pts.length) return '';
   const lo = Math.min(...pts.map((x) => x.tide!));
   const hi = Math.max(...pts.map((x) => x.tide!));
   const span = Math.max(0.3, hi - lo);
   const ty = (v: number) => top + height - ((v - lo) / span) * height;
   const out: string[] = [];
-  for (const run of runs(hrs, (x) => x.tide != null)) {
-    const line = smooth(run.map((x) => [cx(x.h), ty(x.tide!)]));
-    out.push(`<path class="dc-tide" d="${line}" />`);
-  }
+  for (const run of runs(hrs, (x) => x.tide != null)) out.push(`<path class="dc-tide" d="${smooth(run.map((x) => [px(x.t), ty(x.tide!)]))}" />`);
   // High and low tide times, from the same turning points as the rest of the app.
-  const m = f.marine!;
-  const next = new Date(`${date}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  const tides: Tide[] = [...tidesOn(m, date), ...tidesOn(m, next.toISOString().slice(0, 10)).map((t) => ({ ...t, hour: t.hour + 24 }))].filter((t) => t.hour >= from && t.hour < to);
-  const at = (hour: number) => {
-    const a = hrs.find((x) => x.h === Math.floor(hour));
-    const b = hrs.find((x) => x.h === Math.floor(hour) + 1);
-    if (a?.tide == null) return null;
-    return b?.tide != null ? a.tide + (b.tide - a.tide) * (hour - Math.floor(hour)) : a.tide;
-  };
+  const tides: Tide[] = days.flatMap((d, n) => tidesOn(f.marine!, d).map((t) => ({ ...t, hour: t.hour + n * 24 })));
   for (const t of tides) {
-    const v = at(t.hour);
-    if (v == null) continue;
-    const x = (t.hour - from + 0.5) * HOUR_W;
+    const a = hrs[Math.floor(t.hour)];
+    const b = hrs[Math.floor(t.hour) + 1];
+    if (a?.tide == null) continue;
+    const v = b?.tide != null ? a.tide + (b.tide - a.tide) * (t.hour - Math.floor(t.hour)) : a.tide;
+    const x = px(t.hour);
     const yy = ty(v);
-        out.push(
-      `<circle class="dc-tide-dot" cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="3" /><text class="dc-tide-val" x="${x.toFixed(1)}" y="${(yy - 7).toFixed(1)}">${t.type} ${clock(t.hour)}</text>`,
-    );
+    const high = t.type === 'High';
+    out.push(`<circle class="dc-tide-dot" cx="${f1(x)}" cy="${f1(yy)}" r="2.6" /><text class="dc-tide-val" x="${f1(x)}" y="${f1(yy - 6)}">${high ? 'H' : 'L'} ${clock(t.hour % 24)}</text>`);
   }
   return out.join('');
 }
-
 
 /** The day picked on the map's day stepper (or from a Plan pick), so a card opens on that day. */
 let picked: string | null = null;

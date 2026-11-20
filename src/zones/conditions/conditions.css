@@ -210,39 +210,46 @@
 .cd-sum-days button.on.cd-v-mar { box-shadow: inset 0 -3px 0 var(--cd-mar); }
 .cd-sum-days button.on.cd-v-skip { box-shadow: inset 0 -3px 0 var(--cd-skip); }
 
-/* Hour-by-hour chart for one day (daychart.ts). It scrolls sideways; SVG text and lines take the app's colours. */
+/* Hour-by-hour chart (daychart.ts): one day is the card's width, and it scrolls on through the week. */
 .dc { margin-top: 8px; }
 .dc-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; background: var(--field); border: 1px solid var(--border); border-radius: var(--r-m); padding: 6px 0 2px; overscroll-behavior-x: contain; }
 .dc-scroll::-webkit-scrollbar { display: none; }
 .dc-svg { display: block; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
 .dc-svg text { text-anchor: middle; }
 .dc-night { fill: #000; opacity: 0.22; }
-.dc-hour { fill: var(--muted); font-size: 10.5px; font-weight: 600; }
-.dc-hour-day { fill: var(--text); }
+.dc-daysep { stroke: var(--muted); stroke-width: 1; opacity: 0.45; }
+.dc-svg .dc-dayname { text-anchor: start; fill: var(--text); font-family: var(--font-display); font-size: 13px; font-weight: 600; }
+.dc-daymm { fill: var(--rain); font-family: var(--font-body); font-size: 11px; font-weight: 700; }
+.dc-hour { fill: var(--muted); font-size: 10px; font-weight: 600; }
 .dc-best { fill: var(--cd-go); }
-.dc-val { fill: var(--text); font-size: 10.5px; font-weight: 600; }
+.dc-val { fill: var(--text); font-size: 10px; font-weight: 600; }
 .dc-gust { fill: var(--muted); font-weight: 500; }
-.dc-arrow path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dc-arrow path, .dc-warrow path { fill: none; stroke: var(--text); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dc-warrow-bg { fill: var(--field); stroke: var(--border); stroke-width: 1; }
 .dc-offshore path { stroke: var(--cd-go); }
 .dc-cross-shore path { stroke: var(--cd-mar); }
 .dc-onshore path { stroke: var(--cd-skip); }
 .dc-swell-arrow path { stroke: var(--paper); }
 .dc-base { stroke: var(--border); stroke-width: 1; }
-.dc-swell { fill: var(--paper); opacity: 0.88; }
-.dc-swell-val { fill: var(--paper); font-size: 10.5px; font-weight: 700; }
+.dc-swell { fill: var(--paper); opacity: 0.85; }
+.dc-swell-val { fill: var(--paper); font-size: 10px; font-weight: 700; }
 .dc-tide { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
 .dc-tide-dot { fill: var(--accent); stroke: var(--field); stroke-width: 1.5; }
-.dc-tide-val { fill: var(--accent); font-size: 10px; font-weight: 700; paint-order: stroke; stroke: var(--field); stroke-width: 3px; stroke-linejoin: round; }
-.dc-sky { color: var(--text); }
+.dc-tide-val { fill: var(--accent); font-size: 9.5px; font-weight: 700; paint-order: stroke; stroke: var(--field); stroke-width: 3px; stroke-linejoin: round; }
+.dc-sym { color: var(--text); }
+.dc-sym-sun { fill: var(--sun); }
+.dc-sym-cloud { fill: var(--text); }
+.dc-sym-mask { fill: var(--field); }
+.dc-sym-rain { fill: none; stroke: var(--rain); stroke-width: 16; stroke-linecap: round; }
 .dc-temp { fill: none; stroke: var(--paper); stroke-width: 2; stroke-linecap: round; }
 .dc-temp-dot { fill: var(--paper); }
-.dc-temp-val { fill: var(--text); font-size: 10.5px; font-weight: 700; }
+.dc-temp-val { fill: var(--text); font-size: 10px; font-weight: 700; }
 .dc-zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
-.dc-zero-label { fill: var(--muted); font-size: 9.5px; text-anchor: start !important; }
-.dc-rain { fill: #8fc1d8; opacity: 0.75; }
-.dc-rain-val { fill: #8fc1d8; font-size: 9.5px; font-weight: 700; }
+.dc-rain { fill: var(--rain); }
 .dc-prob { fill: var(--muted); font-size: 9.5px; font-weight: 600; }
-.dc-prob-hi { fill: #8fc1d8; }
+.dc-prob-hi { fill: var(--rain); }
+.dc-wind-line { fill: none; stroke: var(--text); stroke-width: 1.8; stroke-linecap: round; }
+.dc-gust-line { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 3 3; opacity: 0.8; }
 .dc-now { stroke: var(--paper); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: 0.8; }
 .dc-key { margin: 6px 2px 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
 .cd-sum-dist { display: block; margin-top: 6px; color: var(--muted); font-size: 0.8rem; }

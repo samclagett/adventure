@@ -41,22 +41,15 @@ function periodHtml(p: Period, cat: string, faces: number | null): string {
   return `<span class="cd-p cd-p-${p.id}" role="img" aria-label="${esc(said)}" title="${esc(said)}"><span class="cd-p-label">${p.label}</span>${WEATHER_ICONS[p.kind]}${p.temp != null ? `<b>${Math.round(p.temp)}°</b>` : '<b></b>'}<span class="cd-p-meta">${wind}${rain}</span></span>`;
 }
 
-/**
- * The days in the summary strip: the next four, stretched to reach the day picked on the map
- * (up to the marine forecast's eight days).
- */
-function stripDates(): string[] {
-  const all = daysFor('2weeks').slice(0, MARINE_DAYS);
-  const p = pickedDay();
-  const n = p ? all.indexOf(p) : -1;
-  return all.slice(0, Math.max(4, n + 1));
-}
+/** The days in the summary strip and the hour-by-hour chart: a week (the marine forecast goes out eight days). */
+const STRIP_DAYS = Math.min(7, MARINE_DAYS);
+const stripDates = () => daysFor('2weeks').slice(0, STRIP_DAYS);
 
 /**
  * The summary at the top of a place card, shown even when the card is pulled down: the best day, a strip of
  * days (tap one to chart it) and the hour-by-hour chart for the chosen day (daychart.ts).
  */
-function summaryHtml(item: HitListItem, data: ConditionsData, chosen: string): string {
+function summaryHtml(item: HitListItem, data: ConditionsData, chosen: string, dayWidth: number): string {
   const home = getHome();
   const dist = home && item.lat != null ? `${travelText(home, { lat: item.lat, lng: item.lng! })} from ${home.name}` : '';
   const f = data.get(item);
@@ -84,8 +77,8 @@ function summaryHtml(item: HitListItem, data: ConditionsData, chosen: string): s
     })
     .join('');
   const table = `<button type="button" class="cd-table-btn" data-act="matrix" aria-label="Morning and afternoon conditions table">${TABLE_ICON}<span>AM / PM</span></button>`;
-  const chart = dayChart(item, f, chosen);
-  return `<div class="cd-sum">${pill}${table}</div><div class="cd-sum-days" style="grid-template-columns:repeat(${dates.length},1fr)">${strip}</div>${chart ? chart.html : ''}${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  const chart = dayChart(item, f, { dates, dayWidth });
+  return `<div class="cd-sum">${pill}${table}</div><div class="cd-sum-days" style="grid-template-columns:repeat(${dates.length},1fr)">${strip}</div>${chart ?? ''}${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
 }
 
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
@@ -95,17 +88,37 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
   onSnowChange(() => refillSummary?.());
   hl.addCardSummary((item, el) => {
     if (item.lat == null || item.lng == null) return;
-    // The card opens on the day picked on the map (or today), and a tap on the day strip changes it.
+    // The card opens on the day picked on the map (or today). The chart scrolls through the week; the strip
+    // follows it, and a tap on the strip scrolls the chart to that day.
     const dates = stripDates();
     const p = pickedDay();
     let chosen = p && dates.includes(p) ? p : dates[0];
+    const mark = () =>
+      el.querySelectorAll<HTMLButtonElement>('[data-day]').forEach((b) => {
+        b.classList.toggle('on', b.dataset.day === chosen);
+        b.setAttribute('aria-pressed', String(b.dataset.day === chosen));
+      });
     const fill = () => {
       if (!el.isConnected) return;
-      const keep = el.querySelector<HTMLElement>('.dc-scroll')?.scrollLeft;
-      el.innerHTML = summaryHtml(item, data, chosen);
+      const dayWidth = Math.max(280, el.clientWidth - 2);
+      el.innerHTML = summaryHtml(item, data, chosen, dayWidth);
       const scroller = el.querySelector<HTMLElement>('.dc-scroll');
-      // Keep the scroll when the forecast refreshes; a new day starts at its morning (or now, today).
-      if (scroller) scroller.scrollLeft = keep ?? Number(scroller.dataset.start ?? 0);
+      if (scroller) {
+        scroller.scrollLeft = Math.max(0, dates.indexOf(chosen)) * dayWidth;
+        let ticking = false;
+        scroller.addEventListener('scroll', () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            ticking = false;
+            const n = Math.min(dates.length - 1, Math.floor((scroller.scrollLeft + dayWidth * 0.5) / dayWidth));
+            if (dates[n] !== chosen) {
+              chosen = dates[n];
+              mark();
+            }
+          });
+        });
+      }
       el.querySelector('[data-act="matrix"]')?.addEventListener('click', (e) => {
         e.stopPropagation();
         const f = data.get(item);
@@ -114,10 +127,9 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
       el.querySelectorAll<HTMLButtonElement>('[data-day]').forEach((b) =>
         b.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (b.dataset.day === chosen) return;
           chosen = b.dataset.day!;
-          el.querySelector('.dc-scroll')?.remove();
-          fill();
+          mark();
+          el.querySelector('.dc-scroll')?.scrollTo({ left: dates.indexOf(chosen) * dayWidth, behavior: 'smooth' });
         }),
       );
     };

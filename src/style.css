@@ -3,6 +3,7 @@
  * - Surfaces are dark navy; text is near white; `--muted` is for secondary text.
  * - "Paper and ink" (the pin look) is the one highlight: primary buttons and anything selected are paper with ink text.
  * - `--accent` (a soft teal) is only for small touches: links, the status dot, sliders and switches.
+ * - Weather: the hour-by-hour chart colours sun `--sun` and rain `--rain`; nothing else uses them.
  * - Category icons are always ink on a paper disc, like the pins. Category colours are only thin rings and edges.
  * - Corners: --r-s for inputs and small buttons, --r-m for buttons and rows, --r-l for sheets. Pills are 999px.
  * - Type: Inter for everything, Barlow Semi Condensed for headings.
@@ -25,6 +26,9 @@
   --go: #8fa66b;
   --mar: #d0a052;
   --skip: #b86a5c;
+  /* Weather symbols in the hour-by-hour chart (Sam, 2026-11-20): yellow sun, dark blue rain. */
+  --sun: #f0c24b;
+  --rain: #3f74d8;
   --paper: #efe9dc;
   --ink: #1b2830;
   --r-s: 10px;
