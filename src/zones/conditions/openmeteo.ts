@@ -3,7 +3,7 @@
  * Weather comes from its forecast API (which blends BOM's ACCESS model with others) and swell, tides and
  * water temperature from its marine API. Many places go in one request, so a whole hit list is a few calls.
  *
- * Swell heights are MODEL open-ocean swell in metres. They are not the surf face height you'd see on
+ * Swell heights are MODEL total wave height in metres (see swellHeights in summary.ts). They are not the surf face height you'd see on
  * Surfline, so never convert them to feet (lesson from Sam's Daily Surf Report).
  */
 

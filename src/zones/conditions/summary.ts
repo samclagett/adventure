@@ -277,9 +277,7 @@ export function tidesOn(marine: HourlyMarine, date: string): Tide[] {
 function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined, date: string, faces: number | null, r: Rules): SurfDay | null {
   if (!marine) return null;
   const [first, last] = r.hours;
-  const swellH = hoursOf(marine.time, marine.swell_wave_height, date);
-  const waveH = hoursOf(marine.time, marine.wave_height, date);
-  const heights = new Map((swellH.length ? swellH : waveH).filter(([h]) => h >= first && h < last));
+  const heights = new Map(hoursOf(marine.time, swellHeights(marine), date).filter(([h]) => h >= first && h < last));
   if (!heights.size) return null;
   const periods = new Map(hoursOf(marine.time, marine.swell_wave_period, date));
   const dirs = new Map(hoursOf(marine.time, marine.swell_wave_direction, date));
@@ -425,11 +423,21 @@ function hrsOf(h: HourlyWeather | undefined, date: string): Hour[] {
   return out;
 }
 
+/**
+ * The swell height we show and rate: the model's total wave height (all swells plus local wind waves).
+ * Open-Meteo's `swell_wave_height` is only the biggest single swell, so it reads low on mixed days, e.g. when a
+ * new south swell arrives under an older north-east one, and fell well below WillyWeather and BOM's forecasts.
+ * Falls back to the primary swell if a forecast has no total.
+ */
+export function swellHeights(m: HourlyMarine): (number | null)[] {
+  return (m.wave_height ?? []).some((v) => v != null) ? m.wave_height : m.swell_wave_height;
+}
+
 function seaOf(m: HourlyMarine | undefined, date: string): SeaHour[] {
   if (!m) return [];
   const start = m.time.indexOf(`${date}T00:00`);
   if (start < 0) return [];
-  const swell = m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m.wave_height;
+  const swell = swellHeights(m);
   const out: SeaHour[] = [];
   for (let n = 0; n < 24 && start + n < m.time.length; n++) {
     const i = start + n;
@@ -732,7 +740,7 @@ export function seaFor(f: Forecast, date: string, id: Period['id']): PeriodSea |
   if (!m) return null;
   const p = PERIODS.find((x) => x.id === id)!;
   const idx = hourIndexes(m.time, date, p.from, p.to);
-  const swellList = m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m.wave_height;
+  const swellList = swellHeights(m);
   let peak = -1;
   idx.forEach((i) => {
     if (swellList[i] != null && (peak < 0 || swellList[i]! > swellList[peak]!)) peak = i;
