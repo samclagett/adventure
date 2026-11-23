@@ -1,7 +1,7 @@
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { Forecast } from './openmeteo';
-import { clock, dayShort, tidesOn, todayIso, windRelation, daysOf, type Tide } from './summary';
+import { clock, dayShort, tidesOn, todayIso, windRelation, daysOf, swellHeights, type Tide } from './summary';
 import { WEATHER_ICONS, periodKind } from './weather-icons';
 
 /**
@@ -50,7 +50,7 @@ function hoursOf(f: Forecast, dates: string[]): ChartHour[] {
   const m = f.marine;
   const wi = w?.time?.indexOf(`${dates[0]}T00:00`) ?? -1;
   const mi = m?.time?.indexOf(`${dates[0]}T00:00`) ?? -1;
-  const swellList = m && m.swell_wave_height.some((v) => v != null) ? m.swell_wave_height : m?.wave_height;
+  const swellList = m ? swellHeights(m) : undefined;
   const out: ChartHour[] = [];
   for (let t = 0; t < dates.length * 24; t++) {
     const i = wi >= 0 && wi + t < (w?.time.length ?? 0) ? wi + t : -1;
@@ -249,17 +249,48 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
     });
   }
 
+  // Wind first, at the top: the average and the gusts as two curves, arrows along the average.
+  // The scale fits the week's strongest AVERAGE wind with room above (at least 20 km/h), so the average line
+  // moves; on the windiest days the gust line flattens at the top (the gust numbers are still printed).
+  {
+    const top = y + 12;
+    const h = 60;
+    const base = top + h;
+    const maxW = Math.max(20, ...hrs.map((x) => x.wind ?? 0)) * 1.5;
+    const wy = (v: number) => base - (Math.min(v, maxW) / maxW) * h;
+    parts.push(`<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />`);
+    for (const run of runs(hrs, (x) => x.gust != null)) parts.push(`<path class="dc-gust-line" d="${smooth(run.map((x) => [px(x.t), wy(x.gust!)]))}" />`);
+    for (const run of runs(hrs, (x) => x.wind != null)) parts.push(`<path class="dc-wind-line" d="${smooth(run.map((x) => [px(x.t), wy(x.wind!)]))}" />`);
+    parts.push(
+      steps
+        .map((x) => {
+          if (x.wind == null) return '';
+          const cls = faces != null && x.dir != null ? `dc-warrow dc-${windRelation(x.dir, faces)}` : 'dc-warrow';
+          const g = x.gust != null && Math.round(x.gust) > Math.round(x.wind) ? `<tspan class="dc-gust">–${Math.round(x.gust)}</tspan>` : '';
+          return `${x.dir != null ? `<circle class="dc-warrow-bg" cx="${f1(px(x.t))}" cy="${f1(wy(x.wind))}" r="7.5" />${arrow(px(x.t), wy(x.wind), x.dir, cls, 5)}` : ''}<text class="dc-val" x="${f1(px(x.t))}" y="${base + 14}">${Math.round(x.wind)}${g}</text>`;
+        })
+        .join(''),
+    );
+    y = base + 20;
+  }
+
+
   if (sea) {
     const plotTop = y + 14;
-    const plotH = 80;
+    const plotH = 90;
     const base = plotTop + plotH;
-    const maxSwell = Math.max(2, ...hrs.map((x) => x.swell ?? 0)) * 1.1;
+    // The scale fits the week's swell: the top is just above its biggest, and the bottom is raised to the
+    // half metre below its smallest (less 0.3 m), so changes show. Heights are printed under the bars.
+    const swells = hrs.map((x) => x.swell).filter((v): v is number => v != null);
+    const minSwell = Math.max(0, Math.floor((Math.min(...swells) - 0.3) * 2) / 2);
+    const maxSwell = Math.max(minSwell + 1, Math.max(...swells) * 1.05);
+    const sh = (v: number) => Math.max(2, ((v - minSwell) / (maxSwell - minSwell)) * plotH);
     const barW = Math.max(3, hw - 3);
     parts.push(
       `<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />` +
-        hrs.map((x) => (x.swell == null ? '' : `<rect class="dc-swell" x="${f1(px(x.t) - barW / 2)}" y="${f1(base - Math.max(2, (x.swell / maxSwell) * plotH))}" width="${f1(barW)}" height="${f1(Math.max(2, (x.swell / maxSwell) * plotH))}" rx="1.5" />`)).join(''),
+        hrs.map((x) => (x.swell == null ? '' : `<rect class="dc-swell" x="${f1(px(x.t) - barW / 2)}" y="${f1(base - sh(x.swell))}" width="${f1(barW)}" height="${f1(sh(x.swell))}" rx="1.5" />`)).join(''),
     );
-    if (hasTide) parts.push(tideLayer(f, hrs, days, px, plotTop + 6, plotH * 0.4));
+    if (hasTide) parts.push(tideLayer(f, hrs, days, px, plotTop + 8, plotH * 0.55));
     y = base + 6;
     // Swell height, direction and period under the bars, every three hours.
     parts.push(
@@ -286,12 +317,12 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
     y += size + 6;
     // Temperature line, with values every three hours.
     const tempTop = y + 14;
-    const tempH = 40;
+    const tempH = 56;
     const temps = hrs.map((x) => x.temp).filter((t): t is number => t != null);
     if (temps.length) {
       const lo = Math.min(...temps);
       const hi = Math.max(...temps);
-      const span = Math.max(8, hi - lo);
+      const span = Math.max(5, hi - lo);
       const mid = (hi + lo) / 2;
       const ty = (t: number) => tempTop + tempH / 2 - ((t - mid) / span) * tempH;
       if (cat === 'skiing' && lo <= 0 && hi >= 0) parts.push(`<line class="dc-zero" x1="0" x2="${W}" y1="${f1(ty(0))}" y2="${f1(ty(0))}" />`);
@@ -304,9 +335,9 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
     }
     // Rain bars each hour, chance of rain every three hours.
     const rainTop = tempTop + tempH + 8;
-    const rainH = 24;
+    const rainH = 32;
     const base = rainTop + rainH;
-    const maxRain = Math.max(3, ...hrs.map((x) => x.rain ?? 0));
+    const maxRain = Math.max(2, ...hrs.map((x) => x.rain ?? 0));
     const barW = Math.max(3, hw - 3);
     parts.push(
       `<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />` +
@@ -336,29 +367,6 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
     }
   }
 
-  // Wind: the average and the gusts as two curves, arrows along the average.
-  {
-    const top = y + 12;
-    const h = 40;
-    const base = top + h;
-    const maxW = Math.max(30, ...hrs.map((x) => x.gust ?? x.wind ?? 0));
-    const wy = (v: number) => base - (v / maxW) * h;
-    parts.push(`<line class="dc-base" x1="0" x2="${W}" y1="${base}" y2="${base}" />`);
-    for (const run of runs(hrs, (x) => x.gust != null)) parts.push(`<path class="dc-gust-line" d="${smooth(run.map((x) => [px(x.t), wy(x.gust!)]))}" />`);
-    for (const run of runs(hrs, (x) => x.wind != null)) parts.push(`<path class="dc-wind-line" d="${smooth(run.map((x) => [px(x.t), wy(x.wind!)]))}" />`);
-    parts.push(
-      steps
-        .map((x) => {
-          if (x.wind == null) return '';
-          const cls = faces != null && x.dir != null ? `dc-warrow dc-${windRelation(x.dir, faces)}` : 'dc-warrow';
-          const g = x.gust != null && Math.round(x.gust) > Math.round(x.wind) ? `<tspan class="dc-gust">–${Math.round(x.gust)}</tspan>` : '';
-          return `${x.dir != null ? `<circle class="dc-warrow-bg" cx="${f1(px(x.t))}" cy="${f1(wy(x.wind))}" r="7.5" />${arrow(px(x.t), wy(x.wind), x.dir, cls, 5)}` : ''}<text class="dc-val" x="${f1(px(x.t))}" y="${base + 14}">${Math.round(x.wind)}${g}</text>`;
-        })
-        .join(''),
-    );
-    y = base + 20;
-  }
-
   // Now, on today.
   const ti = days.indexOf(todayIso());
   if (ti >= 0) {
@@ -366,9 +374,9 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
     parts.push(`<line class="dc-now" x1="${f1(x)}" x2="${f1(x)}" y1="18" y2="${y}" />`);
   }
 
-  const said = sea ? 'Hour by hour: swell, tide, swell period and wind for each day.' : 'Hour by hour: weather, temperature, rain and wind for each day.';
+  const said = sea ? 'Hour by hour: wind, swell, tide and swell period for each day.' : 'Hour by hour: weather, temperature, rain and wind for each day.';
   const key = sea
-    ? `Bars are swell in metres, with its direction and period below${hasTide ? '; the teal line is the tide' : ''}. Wind in km/h: the solid line is the average, the dashed line the gusts${faces != null ? '; arrows green offshore, orange cross-shore, red onshore' : ''}${cat === 'surfing' ? '. The green mark is the best time' : ''}.`
+    ? `Wind on top. Bars are swell in metres (all swells plus wind waves; the scale starts above zero so changes show), with the main swell’s direction and period below${hasTide ? '; the teal line is the tide' : ''}. Wind in km/h: the solid line is the average, the dashed line the gusts${faces != null ? '; arrows green offshore, orange cross-shore, red onshore' : ''}${cat === 'surfing' ? '. The green mark is the best time' : ''}.`
     : `Temperature line, rain bars with the chance of rain${hasTide && cat === 'kayaking' ? ', the tide' : ''}, and wind in km/h: the solid line is the average, the dashed line the gusts. Each day shows its total rain.`;
   return `<div class="dc"><div class="dc-scroll" style="--day-w:${f1(opts.dayWidth)}px"><svg class="dc-svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="${esc(said)}">${back.join('')}${parts.join('')}</svg></div><p class="dc-key">${esc(key)}</p></div>`;
 }

@@ -168,7 +168,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
       const water = days.map((d) => d.water).filter((w): w is number => w != null);
       const notes: string[] = [];
       if (cat === 'surfing') {
-        notes.push('Swell is model open-ocean swell in metres, not Surfline’s face height in feet.');
+        notes.push('Swell is model wave height in metres (all swells plus wind waves, like WillyWeather), not Surfline’s face height in feet.');
         if (item.faces == null) notes.push('Set which way the beach faces (Edit) to see onshore and offshore wind.');
         if (!f.marine) notes.push('No marine forecast for this spot.');
       }

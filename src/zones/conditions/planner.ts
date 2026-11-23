@@ -196,7 +196,7 @@ export function mountPlanner(
     const busy = data.loading || !!data.error;
     const outsideNote = outside > 0 ? `<p class="pl-muted">${outside} more place${outside === 1 ? ' is' : 's are'} over ${prefs.radius} h away. <button type="button" class="pl-link" data-act="no-radius">Show Australia-wide</button></p>` : '';
     return `${busy ? status : ''}${hero}${heading}${rows}${outsideNote}${busy ? '' : status}
-      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model open-ocean swell in metres, not Surfline’s face height. Ratings follow your rules per activity (green go, orange maybe, red skip), still being tuned. Alerts (wet rock, catchment rain, fire danger) show as small icons and don’t change the colour.</p>`;
+      <p class="pl-muted pl-foot">Forecasts from Open-Meteo, one per area of about 25 km, refreshed every 3 hours. Drive times are by road (OpenStreetMap, via OSRM), without traffic; a km figure means the drive time isn’t in yet. Surf swell is model wave height in metres, not Surfline’s face height. Ratings follow your rules per activity (green go, orange maybe, red skip), still being tuned. Alerts (wet rock, catchment rain, fire danger) show as small icons and don’t change the colour.</p>`;
   }
 
   function fromHtml(): string {
