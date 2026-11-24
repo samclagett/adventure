@@ -24,9 +24,10 @@ const GROUND_CREDIT = 'Imagery Esri, Maxar, Earthstar Geographics · Terrain Map
 const SIZE_COAST = 2400;
 const SIZE_INLAND = 4200;
 const STEP_HOURS = 3;
-/** Prototype (2026-11-25): only Killalea gets the 3D view until Sam has tried it. Remove this to roll out to every place. */
-const PROTOTYPE = /killalea/i;
-const wants3d = (i: HitListItem) => i.lat != null && PROTOTYPE.test(i.name);
+/** Ski areas are big: show more of the mountain. */
+const SIZE_SKI = 6000;
+/** Every place on the map gets the 3D view (Killalea was the prototype, rolled out 2026-11-25). */
+const wants3d = (i: HitListItem) => i.lat != null && i.lng != null;
 
 export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsData) {
   const panel = document.createElement('section');
@@ -145,7 +146,7 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
       lat: next.lat!,
       lng: next.lng!,
       faces: next.faces,
-      size: coastal ? SIZE_COAST : SIZE_INLAND,
+      size: coastal ? SIZE_COAST : categoryOf(next.activity).id === 'skiing' ? SIZE_SKI : SIZE_INLAND,
       coastal,
       pixelRatio: getQuality() === 'light' ? 1 : Math.min(window.devicePixelRatio, 2),
     });
