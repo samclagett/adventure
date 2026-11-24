@@ -21,6 +21,7 @@ A visually rich, slightly game-like web app that combines conditions (weather, w
 - Data: Supabase, with one shared login for both users (sign in once per device). Sync doesn't need to be instant.
 - Budget: free tiers only, for now.
 - Map: MapLibre GL or CesiumJS for 3D terrain you can spin around. Avoid relying on Google 3D tiles (limits and possible cost).
+- Single place (added 2026-11-25): a detailed three.js scene of the spot in the top third of the screen, with live wind, swell, waves, sun, cloud and rain; conditions below. Free satellite imagery for now; Google Photorealistic 3D Tiles only if Sam sets up a key.
 - Routing and travel time: the free public OSRM router (OpenStreetMap roads, no key), calculated in the browser from the home base saved on each phone (Sydney and Victoria), and saved there. (Changed from OpenRouteService 2026-11-16: OSRM needs no account or key.)
 - Geocoding: OpenStreetMap Nominatim for simple name guesses.
 

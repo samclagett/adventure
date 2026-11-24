@@ -11,6 +11,7 @@ import { showTab } from '../shared/tabs';
 import { getHome } from './home';
 import { ensureDrives } from './drive';
 import { hazardsFor, loadHazards } from './hazards';
+import { mountSpot } from '../spot';
 
 /**
  * Conditions, in three parts:
@@ -30,6 +31,8 @@ export function mountConditions(parent: HTMLElement, adv: AdventureMap, hl: HitL
     hl.openItem(item.id);
   });
   mountCardSection(hl, data, () => visible);
+  // The 3D spot view above an open place card (zones/spot), using the same forecasts.
+  mountSpot(parent, hl, data);
 
   // Fire danger and park closures: loaded once, then matched to places whenever the list changes.
   let hazardsIn = false;

@@ -13,8 +13,11 @@
 export type Snap = 'peek' | 'half' | 'full';
 
 export interface DragSheet {
-  /** Set the sheet's height. `snaps` are the heights allowed while it's open; `peek` is the peek height in pixels. */
-  open(start: Snap, snaps: Snap[], peek?: number): void;
+  /**
+   * Set the sheet's height. `snaps` are the heights allowed while it's open; `peek` is the peek height in pixels.
+   * `top` is how much screen stays clear above the sheet at its full height (default 56 px: the status bar and a strip of map).
+   */
+  open(start: Snap, snaps: Snap[], peek?: number, top?: number): void;
   /** The snap the sheet is resting on. */
   snap(): Snap;
 }
@@ -26,6 +29,7 @@ export function makeDraggable(sheet: HTMLElement, onClose: () => void, onSettle?
   let snaps: Snap[] = ['half', 'full'];
   let current: Snap = 'half';
   let peekPx = 200;
+  let topPx = 56;
 
   /** Room between the tab bar and the top of the screen. */
   function room(): number {
@@ -36,7 +40,7 @@ export function makeDraggable(sheet: HTMLElement, onClose: () => void, onSettle?
 
   function heightOf(s: Snap): number {
     const r = room();
-    const full = r - 56; // keep the status bar and a strip of map showing
+    const full = r - topPx;
     if (s === 'full') return full;
     if (s === 'half') return Math.min(full, Math.round(r * 0.55));
     return Math.min(full, peekPx);
@@ -117,11 +121,13 @@ export function makeDraggable(sheet: HTMLElement, onClose: () => void, onSettle?
   });
 
   return {
-    open(start, allowed, peek) {
+    open(start, allowed, peek, top) {
       snaps = allowed;
       if (peek) peekPx = peek;
+      topPx = top ?? 56;
       current = start;
       setHeight(heightOf(start), !sheet.hidden && !!sheet.style.height);
+      onSettle?.(start);
     },
     snap: () => current,
   };
