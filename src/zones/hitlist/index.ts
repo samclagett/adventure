@@ -68,6 +68,16 @@ export interface HitListApi {
   addCardSection(fill: (item: HitListItem, el: HTMLElement) => void): void;
   /** Fill the short summary at the top of each place card (shown while the card is pulled down). */
   addCardSummary(fill: (item: HitListItem, el: HTMLElement) => void): void;
+  /**
+   * Called when a place card opens (with the place), changes height (`snap`), or closes (null).
+   * The 3D spot view (zones/spot) uses it to show itself above the card.
+   */
+  onCardChange(cb: (item: HitListItem | null, snap: Snap) => void): void;
+  /**
+   * Ask for place cards to open tall, leaving `top` pixels of screen above them (for the 3D spot view),
+   * or return null to open them short as usual.
+   */
+  setCardTop(fn: (item: HitListItem) => number | null): void;
 }
 
 /**
@@ -91,6 +101,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   const located = () => items.filter((i) => i.lat != null && i.lng != null);
   const cardSections: ((item: HitListItem, el: HTMLElement) => void)[] = [];
   const cardSummaries: ((item: HitListItem, el: HTMLElement) => void)[] = [];
+  const cardListeners: ((item: HitListItem | null, snap: Snap) => void)[] = [];
+  let cardTop: ((item: HitListItem) => number | null) | null = null;
+  /** The place whose card is showing, if any. */
+  let cardItem: HitListItem | null = null;
+  const emitCard = (snap: Snap) => cardListeners.forEach((cb) => cb(cardItem, snap));
   /** The Done list (done.ts): every visit, newest first. */
   let trips: DoneTrip[] = [];
   /** Which half of the Hit list sheet is showing. */
@@ -152,6 +167,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
   function openSheet(html: string, kind: string, start: Snap = 'half', snaps: Snap[] = ['half', 'full']) {
     sheet.innerHTML = `<div class="sheet-grab" role="button" aria-label="Drag to resize"></div><button type="button" class="hl-close" aria-label="Close">✕</button><div class="hl-sheet-body">${html}</div>`;
     sheet.querySelector('.hl-close')!.addEventListener('click', userClose);
+    if (!kind.startsWith('card:') && cardItem) {
+      cardItem = null;
+      emitCard('half');
+    }
     const fresh = sheet.hidden || kind !== sheetKind;
     sheet.hidden = false;
     parent.classList.add('hl-sheet-open');
@@ -164,7 +183,9 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     closeSheet();
     if (currentTab() === 'list') showTab('map');
   }
-  const drag = makeDraggable(sheet, userClose);
+  const drag = makeDraggable(sheet, userClose, (snap) => {
+    if (cardItem) emitCard(snap);
+  });
 
   function closeSheet() {
     sheet.hidden = true;
@@ -176,6 +197,10 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     pins.hideDraft();
     pins.setHidden(undefined, false);
     parent.classList.remove('hl-sheet-open');
+    if (cardItem) {
+      cardItem = null;
+      emitCard('peek');
+    }
   }
 
   /** Fly so the point sits in the part of the map the sheet doesn't cover. */
@@ -446,6 +471,11 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     const region = located ? regionOf(item.lat!, item.lng!) : null;
     const sub = [c.label, region].filter(Boolean).join(' · ');
     const directions = located ? `https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}` : '';
+    // With the 3D spot view, the card opens tall (the conditions) under the scene; otherwise short, over the map.
+    const top = located ? cardTop?.(item) ?? null : null;
+    const start: Snap = top != null ? 'full' : 'peek';
+    const snaps: Snap[] = top != null ? ['peek', 'full'] : ['peek', 'half', 'full'];
+    cardItem = item;
     openSheet(
       `
       <div class="hl-peek">
@@ -470,8 +500,8 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
       <p class="hl-error" hidden></p>
     `,
       `card:${item.id}`,
-      'peek',
-      ['peek', 'half', 'full'],
+      start,
+      snaps,
     );
     // A place card belongs to the map, wherever it was opened from.
     if (currentTab() !== 'map') showTab('map');
@@ -485,7 +515,7 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     });
     // Peek shows everything down to the buttons.
     const peek = sheet.querySelector<HTMLElement>('.hl-peek')!;
-    drag.open('peek', ['peek', 'half', 'full'], peek.offsetTop + peek.offsetHeight + 8);
+    drag.open(start, snaps, peek.offsetTop + peek.offsetHeight + 8, top ?? undefined);
 
     sheet.querySelector('[data-act="edit"]')!.addEventListener('click', () => openForm(draftFrom(item)));
     sheet.querySelector('[data-act="mark-done"]')!.addEventListener('click', () => openDoneForm(item));
@@ -878,6 +908,12 @@ export function mountHitList(parent: HTMLElement, adv: AdventureMap): HitListApi
     },
     addCardSummary(fill) {
       cardSummaries.push(fill);
+    },
+    onCardChange(cb) {
+      cardListeners.push(cb);
+    },
+    setCardTop(fn) {
+      cardTop = fn;
     },
   };
 }

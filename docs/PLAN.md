@@ -97,3 +97,14 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   alerts within 5 km of a place, on the dates they cover; Parks Victoria closures read from each park's page in
   `VIC_PARKS` (each with its own radius; add a park there when a Victorian place is added); VicEmergency bushfires
   that aren't yet safe, within 10 km.
+
+### 3D spot view (2026-11-25)
+
+- Open a place and the top third of the screen is a detailed 3D scene (`src/zones/spot/`, three.js), with the
+  conditions card in the bottom two thirds. Real ground with a satellite photo (sharper in the middle), an animated
+  sea whose waves follow the forecast swell and get messier with the wind, swell arrows on the water, wind arrows in
+  the air, and the sky, cloud and rain for the hour. Step through the week with ‹ ›.
+- Free imagery for now (Esri World Imagery and terrarium heights); Google Photorealistic 3D Tiles later if Sam
+  makes a Google Maps Platform key (Sam's call, 2026-11-25).
+- Prototype on Killalea (The Farm) first, then every place.
+
