@@ -106,5 +106,6 @@ From the professional review (Round 1, look and feel, was PRs #20 to #23).
   the air, and the sky, cloud and rain for the hour. Step through the week with ‹ ›.
 - Free imagery for now (Esri World Imagery and terrarium heights); Google Photorealistic 3D Tiles later if Sam
   makes a Google Maps Platform key (Sam's call, 2026-11-25).
-- Prototype on Killalea (The Farm) first, then every place.
+- Prototyped on Killalea (The Farm), then rolled out to every place the same day. Inland places get terrain, sky and wind
+  (no sea); ski areas show a wider 6 km.
 

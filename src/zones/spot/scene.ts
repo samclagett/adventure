@@ -660,6 +660,10 @@ export class SpotScene {
     const n = Math.round(h.cloud * 34);
     const dark = h.rain > 0.3 || h.storm ? 0.55 : 0.9;
     const spread = this.opts.size * 1.6;
+    // Clouds sit above the highest ground (mountains included), not at a fixed height.
+    let top = 0;
+    for (const v of this.ground?.heights ?? []) top = Math.max(top, v);
+    const base = top + 420;
     for (let i = 0; i < n; i++) {
       const mat = new THREE.SpriteMaterial({
         map: this.cloudTex,
@@ -672,7 +676,7 @@ export class SpotScene {
       const s = new THREE.Sprite(mat);
       const size = 350 + Math.random() * 450;
       s.scale.set(size * 1.6, size, 1);
-      s.position.set((Math.random() - 0.5) * spread, 420 + Math.random() * 320, (Math.random() - 0.5) * spread);
+      s.position.set((Math.random() - 0.5) * spread, base + Math.random() * 320, (Math.random() - 0.5) * spread);
       this.clouds.add(s);
     }
   }

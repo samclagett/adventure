@@ -21,7 +21,7 @@ A claim older than 7 days with no activity can be taken over after a message to 
 | hitlist | `src/zones/hitlist/` | free | | |
 | conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
-| spot | `src/zones/spot/` | Claude (Sam) | 3D view for all spots | 2026-11-25 |
+| spot | `src/zones/spot/` | free | | |
 | shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
 | infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
-| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | Claude (Sam) | 3D view for all spots | 2026-11-25 |
+| docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |

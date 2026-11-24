@@ -7,7 +7,7 @@ close it and the scene is thrown away. Only one scene exists at a time, so the h
 - `index.ts`: `mountSpot(parent, hl, data)`, called from `conditions/index.ts` (it shares the forecasts). Uses
   `hl.setCardTop` to open cards tall and `hl.onCardChange` to follow them. Weather/wind/swell chips and the ‹ › hour
   stepper (3 hours a step, a week ahead). three.js loads only when the first spot opens (dynamic import).
-  `PROTOTYPE` limits the view to Killalea while Sam tries it; remove it to roll out everywhere.
+  Every located place gets it (Killalea was the prototype). Ground size: 2.4 km at the coast, 4.2 km inland, 6 km for ski areas.
 - `scene.ts`: the scene. Ground mesh from heights with a satellite photo, plus a sharper 700 m photo patch in the
   middle. Sea is one plane with its own shader: swell waves from the forecast height (drawn 1.6× taller), period
   (deep-water wavelength) and direction, short wind chop that gets messier with wind (worse onshore), breaking lines
