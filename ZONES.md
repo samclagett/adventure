@@ -18,9 +18,10 @@ A claim older than 7 days with no activity can be taken over after a message to 
 | Zone | Folder(s) | Claimed by | Doing | Since |
 |---|---|---|---|---|
 | map | `src/zones/map/` | free | | |
-| hitlist | `src/zones/hitlist/` | free | | |
-| conditions | `src/zones/conditions/`, `scripts/conditions/` | free | | |
+| hitlist | `src/zones/hitlist/` | Claude (Sam) | 3D spot view | 2026-11-25 |
+| conditions | `src/zones/conditions/`, `scripts/conditions/` | Claude (Sam) | 3D spot view | 2026-11-25 |
 | campsites | `src/zones/campsites/`, `scripts/campsites/` | free | | |
-| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | free | | |
-| infra | `.github/`, `supabase/`, `package.json`, config files | free | | |
+| spot | `src/zones/spot/` | Claude (Sam) | 3D spot view | 2026-11-25 |
+| shared | `src/zones/shared/`, `src/main.ts`, `src/style.css` | Claude (Sam) | 3D spot view | 2026-11-25 |
+| infra | `.github/`, `supabase/`, `package.json`, config files | Claude (Sam) | 3D spot view | 2026-11-25 |
 | docs | `docs/`, `README.md`, `CLAUDE.md`, `SETUP.md` | free | | |
