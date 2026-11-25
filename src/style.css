@@ -1,6 +1,6 @@
 /*
  * Design system (Nov 2026). Every screen uses these tokens; zone CSS should not invent its own colours.
- * - Surfaces are dark navy; text is near white; `--muted` is for secondary text.
+ * - Surfaces are dark forest green (Sam, 2026-11-26; was navy); text is near white; `--muted` is for secondary text.
  * - "Paper and ink" (the pin look) is the one highlight: primary buttons and anything selected are paper with ink text.
  * - `--accent` (a soft teal) is only for small touches: links, the status dot, sliders and switches.
  * - Weather: the hour-by-hour chart colours sun `--sun` and rain `--rain`; nothing else uses them.
@@ -11,17 +11,17 @@
  *   with `bottom: var(--tabbar-h)`; the tab bar already keeps clear of the iPhone home bar.
  */
 :root {
-  --bg: #0c1820;
-  --panel: rgba(12, 24, 32, 0.86);
-  --panel-solid: #13242f;
-  --field: #0e1d27;
-  --raised: #1c3240;
-  --text: #e7eef2;
-  --muted: #8ea3b1;
+  --bg: #0e1a12;
+  --panel: rgba(14, 26, 18, 0.86);
+  --panel-solid: #15261b;
+  --field: #101f15;
+  --raised: #1f3527;
+  --text: #e8efea;
+  --muted: #91a697;
   --accent: #6fc3b2;
   --on-accent: #082321;
   --warn: #e2b85c;
-  --border: #24394a;
+  --border: #253d2d;
   /* Condition ratings, muted: green Go, orange Marginal, red Skip. Used for rings, edges and pills only. */
   --go: #8fa66b;
   --mar: #d0a052;
@@ -180,7 +180,7 @@ form button { background: var(--paper); color: var(--ink); border: none; font-we
 #map .maplibregl-ctrl-group { background: var(--panel-solid); border: 1px solid var(--border); }
 #map .maplibregl-ctrl-group button + button { border-top-color: var(--border); }
 #map .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1) brightness(0.9); }
-#map .maplibregl-ctrl-attrib { background: rgba(12, 24, 32, 0.7) !important; color: var(--muted); }
+#map .maplibregl-ctrl-attrib { background: rgba(14, 26, 18, 0.7) !important; color: var(--muted); }
 #map .maplibregl-ctrl-attrib a { color: var(--muted); }
 #map .maplibregl-ctrl-attrib-button { filter: invert(1); }
 

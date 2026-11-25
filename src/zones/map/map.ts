@@ -90,7 +90,7 @@ export function createMap(container: HTMLElement, quality: Quality): AdventureMa
       });
     } else {
       map.setTerrain(null);
-      map.setSky({ 'sky-color': '#0b1a24', 'horizon-color': '#0b1a24', 'fog-color': '#0b1a24' });
+      map.setSky({ 'sky-color': '#0d1c12', 'horizon-color': '#0d1c12', 'fog-color': '#0d1c12' });
     }
     map.setPixelRatio(q === 'light' ? 1 : window.devicePixelRatio);
     applyShading();
