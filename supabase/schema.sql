@@ -100,3 +100,26 @@ on conflict (id) do nothing;
 drop policy if exists "done photos: signed in" on storage.objects;
 create policy "done photos: signed in" on storage.objects
   for all to authenticated using (bucket_id = 'done-photos') with check (bucket_id = 'done-photos');
+
+-- Surf reports (added 2026-11-28): "What did you see?" on surf spots (src/zones/conditions/surfreport.ts).
+-- Each row keeps the forecast for that hour (`forecast`: the sea's parts, wind and the beach's facing) so the
+-- per-spot correction in src/zones/conditions/surfsize.ts can be re-learned if the maths changes.
+-- band is a body size id from BANDS in surfsize.ts, e.g. 'chest-head'.
+create table if not exists public.surf_reports (
+  id          uuid primary key default gen_random_uuid(),
+  place_id    uuid references public.hit_list(id) on delete set null,
+  place_name  text not null,
+  seen_at     timestamptz not null default now(),
+  band        text not null,
+  surface     text check (surface in ('clean', 'bumpy', 'choppy')),
+  note        text,
+  who         text,
+  forecast    jsonb,
+  estimate    real,             -- the face height (m) the app estimated then
+  created_at  timestamptz not null default now()
+);
+create index if not exists surf_reports_place on public.surf_reports (place_id, seen_at desc);
+alter table public.surf_reports enable row level security;
+drop policy if exists "signed in can do everything" on public.surf_reports;
+create policy "signed in can do everything" on public.surf_reports
+  for all to authenticated using (true) with check (true);

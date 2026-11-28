@@ -32,7 +32,10 @@ DAILY = ["weather_code", "temperature_2m_max", "temperature_2m_min", "precipitat
 HOURLY = ["weather_code", "temperature_2m", "precipitation", "precipitation_probability",
           "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m"]
 MARINE = ["wave_height", "swell_wave_height", "swell_wave_period", "swell_wave_direction",
-          "sea_level_height_msl", "sea_surface_temperature"]
+          "sea_level_height_msl", "sea_surface_temperature",
+          # The parts of the sea, for the surf size estimate (src/zones/conditions/surfsize.ts).
+          "wind_wave_height", "wind_wave_period", "wind_wave_direction",
+          "secondary_swell_wave_height", "secondary_swell_wave_period", "secondary_swell_wave_direction"]
 
 
 def get_json(url: str, data: bytes | None = None, headers: dict | None = None) -> object:

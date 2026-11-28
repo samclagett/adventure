@@ -63,6 +63,13 @@ export interface HourlyMarine {
   swell_wave_direction: (number | null)[];
   sea_level_height_msl: (number | null)[];
   sea_surface_temperature: (number | null)[];
+  /** The parts of the sea, for the surf size estimate (surfsize.ts). Missing from forecasts saved before 2026-11-28. */
+  wind_wave_height?: (number | null)[];
+  wind_wave_period?: (number | null)[];
+  wind_wave_direction?: (number | null)[];
+  secondary_swell_wave_height?: (number | null)[];
+  secondary_swell_wave_period?: (number | null)[];
+  secondary_swell_wave_direction?: (number | null)[];
 }
 
 export interface Forecast {
@@ -87,7 +94,20 @@ const DAILY_VARS = [
   'snowfall_sum',
 ];
 const HOURLY_VARS = ['weather_code', 'temperature_2m', 'precipitation', 'precipitation_probability', 'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m'];
-const MARINE_VARS = ['wave_height', 'swell_wave_height', 'swell_wave_period', 'swell_wave_direction', 'sea_level_height_msl', 'sea_surface_temperature'];
+const MARINE_VARS = [
+  'wave_height',
+  'swell_wave_height',
+  'swell_wave_period',
+  'swell_wave_direction',
+  'sea_level_height_msl',
+  'sea_surface_temperature',
+  'wind_wave_height',
+  'wind_wave_period',
+  'wind_wave_direction',
+  'secondary_swell_wave_height',
+  'secondary_swell_wave_period',
+  'secondary_swell_wave_direction',
+];
 
 function chunks<T>(list: T[], size: number): T[][] {
   const out: T[][] = [];
