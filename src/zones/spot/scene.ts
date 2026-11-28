@@ -4,16 +4,15 @@ import { distanceFromLand, findShore, loadGround, loadPhoto, type Ground } from 
 import { sunPosition, type SpotHour } from './weather';
 
 /**
- * The 3D spot scene (three.js): real ground with a satellite photo, an animated sea whose waves follow the
- * forecast swell (size, period, direction) and get messier with wind, swell arrows riding the water,
- * wind streaks and a wind arrow in the air, and a sky with sun, cloud and rain for the chosen hour.
+ * The 3D spot scene (three.js): real ground with a satellite photo, a sea surface ruffled by the wind (glassy
+ * when calm, choppy with whitecaps when it blows), swell arrows on the water with the swell size written in
+ * them, wind streaks in the air, and a sky with sun, cloud and rain for the chosen hour.
+ * Sam swapped the drawn swell waves for the number in the arrow on 2026-11-28: the size reads exactly.
  *
  * Kept light for phones: one ground mesh plus a sharper patch in the middle, one sea mesh with its own shader,
  * and a few hundred moving bits. Everything is thrown away when the spot closes (`dispose`).
  */
 
-/** Waves are drawn this many times taller than real, so a 1 m swell still reads from a few hundred metres up. */
-const WAVE_EXAG = 1.6;
 const GRID = 241;
 const PHOTO_PX = 2048;
 /** The sharper patch of photo in the middle (metres a side). */
@@ -69,6 +68,31 @@ function chevronShape(len: number): THREE.Shape {
   return s;
 }
 
+/** The swell size as a label for the arrows: "1.6 m" in ink with a paper edge, and the period under it. */
+function swellLabel(swell: number, period: number | null): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const g = c.getContext('2d')!;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineJoin = 'round';
+  const write = (text: string, y: number, px: number) => {
+    g.font = `700 ${px}px Inter, system-ui, sans-serif`;
+    g.lineWidth = px * 0.22;
+    g.strokeStyle = '#efe9dc';
+    g.strokeText(text, 256, y);
+    g.fillStyle = '#1b2830';
+    g.fillText(text, 256, y);
+  };
+  write(`${swell.toFixed(1)} m`, period != null ? 104 : 128, 132);
+  if (period != null) write(`${Math.round(period)} s`, 206, 62);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
 /** A soft round puff, drawn once, for cloud sprites. */
 function cloudTexture(): THREE.Texture {
   const c = document.createElement('canvas');
@@ -90,42 +114,15 @@ function cloudTexture(): THREE.Texture {
 }
 
 const SEA_VERT = /* glsl */ `
-uniform float uTime;
-uniform sampler2D uDist;
 uniform float uSize;
-uniform vec2 uSwellDir;
-uniform float uAmp;
-uniform float uK;
-uniform float uOmega;
 varying vec3 vPos;
 varying vec2 vUv;
-varying float vDist;
-varying float vPhase;
 varying float vDepthView;
-varying float vOpen;
-
-vec2 rot(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x - s * v.y, s * v.x + c * v.y); }
 
 void main() {
   vec3 p = position;
   vUv = p.xz / uSize + 0.5;
   vUv.y = 1.0 - vUv.y;
-  vec4 dt = texture2D(uDist, vUv);
-  float d = dt.r * 600.0;
-  vDist = d;
-  vOpen = dt.g;
-  // Waves grow a little as they reach shallower water near the shore, then die on the sand.
-  float shore = smoothstep(2.0, 45.0, d);
-  float shoal = 1.0 + 0.8 * (1.0 - smoothstep(40.0, 320.0, d));
-  float a = uAmp * shore * shoal * dt.g;
-  float ph = uK * dot(uSwellDir, p.xz) - uOmega * uTime;
-  vPhase = ph;
-  float y = a * sin(ph);
-  y += 0.32 * a * sin(uK * 1.37 * dot(rot(uSwellDir, 0.31), p.xz) - uOmega * 1.17 * uTime + 1.3);
-  y += 0.22 * a * sin(uK * 1.8 * dot(rot(uSwellDir, -0.42), p.xz) - uOmega * 1.34 * uTime + 4.1);
-  // Gerstner-style sharpening: crests lean forward a touch.
-  p.xz += uSwellDir * a * 0.45 * cos(ph);
-  p.y = y;
   vPos = p;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vDepthView = -mv.z;
@@ -136,14 +133,9 @@ void main() {
 const SEA_FRAG = /* glsl */ `
 uniform float uTime;
 uniform sampler2D uPhoto;
-uniform vec2 uSwellDir;
+uniform sampler2D uDist;
 uniform vec2 uWindDir;
-uniform float uAmp;
-uniform float uK;
-uniform float uOmega;
 uniform float uChop;
-uniform float uFoamBand;
-uniform float uSwellH;
 uniform vec3 uSun;
 uniform vec3 uSunColor;
 uniform vec3 uSkyTop;
@@ -156,10 +148,7 @@ uniform float uFogNear;
 uniform float uFogFar;
 varying vec3 vPos;
 varying vec2 vUv;
-varying float vDist;
-varying float vPhase;
 varying float vDepthView;
-varying float vOpen;
 
 vec2 rot(vec2 v, float a) { float c = cos(a), s = sin(a); return vec2(c * v.x - s * v.y, s * v.x + c * v.y); }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -175,14 +164,12 @@ vec2 slope(vec2 xz, vec2 d, float k, float a, float w, float off) {
 }
 
 void main() {
+  vec4 dt = texture2D(uDist, vUv);
+  float vDist = dt.r * 600.0;
+  float vOpen = dt.g;
   if (vDist < 0.5) discard; // land
   vec2 xz = vPos.xz;
-  float shore = smoothstep(2.0, 45.0, vDist);
-  float shoal = 1.0 + 0.8 * (1.0 - smoothstep(40.0, 320.0, vDist));
-  float a = uAmp * shore * shoal * vOpen;
-  vec2 g = slope(xz, uSwellDir, uK, a, uOmega, 0.0);
-  g += slope(xz, rot(uSwellDir, 0.31), uK * 1.37, 0.32 * a, uOmega * 1.17, 1.3);
-  g += slope(xz, rot(uSwellDir, -0.42), uK * 1.8, 0.22 * a, uOmega * 1.34, 4.1);
+  vec2 g = vec2(0.0);
   // Wind chop: short waves running with the wind. Glassy when calm, ruffled and messy when it blows.
   float c = (0.08 + uChop * 0.9) * (0.3 + 0.7 * vOpen);
   g += slope(xz, uWindDir, 0.55, 0.05 * c, 2.1, 0.0);
@@ -205,15 +192,9 @@ void main() {
   vec3 H = normalize(normalize(uSun) + V);
   col += uSunColor * pow(max(dot(n, H), 0.0), 220.0) * 2.2;
 
-  // Breaking waves: white lines on the swell crests inside the surf zone, whitewash rolling in behind them.
-  float band = 1.0 - smoothstep(uFoamBand * 0.6, uFoamBand, vDist);
-  float crest = smoothstep(0.82, 0.99, sin(vPhase)) * band * smoothstep(0.25, 0.6, noise(xz * 0.03 + 3.0));
-  float breakup = noise(xz * 0.09 + uTime * 0.15) * (0.5 + uChop);
-  float wash = (1.0 - smoothstep(4.0, uFoamBand * 0.5, vDist)) * smoothstep(0.35, 0.9, noise(xz * 0.06 + uSwellDir * uTime * 0.8));
-  float foam = clamp(crest * (0.8 - 0.5 * uChop * breakup) + wash * 0.5 * min(1.0, uSwellH), 0.0, 1.0);
-  // Whitecaps out to sea once the wind is up.
+  // No drawn swell waves (the size is the number in the swell arrows). Whitecaps out to sea once the wind is up.
   float caps = smoothstep(0.82 - uChop * 0.2, 0.98, noise(xz * 0.05 + uWindDir * uTime * 0.9)) * smoothstep(0.35, 0.9, uChop);
-  foam = max(foam, caps * 0.8);
+  float foam = caps * 0.8;
   // Lap at the edge of the sand.
   foam = max(foam, (1.0 - smoothstep(0.5, 5.0, vDist)) * 0.7);
   col = mix(col, vec3(0.94, 0.95, 0.93) * (0.4 + 0.6 * lit), foam * vOpen);
@@ -494,14 +475,8 @@ export class SpotScene {
       uDist: { value: distTex },
       uPhoto: { value: photo },
       uSize: { value: g.size },
-      uSwellDir: { value: new THREE.Vector2(0, 1) },
       uWindDir: { value: new THREE.Vector2(1, 0) },
-      uAmp: { value: 0.6 },
-      uK: { value: 0.05 },
-      uOmega: { value: 0.6 },
       uChop: { value: 0.2 },
-      uFoamBand: { value: 80 },
-      uSwellH: { value: 1 },
       uSun: { value: this.sunVec },
       uSunColor: { value: new THREE.Color('#fff2d6') },
       uSkyTop: { value: this.skyU.uTop.value },
@@ -513,8 +488,8 @@ export class SpotScene {
       uFogNear: { value: (this.scene.fog as THREE.Fog).near },
       uFogFar: { value: (this.scene.fog as THREE.Fog).far },
     };
-    // About 9 m between points: enough for short wind swells to keep their shape.
-    const geo = new THREE.PlaneGeometry(g.size * 1.3, g.size * 1.3, 360, 360);
+    // A flat surface: the ripples are all in the shader, so a few points will do.
+    const geo = new THREE.PlaneGeometry(g.size * 1.3, g.size * 1.3, 4, 4);
     geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({ uniforms: this.seaU, vertexShader: SEA_VERT, fragmentShader: SEA_FRAG });
     this.sea = new THREE.Mesh(geo, mat);
@@ -572,25 +547,20 @@ export class SpotScene {
   private applySea(h: SpotHour) {
     const u = this.seaU;
     if (!u) return;
-    const H = h.swell ?? 0.3;
-    const T = Math.max(4, h.period ?? 8);
-    const L = 1.56 * T * T; // deep-water wavelength, metres
-    u.uK.value = (2 * Math.PI) / L;
-    u.uOmega.value = (2 * Math.PI) / T;
-    u.uAmp.value = (H / 2) * WAVE_EXAG;
-    u.uSwellH.value = H;
     u.uChop.value = h.chop;
-    u.uFoamBand.value = 20 + 30 * Math.min(3, H);
-    u.uSwellDir.value = toward((h.swellFrom ?? (this.opts.faces ?? 90)) + 180);
     u.uWindDir.value = toward(h.windFrom + 180);
   }
 
   private clearList(list: THREE.Object3D[]) {
     for (const o of list) {
       this.scene.remove(o);
-      const m = o as THREE.Mesh;
-      m.geometry?.dispose();
-      (m.material as THREE.Material | undefined)?.dispose();
+      o.traverse((c) => {
+        const m = c as THREE.Mesh;
+        m.geometry?.dispose();
+        const mat = m.material as THREE.Material | undefined;
+        if (mat && 'map' in mat && mat.map instanceof THREE.Texture) mat.map.dispose();
+        mat?.dispose();
+      });
     }
   }
 
@@ -600,7 +570,9 @@ export class SpotScene {
     this.swellArrows = [];
 
     if (this.sea && h.swell != null && h.swellFrom != null) {
-      const len = 70 + 40 * Math.min(3, h.swell);
+      // Big enough to carry the number; a little longer for a bigger swell.
+      const len = 150 + 25 * Math.min(3, h.swell);
+      const label = swellLabel(h.swell, h.period);
       const dir = toward(h.swellFrom + 180);
       const side = new THREE.Vector2(-dir.y, dir.x);
       // Lanes out to sea, upstream of the spot so the arrows travel in toward it.
@@ -616,6 +588,15 @@ export class SpotScene {
         mesh.add(outline(shape, mat));
         mesh.rotation.y = Math.atan2(-dir.y, dir.x);
         mesh.renderOrder = 2;
+        // The swell size on the arrow, always facing the camera so it reads from any angle.
+        const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: label, transparent: true, depthTest: false, depthWrite: false, fog: false }));
+        tag.scale.set(len * 0.62, len * 0.31, 1);
+        tag.position.set(0, 6, 0);
+        tag.renderOrder = 3;
+        tag.onBeforeRender = () => {
+          tag.material.opacity = mat.opacity / 0.9;
+        };
+        mesh.add(tag);
         this.scene.add(mesh);
         this.swellArrows.push({ mesh, t: (i + 1) / 3, lane });
       }
@@ -731,8 +712,7 @@ export class SpotScene {
         const along = (a.t - 0.5) * run;
         const x = a.lane.x + dir.x * along;
         const z = a.lane.y + dir.y * along;
-        const amp = this.seaU ? (this.seaU.uAmp.value as number) : 0;
-        a.mesh.position.set(x, 3 + amp * 1.4 + Math.sin(t * 1.3 + a.t * 9) * 0.6, z);
+        a.mesh.position.set(x, 3 + Math.sin(t * 1.3 + a.t * 9) * 0.6, z);
         (a.mesh.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.sin(a.t * Math.PI) ** 0.6;
       }
     }

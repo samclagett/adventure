@@ -122,6 +122,8 @@ export interface SurfDay {
   tides: Tide[];
   /** What holds it back, when it isn't a go. */
   why: string[];
+  /** Each surfing hour's score: [hour, 2 green / 1 orange / 0 red], so parts of the day can be rated on their own. */
+  scores: [number, number][];
 }
 
 /** Part of a day: AM 6–11am, PM 12–8pm, and for camping the night (9pm to 5am next morning). */
@@ -356,7 +358,7 @@ function surfDay(marine: HourlyMarine | undefined, wind: HourlyWind | undefined,
   const sizeWord = (w: string) => (w === 'small' ? `small (${m1(Math.max(...hs))} m)` : w === 'big' ? `big (${m1(Math.max(...hs))} m)` : w);
   const why = verdict === 'go' ? [] : [...limits.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => sizeWord(w));
 
-  return { verdict, swellMin: Math.min(...hs), swellMax: Math.max(...hs), period, swellDir, best, am, pm, windRel, tides: tidesOn(marine, date), why };
+  return { verdict, swellMin: Math.min(...hs), swellMax: Math.max(...hs), period, swellDir, best, am, pm, windRel, tides: tidesOn(marine, date), why, scores: [...score.entries()] };
 }
 
 /** Indexes into the hourly lists for `date` from hour `from` to hour `to` (inclusive; past 23 runs into the next day). */
@@ -684,6 +686,51 @@ export function rowsFor(category: string, days: Day[]): Row[] {
 
 export function rateDay(category: string, d: Day): Rated {
   return rateOneDay(category, d);
+}
+
+/** A part of the day with its own rating colour: AM, PM, or for camping the night and for skiing the whole day. */
+export interface RatedPart {
+  id: 'am' | 'pm' | 'night' | 'day';
+  label: string;
+  /** Hours from midnight, [from, to). Past 24 is the next morning. */
+  from: number;
+  to: number;
+  rated: Rated;
+}
+
+/**
+ * The day rated in parts (Sam, 2026-11-28: "break the colours down to show am and pm"). AM runs from the
+ * activity's first hour to noon and PM from noon to its last hour (rules.ts), each rated with the same rules as
+ * the whole day. Camping is rated on the night only and skiing on the day's snow, so they stay one part.
+ */
+export function rateParts(category: string, d: Day): RatedPart[] {
+  const [h0, h1] = d.rules.hours;
+  if (category === 'camping') return [{ id: 'night', label: 'Night', from: h0, to: h1, rated: rateOneDay(category, d) }];
+  if (category === 'skiing' || h0 >= 12 || h1 <= 12) return [{ id: 'day', label: 'Day', from: h0, to: h1, rated: rateOneDay(category, d) }];
+  const halves: [RatedPart['id'], string, number, number][] = [
+    ['am', 'AM', h0, 12],
+    ['pm', 'PM', 12, h1],
+  ];
+  return halves.map(([id, label, from, to]) => {
+    if (category === 'surfing') return { id, label, from, to, rated: rateSurfPart(d, from, to) };
+    return { id, label, from, to, rated: rateOneDay(category, { ...d, rules: { ...d.rules, hours: [from, to] } }) };
+  });
+}
+
+/** A surf day's hours scored in surfDay, read for part of the day: go with two green hours in a row, marginal with any orange. */
+function rateSurfPart(d: Day, from: number, to: number): Rated {
+  const alerts = [...d.alerts];
+  if (!d.surf) return { verdict: 'na', why: ['no swell data'], alerts };
+  const scores = new Map(d.surf.scores.filter(([h]) => h >= from && h < to));
+  if (!scores.size) return { verdict: 'na', why: ['no swell data'], alerts };
+  let run = 0;
+  let longest = 0;
+  for (let h = from; h < to; h++) {
+    run = scores.get(h) === 2 ? run + 1 : 0;
+    longest = Math.max(longest, run);
+  }
+  const verdict: Verdict = longest >= 2 ? 'go' : [...scores.values()].some((v) => v >= 1) ? 'mar' : 'skip';
+  return { verdict, why: verdict === 'go' ? [] : d.surf.why, alerts };
 }
 
 export interface Option {

@@ -7,6 +7,9 @@ import { categoryOf } from '../hitlist/categories';
 import { compass, dayShort, clock, todayIso, weatherWord } from '../conditions/summary';
 import { windArrow } from '../conditions/weather-icons';
 import { getQuality } from '../map/quality';
+import { lastHour, onHour, setHour } from '../conditions/hourbus';
+import { surfAt, windByTime } from '../conditions/surfsize';
+import type { Forecast } from '../conditions/openmeteo';
 import type { SpotScene } from './scene';
 import { hourAt, hoursOf, nowKey, type SpotHour } from './weather';
 
@@ -14,9 +17,10 @@ import { hourAt, hoursOf, nowKey, type SpotHour } from './weather';
 const GROUND_CREDIT = 'Imagery Esri, Maxar, Earthstar Geographics · Terrain Mapzen, Geoscience Australia';
 
 /**
- * The 3D spot view: open a place and the top third of the screen becomes a detailed 3D scene of it
- * (scene.ts), with the place card and its conditions in the bottom two thirds.
- * The scene shows the chosen hour's swell, wind, sun, cloud and rain; step through the hours with ‹ ›.
+ * The 3D spot view: open a place and the top half of the screen becomes a detailed 3D scene of it
+ * (scene.ts), with the place card and its conditions in the bottom half (Sam, 2026-11-28; was a third).
+ * The scene shows the chosen hour's swell, wind, sun, cloud and rain. It follows the slider on the card's
+ * day chart (conditions/hourbus.ts), and its own ‹ › steps move that slider.
  * Pull the card down and the scene hides (the map shows again); close the card and the scene is thrown away.
  */
 
@@ -55,8 +59,8 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
   let hours: string[] = [];
   let at = 0;
 
-  /** The scene's height: a third of the app. Place cards leave this much room above them. */
-  const topPx = () => Math.round(parent.clientHeight / 3);
+  /** The scene's height: half the app. Place cards leave this much room above them. */
+  const topPx = () => Math.round(parent.clientHeight / 2);
   hl.setCardTop((i) => (wants3d(i) ? topPx() : null));
 
   function hourLabel(t: string): string {
@@ -66,7 +70,15 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
     return `${day} ${clock(Number(t.slice(11, 13)))}`;
   }
 
-  function hudHtml(h: SpotHour): string {
+  /** The estimated surf for this hour at a surf spot ("Head to overhead · choppy"), from surfsize.ts. */
+  function surfText(f: Forecast, t: string): string {
+    if (!item || categoryOf(item.activity).id !== 'surfing' || !f.marine) return '';
+    const i = f.marine.time.indexOf(t);
+    const est = i >= 0 ? surfAt(f.marine, i, item, windByTime(f.hourly)) : null;
+    return est ? `Surf ${est.label.toLowerCase()}${est.surface ? ` · ${est.surface}` : ''}` : '';
+  }
+
+  function hudHtml(h: SpotHour, surf = ''): string {
     const chips: string[] = [];
     const wx = [h.temp != null ? `${Math.round(h.temp)}°` : '', weatherWord(h.code)].filter(Boolean).join(' · ');
     if (wx) chips.push(`<span class="spot-chip">${wx}${h.rain >= 0.1 ? ` · ${h.rain.toFixed(1)} mm` : ''}</span>`);
@@ -79,10 +91,13 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
         `<span class="spot-chip">${windArrow(h.swellFrom, 'spot-arrow')} Swell ${h.swell.toFixed(1)} m${h.period != null ? ` · ${Math.round(h.period)} s` : ''} ${compass(h.swellFrom)}</span>`,
       );
     }
+    if (surf) chips.push(`<span class="spot-chip">${surf}</span>`);
     return chips.join('');
   }
 
-  function showHour() {
+  /** Sends the hour to the scene. While the slider is being dragged the scene catches up a moment later. */
+  let sceneTimer = 0;
+  function showHour(fromSlider = false) {
     if (!item || !scene) return;
     const f = data.get(item);
     if (!f) {
@@ -92,24 +107,39 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
     }
     if (!hours.length) {
       hours = hoursOf(f);
-      at = 0;
+      const picked = lastHour(item.id);
+      at = picked ? Math.max(0, hours.indexOf(picked)) : 0;
     }
     const t = hours[at];
     const h = t ? hourAt(f, t, item.faces) : null;
     if (!h) return;
-    scene.setHour(h);
-    hud.innerHTML = hudHtml(h);
+    const s = scene;
+    clearTimeout(sceneTimer);
+    if (fromSlider) sceneTimer = window.setTimeout(() => scene === s && s.setHour(h), 120);
+    else s.setHour(h);
+    hud.innerHTML = hudHtml(h, surfText(f, t));
     when.textContent = hourLabel(t);
     panel.querySelector<HTMLButtonElement>('[data-step="-1"]')!.disabled = at <= 0;
-    panel.querySelector<HTMLButtonElement>('[data-step="1"]')!.disabled = at + STEP_HOURS >= hours.length;
+    panel.querySelector<HTMLButtonElement>('[data-step="1"]')!.disabled = at + 1 >= hours.length;
   }
 
   panel.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
     b.addEventListener('click', () => {
       at = Math.max(0, Math.min(hours.length - 1, at + Number(b.dataset.step) * STEP_HOURS));
       showHour();
+      if (item && hours[at]) setHour(item.id, hours[at], 'spot');
     }),
   );
+
+  // The card's chart slider picks the hour. Hours before now show now (the scene starts at the current hour).
+  onHour((id, time, from) => {
+    if (from !== 'chart' || !item || id !== item.id || !scene || !hours.length) return;
+    const i = hours.indexOf(time);
+    const next = i >= 0 ? i : time < hours[0] ? 0 : hours.length - 1;
+    if (next === at) return;
+    at = next;
+    showHour(true);
+  });
 
   /** three.js is big, so the scene's code only loads the first time a spot opens. */
   let loader: Promise<typeof import('./scene')> | null = null;

@@ -2,7 +2,7 @@ import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { Forecast } from './openmeteo';
 import { COASTAL } from './data';
-import { daysFor, daysOf, rateDay, dayShort, compass, seaFor, windRelation, windArrowClass, windRange, VERDICT_WORD, type Day, type Period, type Tide } from './summary';
+import { daysFor, daysOf, rateDay, rateParts, dayShort, compass, seaFor, windRelation, windArrowClass, windRange, VERDICT_WORD, type Day, type Period, type Tide } from './summary';
 import { WEATHER_ICONS, KIND_WORD, windArrow } from './weather-icons';
 
 /**
@@ -91,7 +91,18 @@ export function matrixHtml(item: HitListItem, f: Forecast): string {
       return `<th colspan="${d.periods.length}" class="mx-day cd-v-${v}" scope="colgroup">${dayShort(d.date)}<small>${VERDICT_WORD[v]}</small></th>`;
     })
     .join('');
-  const sub = days.map((d) => d.periods.map((p, n) => `<th class="mx-part${n === 0 ? ' mx-first' : ''}" scope="col">${p.label}</th>`).join('')).join('');
+  // Each part of the day carries its own rating colour (Sam, 2026-11-28).
+  const sub = days
+    .map((d) => {
+      const parts = rateParts(cat, d);
+      return d.periods
+        .map((p, n) => {
+          const v = (parts.find((x) => x.id === p.id) ?? (parts.length === 1 ? parts[0] : null))?.rated.verdict;
+          return `<th class="mx-part${n === 0 ? ' mx-first' : ''}${v ? ` cd-v-${v}` : ''}" scope="col">${p.label}${v ? `<small>${VERDICT_WORD[v]}</small>` : ''}</th>`;
+        })
+        .join('');
+    })
+    .join('');
   const body = rows
     .map(
       (r) =>

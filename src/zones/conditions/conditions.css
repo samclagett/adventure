@@ -331,3 +331,92 @@
 .pl-row.pl-row-skip, .pl-row.pl-row-na { opacity: 0.8; }
 .pl-why { color: var(--muted); font-size: 0.85rem; }
 .pl-hero .al-lines { margin: 0; }
+
+/* ---- AM / PM rating colours (Sam, 2026-11-28) ---- */
+/* Day strip: each day is split down the middle, morning colour on the left, afternoon on the right. */
+:where(.cd-h) { --am: var(--field); --pm: var(--field); }
+.cd-sum-days .cd-h { color: var(--text); background: linear-gradient(90deg, var(--am) 0 calc(50% - 1px), var(--bg) calc(50% - 1px) calc(50% + 1px), var(--pm) calc(50% + 1px) 100%); }
+.cd-am-go { --am: color-mix(in srgb, var(--cd-go) 34%, var(--field)); }
+.cd-am-mar { --am: color-mix(in srgb, var(--cd-mar) 30%, var(--field)); }
+.cd-am-skip { --am: color-mix(in srgb, var(--cd-skip) 28%, var(--field)); }
+.cd-pm-go { --pm: color-mix(in srgb, var(--cd-go) 34%, var(--field)); }
+.cd-pm-mar { --pm: color-mix(in srgb, var(--cd-mar) 30%, var(--field)); }
+.cd-pm-skip { --pm: color-mix(in srgb, var(--cd-skip) 28%, var(--field)); }
+/* The charted day is paper and ink, with its two ratings as a split bar along the bottom. */
+:where(.cd-h.on) { --am-s: var(--muted); --pm-s: var(--muted); }
+.cd-sum-days .cd-h.on { color: var(--ink); box-shadow: none; background: linear-gradient(90deg, var(--am-s) 0 calc(50% - 1px), var(--paper) calc(50% - 1px) calc(50% + 1px), var(--pm-s) calc(50% + 1px) 100%) bottom / 100% 4px no-repeat, var(--paper); }
+.cd-h.on.cd-am-go { --am-s: var(--cd-go); }
+.cd-h.on.cd-am-mar { --am-s: var(--cd-mar); }
+.cd-h.on.cd-am-skip { --am-s: var(--cd-skip); }
+.cd-h.on.cd-pm-go { --pm-s: var(--cd-go); }
+.cd-h.on.cd-pm-mar { --pm-s: var(--cd-mar); }
+.cd-h.on.cd-pm-skip { --pm-s: var(--cd-skip); }
+/* AM / PM boxes in the day rows: a coloured edge and the rating word beside the label. */
+.cd-p.cd-v-go { box-shadow: inset 3px 0 0 var(--cd-go); }
+.cd-p.cd-v-mar { box-shadow: inset 3px 0 0 var(--cd-mar); }
+.cd-p.cd-v-skip { box-shadow: inset 3px 0 0 var(--cd-skip); }
+.cd-p-v { margin-left: 6px; font-style: normal; letter-spacing: 0; text-transform: none; }
+.cd-v-go .cd-p-v { color: #c9dbae; }
+.cd-v-mar .cd-p-v { color: #e6cf9c; }
+.cd-v-skip .cd-p-v { color: #e3ada2; }
+/* AM / PM columns in the table. */
+.mx-part { border-top: 3px solid transparent; }
+.mx-part.cd-v-go { border-top-color: var(--cd-go); }
+.mx-part.cd-v-mar { border-top-color: var(--cd-mar); }
+.mx-part.cd-v-skip { border-top-color: var(--cd-skip); }
+.mx-part small { display: block; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+
+/* The offshore window for the charted day, under the strip. */
+.cd-offshore { margin: 8px 2px 0; font-size: 0.82rem; font-weight: 600; color: #c9dbae; }
+.cd-offshore.none { color: var(--muted); font-weight: 500; }
+
+/* Chart bands: the AM / PM ratings with their words, and the offshore wind window. */
+.dc-rate rect { stroke-width: 1; }
+.dc-rate text, .dc-off text, .dc-off-none { font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em; }
+.dc-rate-go rect { fill: color-mix(in srgb, var(--cd-go) 34%, var(--field)); stroke: color-mix(in srgb, var(--cd-go) 60%, transparent); }
+.dc-rate-go text { fill: #d4e4bd; }
+.dc-rate-mar rect { fill: color-mix(in srgb, var(--cd-mar) 30%, var(--field)); stroke: color-mix(in srgb, var(--cd-mar) 55%, transparent); }
+.dc-rate-mar text { fill: #e6cf9c; }
+.dc-rate-skip rect { fill: color-mix(in srgb, var(--cd-skip) 28%, var(--field)); stroke: color-mix(in srgb, var(--cd-skip) 50%, transparent); }
+.dc-rate-skip text { fill: #e3ada2; }
+.dc-rate-na rect { fill: var(--raised); }
+.dc-rate-na text { fill: var(--muted); }
+.dc-off rect { fill: var(--cd-go); }
+.dc-off text { fill: var(--ink); }
+.dc-off-none { fill: var(--muted); font-weight: 600; }
+
+/* The slider: a read-out above the chart, a paper line over it, and a knob on a track under it. */
+.dc { position: relative; }
+.dc-readout { min-height: 70px; margin-bottom: 4px; padding: 6px 10px; border-radius: var(--r-s); background: var(--raised); font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+.dc-ro-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; color: var(--text); font-size: 0.84rem; }
+.dc-ro-tag { padding: 1px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; background: var(--field); }
+.dc-ro-tag.cd-v-go { background: color-mix(in srgb, var(--cd-go) 30%, transparent); color: #d4e4bd; }
+.dc-ro-tag.cd-v-mar { background: color-mix(in srgb, var(--cd-mar) 26%, transparent); color: #e6cf9c; }
+.dc-ro-tag.cd-v-skip { background: color-mix(in srgb, var(--cd-skip) 24%, transparent); color: #e3ada2; }
+.dc-ro-items { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.dc-ro-items span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.dc-ro-items b { color: var(--text); font-weight: 600; }
+.dc-ro-items em { font-style: normal; font-weight: 600; }
+.dc-ro-offshore { color: #c9dbae; }
+.dc-ro-cross-shore { color: #e6cf9c; }
+.dc-ro-onshore { color: #e3ada2; }
+.dc-ro-clean { color: #c9dbae; }
+.dc-ro-bumpy { color: #e6cf9c; }
+.dc-ro-choppy { color: #e3ada2; }
+.dc-ro-rain b { color: #8fc1d8; }
+.dc-ro-arrow { width: 13px; height: 13px; }
+.dc-ro-arrow path { fill: none; stroke: var(--muted); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.dc-ro-arrow.dc-offshore path { stroke: var(--cd-go); }
+.dc-ro-arrow.dc-cross-shore path { stroke: var(--cd-mar); }
+.dc-ro-arrow.dc-onshore path { stroke: var(--cd-skip); }
+.dc-ro-arrow.dc-swell-arrow path { stroke: var(--paper); }
+.dc-cursor { position: absolute; left: 0; width: 0; border-left: 2px solid var(--paper); margin-left: -1px; pointer-events: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); opacity: 0.9; }
+.dc-track { position: relative; height: 28px; margin-bottom: 2px; touch-action: none; cursor: grab; -webkit-tap-highlight-color: transparent; }
+.dc-track::before { content: ''; position: absolute; left: 0; right: 0; top: 13px; height: 2px; border-radius: 2px; background: var(--border); }
+.dc-knob { position: absolute; left: -22px; top: 2px; width: 44px; height: 24px; border-radius: 999px; background: var(--paper); box-shadow: var(--shadow); }
+.dc-knob::before, .dc-knob::after { content: ''; position: absolute; top: 7px; width: 2px; height: 10px; border-radius: 1px; background: var(--ink); opacity: 0.55; }
+.dc-knob::before { left: 18px; }
+.dc-knob::after { right: 18px; }
+.dc-track.dragging { cursor: grabbing; }
+.dc-track.dragging .dc-knob { transform-origin: center; }
+.dc-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-s); }

@@ -17,3 +17,15 @@ Python fetchers for this zone live in `scripts/conditions/`.
 - `weather-icons.ts` holds the weather symbols (Phosphor Icons, light weight), including mixed ones (sun and rain, night) and `periodKind`, which picks one symbol for a stretch of hours.
 - Each day is split into AM (6–11am) and PM (12–8pm), plus Night (9pm–5am) for camping, from the hourly forecast (`periodsOf` in summary.ts). Pin cards show the parts; map chips show their symbols.
 - Swell is model wave height in metres (Open-Meteo `wave_height`: all swells plus wind waves; `swell_wave_height` is only the biggest single swell and read too low). Never convert it to feet: only Surfline's face height is in feet.
+
+## AM / PM ratings and the chart slider (2026-11-28)
+
+- `rateParts` (summary.ts) rates AM (activity's first hour to noon) and PM (noon to its last hour) on their own with
+  the same rules; surf uses each hour's score from `surfDay` (`SurfDay.scores`). Camping (night) and skiing stay one part.
+  The day strip is split down the middle (AM left, PM right), the chart has an AM / PM band under the hours, the
+  day rows' AM / PM boxes and the table's AM / PM columns carry their colour.
+- Surf spots that know their facing show the offshore window: a green band on the chart and a line under the strip
+  (`offshoreRuns` / `offshoreText` in daychart.ts, 5am to 8pm).
+- The chart has a slider: a track and knob above the chart, a line over it and a read-out of that hour (wind,
+  surf estimate, swell, tide, weather, rain). Tap the chart to move it there; scrolling keeps it in place on screen.
+  It tells the 3D spot view which hour to show through `hourbus.ts`, and the 3D ‹ › steps move it back.
