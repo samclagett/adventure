@@ -1,7 +1,7 @@
 import type { HitListItem } from '../shared/types';
 import { categoryOf } from '../hitlist/categories';
 import type { Forecast } from './openmeteo';
-import { clock, dayShort, tidesOn, todayIso, windRelation, daysOf, swellHeights, type Tide } from './summary';
+import { clock, compass, dayShort, tidesOn, todayIso, windRelation, daysOf, rateParts, swellHeights, weatherWord, VERDICT_WORD, type Tide } from './summary';
 import { WEATHER_ICONS, periodKind } from './weather-icons';
 
 /**
@@ -22,7 +22,7 @@ const SEA_CHART = new Set(['surfing', 'diving']);
 /** Labels, symbols and arrows go every this many hours, so a day fits one screen. */
 const STEP = 3;
 
-interface ChartHour {
+export interface ChartHour {
   /** Hours from midnight of the first day. */
   t: number;
   code: number | null;
@@ -45,7 +45,7 @@ function esc(s: string): string {
 const f1 = (n: number) => n.toFixed(1);
 
 /** Every hour from midnight of `dates[0]` to the end of the last date, read straight from the forecast. */
-function hoursOf(f: Forecast, dates: string[]): ChartHour[] {
+export function chartHours(f: Forecast, dates: string[]): ChartHour[] {
   const w = f.hourly;
   const m = f.marine;
   const wi = w?.time?.indexOf(`${dates[0]}T00:00`) ?? -1;
@@ -178,7 +178,7 @@ export interface DayChartOptions {
 export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions): string | null {
   const cat = categoryOf(item.activity).id;
   const { dates } = opts;
-  const all = hoursOf(f, dates);
+  const all = chartHours(f, dates);
   // Drop days at the end with no forecast at all.
   let last = all.length;
   while (last > 0 && all[last - 1].temp == null && all[last - 1].swell == null) last--;
@@ -241,12 +241,39 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
   );
   y += 20;
 
-  // The best surfing stretch of each day, as a green mark under the hours.
-  if (cat === 'surfing' && sea) {
-    days.forEach((d, n) => {
-      const best = daysOf(f, [d], cat, item)[0]?.surf?.best;
-      if (best) parts.push(`<rect class="dc-best" x="${f1((n * 24 + best[0]) * hw + 1)}" y="${y - 3}" width="${f1((best[1] - best[0]) * hw - 2)}" height="3" rx="1.5" />`);
+  // The rating colour for each part of the day, AM and PM (the night for camping), with the words inside
+  // (Sam, 2026-11-28).
+  daysOf(f, days, cat, item).forEach((d) => {
+    const n = days.indexOf(d.date);
+    for (const p of rateParts(cat, d)) {
+      const x0 = (n * 24 + p.from) * hw + 1;
+      const w = Math.min(W - x0 - 1, (p.to - p.from) * hw - 2);
+      if (w < 8) continue;
+      const v = p.rated.verdict;
+      const said = `${p.label} ${VERDICT_WORD[v]}`;
+      parts.push(
+        `<g class="dc-rate dc-rate-${v}"><rect x="${f1(x0)}" y="${y}" width="${f1(w)}" height="16" rx="4" />${w > 54 ? `<text x="${f1(x0 + w / 2)}" y="${y + 11.5}">${said}</text>` : ''}</g>`,
+      );
+    }
+  });
+  y += 21;
+
+  // The offshore wind window at a surf beach that knows which way it faces: a clear green band with the times.
+  if (cat === 'surfing' && faces != null && hrs.some((x) => x.dir != null)) {
+    days.forEach((_d, n) => {
+      const runs = offshoreRuns(hrs.slice(n * 24, n * 24 + 24), faces);
+      if (!runs.length) {
+        parts.push(`<text class="dc-off-none" x="${f1((n * 24 + 12) * hw)}" y="${y + 11.5}">No offshore wind</text>`);
+        return;
+      }
+      for (const [a, b] of runs) {
+        const x0 = (n * 24 + a) * hw + 1;
+        const w = (b - a) * hw - 2;
+        const label = w > 96 ? `Offshore ${clock(a)}–${clock(b)}` : w > 60 ? `${clock(a)}–${clock(b)}` : w > 26 ? 'Off' : '';
+        parts.push(`<g class="dc-off"><rect x="${f1(x0)}" y="${y}" width="${f1(w)}" height="16" rx="4" />${label ? `<text x="${f1(x0 + w / 2)}" y="${y + 11.5}">${label}</text>` : ''}</g>`);
+      }
     });
+    y += 21;
   }
 
   // Wind first, at the top: the average and the gusts as two curves, arrows along the average.
@@ -376,9 +403,77 @@ export function dayChart(item: HitListItem, f: Forecast, opts: DayChartOptions):
 
   const said = sea ? 'Hour by hour: wind, swell, tide and swell period for each day.' : 'Hour by hour: weather, temperature, rain and wind for each day.';
   const key = sea
-    ? `Wind on top. Bars are swell in metres (all swells plus wind waves; the scale starts above zero so changes show), with the main swell’s direction and period below${hasTide ? '; the teal line is the tide' : ''}. Wind in km/h: the solid line is the average, the dashed line the gusts${faces != null ? '; arrows green offshore, orange cross-shore, red onshore' : ''}${cat === 'surfing' ? '. The green mark is the best time' : ''}.`
-    : `Temperature line, rain bars with the chance of rain${hasTide && cat === 'kayaking' ? ', the tide' : ''}, and wind in km/h: the solid line is the average, the dashed line the gusts. Each day shows its total rain.`;
-  return `<div class="dc"><div class="dc-scroll" style="--day-w:${f1(opts.dayWidth)}px"><svg class="dc-svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="${esc(said)}">${back.join('')}${parts.join('')}</svg></div><p class="dc-key">${esc(key)}</p></div>`;
+    ? `Wind on top. Bars are swell in metres (all swells plus wind waves; the scale starts above zero so changes show), with the main swell’s direction and period below${hasTide ? '; the teal line is the tide' : ''}. Wind in km/h: the solid line is the average, the dashed line the gusts${faces != null ? '; arrows green offshore, orange cross-shore, red onshore' : ''}. The coloured bands rate the morning and afternoon${faces != null && cat === 'surfing' ? ', and the green band under them is when the wind is offshore' : ''}. Drag the slider to read any hour.`
+    : `Temperature line, rain bars with the chance of rain${hasTide && cat === 'kayaking' ? ', the tide' : ''}, and wind in km/h: the solid line is the average, the dashed line the gusts. Each day shows its total rain. The coloured bands rate ${cat === 'camping' ? 'the night' : 'the morning and afternoon'}. Drag the slider to read any hour.`;
+  return `<div class="dc"><div class="dc-readout" aria-live="polite"></div><div class="dc-track" role="slider" tabindex="0" aria-label="Hour to read"><span class="dc-knob"></span></div><div class="dc-scroll" style="--day-w:${f1(opts.dayWidth)}px"><svg class="dc-svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="${esc(said)}">${back.join('')}${parts.join('')}</svg></div><div class="dc-cursor" aria-hidden="true"></div><p class="dc-key">${esc(key)}</p></div>`;
+}
+
+/** Daylight hours (5am to 8pm) when the wind blows offshore at a beach facing `faces`, as [from, to) runs. */
+export function offshoreRuns(day: ChartHour[], faces: number): [number, number][] {
+  const out: [number, number][] = [];
+  let start: number | null = null;
+  for (let h = 5; h <= 20; h++) {
+    const x = day[h];
+    const off = h < 20 && x?.dir != null && x.wind != null && windRelation(x.dir, faces) === 'offshore';
+    if (off && start == null) start = h;
+    if (!off && start != null) {
+      out.push([start, h]);
+      start = null;
+    }
+  }
+  return out;
+}
+
+/** The offshore window for one day in words: "Offshore 4–9am, 6–8pm", or "No offshore wind". */
+export function offshoreText(f: Forecast, date: string, faces: number): string {
+  const day = chartHours(f, [date]);
+  if (!day.some((x) => x.dir != null)) return '';
+  const runs = offshoreRuns(day, faces);
+  if (!runs.length) return 'No offshore wind';
+  return `Offshore ${runs.map(([a, b]) => `${clock(a).replace(/(am|pm)$/, (m) => (clock(b).endsWith(m) ? '' : m))}–${clock(b)}`).join(', ')}`;
+}
+
+/**
+ * The slider's read-out: everything at one hour of the chart (`t`, hours from the first midnight), with the
+ * rating for that part of the day.
+ */
+export function readoutHtml(item: HitListItem, f: Forecast, hrs: ChartHour[], dates: string[], t: number): string {
+  const x = hrs[t];
+  const date = dates[Math.floor(t / 24)];
+  if (!x || !date) return '';
+  const cat = categoryOf(item.activity).id;
+  const h = t % 24;
+  const when = `${date === todayIso() ? 'Today' : dayShort(date)} ${clock(h)}`;
+  const day = daysOf(f, [date], cat, item)[0];
+  // Camping's night runs past midnight: the small hours belong to the night before.
+  const prev = h < 6 && cat === 'camping' ? daysOf(f, [dates[Math.floor(t / 24) - 1] ?? ''], cat, item)[0] : null;
+  const part = (prev ? rateParts(cat, prev).find((p) => h + 24 >= p.from && h + 24 < p.to) : null) ?? (day ? rateParts(cat, day).find((p) => h >= p.from && h < p.to) : null);
+  const tag = part ? `<span class="dc-ro-tag cd-v-${part.rated.verdict}">${part.label} ${VERDICT_WORD[part.rated.verdict]}</span>` : '';
+  const items: string[] = [];
+  const arrowSvg = (deg: number, cls: string) =>
+    `<svg class="dc-ro-arrow ${cls}" viewBox="0 0 24 24" style="transform:rotate(${Math.round(deg)}deg)" aria-hidden="true"><path d="M12 3v17M6 14l6 6 6-6"/></svg>`;
+  const sea = SEA_CHART.has(cat) && x.swell != null;
+  if (!sea && x.code != null) items.push(`<span>${esc(weatherWord(x.code))}${x.temp != null ? ` <b>${Math.round(x.temp)}°</b>` : ''}</span>`);
+  if (x.wind != null) {
+    const rel = cat === 'surfing' && item.faces != null && x.dir != null ? windRelation(x.dir, item.faces) : null;
+    const gust = x.gust != null && Math.round(x.gust) > Math.round(x.wind) ? `–${Math.round(x.gust)}` : '';
+    items.push(
+      `<span>${x.dir != null ? arrowSvg(x.dir, rel ? `dc-${rel}` : '') : ''}Wind <b>${x.dir != null ? compass(x.dir) + ' ' : ''}${Math.round(x.wind)}${gust}</b> km/h${rel ? ` <em class="dc-ro-${rel}">${rel}</em>` : ''}</span>`,
+    );
+  }
+  if (sea) {
+    items.push(
+      `<span>${x.swellDir != null ? arrowSvg(x.swellDir, 'dc-swell-arrow') : ''}Swell <b>${x.swell!.toFixed(1)} m</b>${x.period != null ? ` ${Math.round(x.period)} s` : ''}${x.swellDir != null ? ` ${compass(x.swellDir)}` : ''}</span>`,
+    );
+  }
+  if (x.tide != null && (sea || cat === 'kayaking')) {
+    const next = hrs[t + 1]?.tide;
+    const trend = next == null ? '' : next > x.tide + 0.02 ? ' rising' : next < x.tide - 0.02 ? ' falling' : ' turning';
+    items.push(`<span>Tide <b>${x.tide.toFixed(1)} m</b>${trend}</span>`);
+  }
+  if (sea && x.temp != null) items.push(`<span>${esc(weatherWord(x.code))} <b>${Math.round(x.temp)}°</b></span>`);
+  if ((x.rain ?? 0) >= 0.1 || (x.prob ?? 0) >= 20) items.push(`<span class="dc-ro-rain">Rain <b>${(x.rain ?? 0).toFixed(1)} mm</b>${x.prob != null ? ` ${x.prob}%` : ''}</span>`);
+  return `<div class="dc-ro-head"><b>${when}</b>${tag}</div><div class="dc-ro-items">${items.join('')}</div>`;
 }
 
 /** The tide as a line, with its high and low times. */
