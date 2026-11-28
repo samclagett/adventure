@@ -461,6 +461,8 @@ export function readoutHtml(item: HitListItem, f: Forecast, hrs: ChartHour[], da
       `<span>${x.dir != null ? arrowSvg(x.dir, rel ? `dc-${rel}` : '') : ''}Wind <b>${x.dir != null ? compass(x.dir) + ' ' : ''}${Math.round(x.wind)}${gust}</b> km/h${rel ? ` <em class="dc-ro-${rel}">${rel}</em>` : ''}</span>`,
     );
   }
+  const est = cat === 'surfing' ? day?.sea.find((s) => s.h === h)?.surf : null;
+  if (est) items.push(`<span>Surf <b>${esc(est.label)}</b>${est.surface ? ` <em class="dc-ro-${est.surface}">${est.surface}</em>` : ''}</span>`);
   if (sea) {
     items.push(
       `<span>${x.swellDir != null ? arrowSvg(x.swellDir, 'dc-swell-arrow') : ''}Swell <b>${x.swell!.toFixed(1)} m</b>${x.period != null ? ` ${Math.round(x.period)} s` : ''}${x.swellDir != null ? ` ${compass(x.swellDir)}` : ''}</span>`,

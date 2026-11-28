@@ -335,7 +335,7 @@
 /* ---- AM / PM rating colours (Sam, 2026-11-28) ---- */
 /* Day strip: each day is split down the middle, morning colour on the left, afternoon on the right. */
 :where(.cd-h) { --am: var(--field); --pm: var(--field); }
-.cd-sum-days .cd-h { color: var(--text); background: linear-gradient(90deg, var(--am) 0 50%, var(--pm) 50% 100%); }
+.cd-sum-days .cd-h { color: var(--text); background: linear-gradient(90deg, var(--am) 0 calc(50% - 1px), var(--bg) calc(50% - 1px) calc(50% + 1px), var(--pm) calc(50% + 1px) 100%); }
 .cd-am-go { --am: color-mix(in srgb, var(--cd-go) 34%, var(--field)); }
 .cd-am-mar { --am: color-mix(in srgb, var(--cd-mar) 30%, var(--field)); }
 .cd-am-skip { --am: color-mix(in srgb, var(--cd-skip) 28%, var(--field)); }
@@ -344,7 +344,7 @@
 .cd-pm-skip { --pm: color-mix(in srgb, var(--cd-skip) 28%, var(--field)); }
 /* The charted day is paper and ink, with its two ratings as a split bar along the bottom. */
 :where(.cd-h.on) { --am-s: var(--muted); --pm-s: var(--muted); }
-.cd-sum-days .cd-h.on { color: var(--ink); box-shadow: none; background: linear-gradient(90deg, var(--am-s) 0 50%, var(--pm-s) 50% 100%) bottom / 100% 4px no-repeat, var(--paper); }
+.cd-sum-days .cd-h.on { color: var(--ink); box-shadow: none; background: linear-gradient(90deg, var(--am-s) 0 calc(50% - 1px), var(--paper) calc(50% - 1px) calc(50% + 1px), var(--pm-s) calc(50% + 1px) 100%) bottom / 100% 4px no-repeat, var(--paper); }
 .cd-h.on.cd-am-go { --am-s: var(--cd-go); }
 .cd-h.on.cd-am-mar { --am-s: var(--cd-mar); }
 .cd-h.on.cd-am-skip { --am-s: var(--cd-skip); }
@@ -400,6 +400,9 @@
 .dc-ro-offshore { color: #c9dbae; }
 .dc-ro-cross-shore { color: #e6cf9c; }
 .dc-ro-onshore { color: #e3ada2; }
+.dc-ro-clean { color: #c9dbae; }
+.dc-ro-bumpy { color: #e6cf9c; }
+.dc-ro-choppy { color: #e3ada2; }
 .dc-ro-rain b { color: #8fc1d8; }
 .dc-ro-arrow { width: 13px; height: 13px; }
 .dc-ro-arrow path { fill: none; stroke: var(--muted); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }

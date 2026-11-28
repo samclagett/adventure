@@ -8,6 +8,8 @@ import { compass, dayShort, clock, todayIso, weatherWord } from '../conditions/s
 import { windArrow } from '../conditions/weather-icons';
 import { getQuality } from '../map/quality';
 import { lastHour, onHour, setHour } from '../conditions/hourbus';
+import { surfAt, windByTime } from '../conditions/surfsize';
+import type { Forecast } from '../conditions/openmeteo';
 import type { SpotScene } from './scene';
 import { hourAt, hoursOf, nowKey, type SpotHour } from './weather';
 
@@ -68,7 +70,15 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
     return `${day} ${clock(Number(t.slice(11, 13)))}`;
   }
 
-  function hudHtml(h: SpotHour): string {
+  /** The estimated surf for this hour at a surf spot ("Head to overhead · choppy"), from surfsize.ts. */
+  function surfText(f: Forecast, t: string): string {
+    if (!item || categoryOf(item.activity).id !== 'surfing' || !f.marine) return '';
+    const i = f.marine.time.indexOf(t);
+    const est = i >= 0 ? surfAt(f.marine, i, item, windByTime(f.hourly)) : null;
+    return est ? `Surf ${est.label.toLowerCase()}${est.surface ? ` · ${est.surface}` : ''}` : '';
+  }
+
+  function hudHtml(h: SpotHour, surf = ''): string {
     const chips: string[] = [];
     const wx = [h.temp != null ? `${Math.round(h.temp)}°` : '', weatherWord(h.code)].filter(Boolean).join(' · ');
     if (wx) chips.push(`<span class="spot-chip">${wx}${h.rain >= 0.1 ? ` · ${h.rain.toFixed(1)} mm` : ''}</span>`);
@@ -81,6 +91,7 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
         `<span class="spot-chip">${windArrow(h.swellFrom, 'spot-arrow')} Swell ${h.swell.toFixed(1)} m${h.period != null ? ` · ${Math.round(h.period)} s` : ''} ${compass(h.swellFrom)}</span>`,
       );
     }
+    if (surf) chips.push(`<span class="spot-chip">${surf}</span>`);
     return chips.join('');
   }
 
@@ -106,7 +117,7 @@ export function mountSpot(parent: HTMLElement, hl: HitListApi, data: ConditionsD
     clearTimeout(sceneTimer);
     if (fromSlider) sceneTimer = window.setTimeout(() => scene === s && s.setHour(h), 120);
     else s.setHour(h);
-    hud.innerHTML = hudHtml(h);
+    hud.innerHTML = hudHtml(h, surfText(f, t));
     when.textContent = hourLabel(t);
     panel.querySelector<HTMLButtonElement>('[data-step="-1"]')!.disabled = at <= 0;
     panel.querySelector<HTMLButtonElement>('[data-step="1"]')!.disabled = at + 1 >= hours.length;

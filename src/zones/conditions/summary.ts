@@ -2,6 +2,7 @@ import type { Forecast, HourlyMarine, HourlyWeather, HourlyWind } from './openme
 import { periodKind, KIND_WORD, type WeatherKind } from './weather-icons';
 import { rulesFor, type Rules, type Settings } from './rules';
 import { rateDay as rateOneDay, angDist, inRange, type Alert, type Rated } from './ratings';
+import { surfAt, surfText, windByTime, type SurfEstimate } from './surfsize';
 
 export type { Alert, Rated };
 
@@ -168,6 +169,8 @@ export interface SeaHour {
   swell: number | null;
   period: number | null;
   dir: number | null;
+  /** Estimated surf at surf spots, in body terms (surfsize.ts). Null elsewhere or without swell. */
+  surf: SurfEstimate | null;
 }
 
 export interface Day {
@@ -435,17 +438,38 @@ export function swellHeights(m: HourlyMarine): (number | null)[] {
   return (m.wave_height ?? []).some((v) => v != null) ? m.wave_height : m.swell_wave_height;
 }
 
-function seaOf(m: HourlyMarine | undefined, date: string): SeaHour[] {
+/** `surfPlace` is given at surf spots, to add the estimated surf size each hour. */
+function seaOf(m: HourlyMarine | undefined, date: string, surfPlace: PlaceLike | null, wind: HourlyWind | undefined): SeaHour[] {
   if (!m) return [];
   const start = m.time.indexOf(`${date}T00:00`);
   if (start < 0) return [];
   const swell = swellHeights(m);
+  const winds = surfPlace ? windByTime(wind) : undefined;
   const out: SeaHour[] = [];
   for (let n = 0; n < 24 && start + n < m.time.length; n++) {
     const i = start + n;
-    out.push({ h: n, swell: swell[i] ?? null, period: m.swell_wave_period[i] ?? null, dir: m.swell_wave_direction[i] ?? null });
+    out.push({
+      h: n,
+      swell: swell[i] ?? null,
+      period: m.swell_wave_period[i] ?? null,
+      dir: m.swell_wave_direction[i] ?? null,
+      surf: surfPlace ? surfAt(m, i, surfPlace, winds) : null,
+    });
   }
   return out;
+}
+
+/** Estimated surf over some hours of a day ("chest to head, choppy"), from `Day.sea`. Empty without an estimate. */
+export function surfOver(d: Day, from: number, to: number): string {
+  return surfText(d.sea.filter((x) => x.h >= from && x.h < to && x.surf).map((x) => x.surf!));
+}
+
+/** Estimated surf for the morning and afternoon: "AM waist to chest, clean · PM chest to head, choppy" (one part when they match). */
+export function surfAmPm(d: Day): string {
+  const am = surfOver(d, 6, 12);
+  const pm = surfOver(d, 12, 19);
+  if (am && pm) return am === pm ? am : `AM ${am} · PM ${pm}`;
+  return am || pm;
 }
 
 /** How many days back the forecast's past days are read (rules use up to 5). */
@@ -512,7 +536,7 @@ export function daysOf(f: Forecast, dates: string[], category: string, place: Pl
         surf: marine ? surfDay(marine, f.hourly ?? f.hourlyWind, date, category === 'surfing' ? faces : null, category === 'surfing' ? rules : rulesFor('surfing', null)) : null,
         periods: periodsOf(f.hourly, date, category),
         hrs: hrsOf(f.hourly, date),
-        sea: seaOf(marine, date),
+        sea: seaOf(marine, date, category === 'surfing' ? place : null, f.hourly ?? f.hourlyWind),
         prevRain: back(d.precipitation_sum),
         prevSnow: back(d.snowfall_sum),
         faces,
@@ -639,11 +663,12 @@ export function rowsFor(category: string, days: Day[]): Row[] {
       const amPm = [s.am ? `am ${compass(s.am[1])} ${round(s.am[0])}` : '', s.pm ? `pm ${compass(s.pm[1])} ${round(s.pm[0])}` : ''].filter(Boolean).join(', ');
       const tides = s.tides.map((t) => `${t.type === 'High' ? 'H' : 'L'} ${clock(t.hour)}`).join(' · ');
       const best = s.best ? `Best ${clock(s.best[0])}–${clock(s.best[1])}${s.windRel ? `, ${s.windRel}` : ''}` : '';
+      const surf = surfAmPm(d);
       return {
         date: d.date,
         verdict: s.verdict,
         // With AM/PM periods the wind shows there, by the weather.
-        cells: [label, VERDICT_WORD[s.verdict], swellText(s), d.periods.length ? '' : amPm ? `${amPm} km/h` : windCell(d)],
+        cells: [label, VERDICT_WORD[s.verdict], surf ? `Surf ${surf}` : '', swellText(s), d.periods.length ? '' : amPm ? `${amPm} km/h` : windCell(d)],
         extra: [best, tides ? `Tides ${tides}` : ''].filter(Boolean).join(' · '),
       };
     }
@@ -779,10 +804,12 @@ export interface PeriodSea {
   swellDir: number | null;
   /** High and low tides within the period. */
   tides: Tide[];
+  /** Estimated surf at the swell peak, when a surf place is given (surfsize.ts). */
+  surf?: SurfEstimate | null;
 }
 
 /** Swell and tides for one part of a day (AM 6–11am, PM 12–8pm, Night 9pm–5am). */
-export function seaFor(f: Forecast, date: string, id: Period['id']): PeriodSea | null {
+export function seaFor(f: Forecast, date: string, id: Period['id'], surfPlace?: PlaceLike): PeriodSea | null {
   const m = marineHasData(f.marine) ? f.marine! : null;
   if (!m) return null;
   const p = PERIODS.find((x) => x.id === id)!;
@@ -795,7 +822,13 @@ export function seaFor(f: Forecast, date: string, id: Period['id']): PeriodSea |
   const tides = [...tidesOn(m, date), ...tidesOn(m, nextDay(date)).map((t) => ({ ...t, hour: t.hour + 24 }))]
     .filter((t) => t.hour >= p.from && t.hour < p.to + 1);
   if (peak < 0) return { swell: null, swellPeriod: null, swellDir: null, tides };
-  return { swell: swellList[peak], swellPeriod: m.swell_wave_period[peak], swellDir: m.swell_wave_direction[peak], tides };
+  return {
+    swell: swellList[peak],
+    swellPeriod: m.swell_wave_period[peak],
+    swellDir: m.swell_wave_direction[peak],
+    tides,
+    surf: surfPlace ? surfAt(m, peak, surfPlace, windByTime(f.hourly ?? f.hourlyWind)) : undefined,
+  };
 }
 
 function nextDay(iso: string): string {
