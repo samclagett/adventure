@@ -12,6 +12,8 @@ import type { Alert } from './ratings';
 import { snowHtml, onSnowChange } from './snow';
 import { dayChart, pickedDay } from './daychart';
 import { MARINE_DAYS } from './openmeteo';
+import { surfLineHtml, refreshSurfLine, wireSurfReport, loadReports } from './surfreport';
+import { onSurfChange } from './surfsize';
 
 /**
  * Conditions on each place card: a short summary at the top (best of the next four days, a day strip and
@@ -78,7 +80,7 @@ function summaryHtml(item: HitListItem, data: ConditionsData, chosen: string, da
     .join('');
   const table = `<button type="button" class="cd-table-btn" data-act="matrix" aria-label="Morning and afternoon conditions table">${TABLE_ICON}<span>AM / PM</span></button>`;
   const chart = dayChart(item, f, { dates, dayWidth });
-  return `<div class="cd-sum">${pill}${table}</div><div class="cd-sum-days" style="grid-template-columns:repeat(${dates.length},1fr)">${strip}</div>${chart ?? ''}${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
+  return `<div class="cd-sum">${pill}${table}</div><div class="cd-sum-days" style="grid-template-columns:repeat(${dates.length},1fr)">${strip}</div>${cat === 'surfing' ? surfLineHtml(item, f, chosen) : ''}${chart ?? ''}${alertLines(alerts)}${cat === 'skiing' ? snowHtml(item) : ''}${dist ? `<small class="cd-sum-dist">${esc(dist)}</small>` : ''}`;
 }
 
 export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: () => HitListItem[]) {
@@ -86,18 +88,24 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
   data.onChange(() => refillSummary?.());
   onDriveChange(() => refillSummary?.());
   onSnowChange(() => refillSummary?.());
+  onSurfChange(() => refillSummary?.());
+  void loadReports();
   hl.addCardSummary((item, el) => {
     if (item.lat == null || item.lng == null) return;
+    // Surf spots: the estimated surf line and its "What did you see?" report (surfreport.ts).
+    if (categoryOf(item.activity).id === 'surfing') wireSurfReport(el, item, () => data.get(item));
     // The card opens on the day picked on the map (or today). The chart scrolls through the week; the strip
     // follows it, and a tap on the strip scrolls the chart to that day.
     const dates = stripDates();
     const p = pickedDay();
     let chosen = p && dates.includes(p) ? p : dates[0];
-    const mark = () =>
+    const mark = () => {
       el.querySelectorAll<HTMLButtonElement>('[data-day]').forEach((b) => {
         b.classList.toggle('on', b.dataset.day === chosen);
         b.setAttribute('aria-pressed', String(b.dataset.day === chosen));
       });
+      refreshSurfLine(el, item, data.get(item), chosen);
+    };
     const fill = () => {
       if (!el.isConnected) return;
       const dayWidth = Math.max(280, el.clientWidth - 2);
@@ -169,6 +177,7 @@ export function mountCardSection(hl: HitListApi, data: ConditionsData, visible: 
       const notes: string[] = [];
       if (cat === 'surfing') {
         notes.push('Swell is model wave height in metres (all swells plus wind waves, like WillyWeather), not Surfline’s face height in feet.');
+        notes.push('Surf is an estimate of the sets’ face in body terms, worked out from the swell parts, their period and direction, and the way the beach faces, then corrected by your “What did you see?” reports.');
         if (item.faces == null) notes.push('Set which way the beach faces (Edit) to see onshore and offshore wind.');
         if (!f.marine) notes.push('No marine forecast for this spot.');
       }

@@ -1,0 +1,28 @@
+/* Surf size line on surf cards and the "What did you see?" report (surfreport.ts). Design-system tokens only. */
+.sr-line { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.88rem; line-height: 1.35; }
+.sr-text { flex: 1; min-width: 0; }
+.sr-text b { font-weight: 700; margin-right: 2px; }
+.sr-text small { display: block; color: var(--muted); font-size: 0.72rem; }
+.sr-btn { flex: none; padding: 6px 10px; min-height: 32px; font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+
+.sr-body { padding: 0 16px 6px; }
+.sr-body p { margin: 0 0 8px; }
+.sr-body h4 { margin: 16px 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; }
+.sr-when { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--muted); font-size: 0.88rem; }
+.sr-when select,
+.sr-note { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: var(--r-s); border: 1px solid var(--border); background: var(--field); color: var(--text); }
+.sr-note { width: 100%; margin-top: 10px; box-sizing: border-box; }
+.sr-bands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sr-surface { display: flex; gap: 6px; margin-top: 10px; }
+.sr-bands button,
+.sr-surface button { font: inherit; font-size: 0.82rem; min-height: 40px; padding: 6px 4px; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: var(--r-s); cursor: pointer; }
+.sr-surface button { flex: 1; }
+.sr-bands button.on,
+.sr-surface button.on { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
+.sr-save { width: 100%; margin-top: 12px; min-height: 44px; font: inherit; font-weight: 600; color: var(--ink); background: var(--paper); border: none; border-radius: var(--r-m); cursor: pointer; }
+.sr-save:disabled { opacity: 0.45; cursor: default; }
+.sr-msg { margin-top: 6px !important; min-height: 1.2em; }
+.sr-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.85rem; }
+.sr-history li { padding: 8px 10px; border-radius: var(--r-s); background: var(--field); }
+.sr-history small { display: block; color: var(--muted); font-size: 0.75rem; }
+.sr-who { color: var(--muted); font-size: 0.75rem; }
